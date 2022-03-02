@@ -70,24 +70,7 @@ class PV:
 
 ###########################################################################################################################################################
 
-if __name__ == "__main__":
+
     
-    """
-    Functional test
-    """
-    
-    inp_test = {'latitude': 50.6,
-                'longitude': 5.6,
-                'Ppeak': 5,
-                'losses': 0.1,
-                'tilt': 30,
-                'azimuth': 0,
-                'reference year':2016,
-                'TMY': False}
-    
-    pv1 = PV(inp_test,2,1)
-    
-    for h in range(8760):
-        print(pv1.use(h))
-    print(sum(pv1.production))
+
     
