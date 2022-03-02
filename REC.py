@@ -36,7 +36,7 @@ class REC:
                     if balance not in self.energy_balance[carrier]: # if the balance is not yet in REC energy balances
                         self.energy_balance[carrier][balance] = np.zeros(self.simulation_hours) # add the initialised balance to REC energy balances
                 
-        if 'into_grid' in self.energy_balance['electricity'] and 'from_grid' in self.energy_balance['electricity']: # is it's possibile to have collective self consumption
+        if 'into grid' in self.energy_balance['electricity'] and 'from grid' in self.energy_balance['electricity']: # is it's possibile to have collective self consumption
             self.energy_balance['electricity']['collective self consumption'] = np.zeros(self.simulation_hours) # array of collective self consumed energy
 
                   
