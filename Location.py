@@ -59,7 +59,6 @@ class location:
             self.energy_balance['hydrogen']['into grid'] = np.zeros(simulation_hours) # array of hydrogen feed in to the grid
             self.energy_balance['electricity']['into electrolyzer'] = np.zeros(simulation_hours) # array of electricity used by electrolyzer
             
-
         if 'fuel cell' in system:
             self.technologies['fuel cell'] = fuel_cell(system['fuel cell']) # Fuel cell object created and to 'technologies' dictionary
             self.energy_balance['hydrogen']['self consumption'] = np.zeros(simulation_hours) # array of self-consumed hydrogen
@@ -124,6 +123,7 @@ class location:
                 
         if 'H tank' in self.technologies:
             EB['hydrogen'] += self.technologies['H tank'].use(h,EB['hydrogen'])
+        
         
         if 'self consumption' in self.energy_balance['electricity']:
             self.energy_balance['electricity']['self consumption'][h] += min(self.energy_balance['electricity']['demand'][h],self.energy_balance['electricity']['demand'][h]+EB['electricity'])      

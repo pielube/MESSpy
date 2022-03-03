@@ -1,6 +1,6 @@
 #### ########################################################################## INPUT definition
 
-simulation_years = 1 # int 
+simulation_years = 30 # int 
 
 # new-installation study case structure
 structure = {'p1': {'demand': {'electricity': 'EnCo_kWh_U0.csv'}, # hourly time series 8760 values [kWh]
