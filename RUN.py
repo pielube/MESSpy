@@ -1,7 +1,7 @@
-from REC import REC
-from Economy import NPV
-import Post_processing as pp
-from Input import *
+from rec import REC
+from economics import NPV
+import postprocess as pp
+from inputs import *
 import time
 
 """

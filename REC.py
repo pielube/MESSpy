@@ -1,7 +1,7 @@
 import numpy as np
 import pickle
 import os
-from Location import location
+from location import location
 
 class REC:
     

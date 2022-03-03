@@ -1,10 +1,10 @@
 import numpy as np
 import pandas as pd
-from PV import PV
-from Battery import battery
-from H_tank import H_tank
-from Fuel_cell import fuel_cell
-from Electrolyzer import electrolyzer
+from pv import PV
+from battery import battery
+from hydrogentank import H_tank
+from fuelcell import fuel_cell
+from electrolyzer import electrolyzer
 
 class location:
     
