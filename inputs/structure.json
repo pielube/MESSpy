@@ -1,0 +1,64 @@
+{
+"p1":
+    {
+    "demand":
+            {
+            "electricity": "EnCo_kWh_U0.csv"
+            },
+    "PV":
+        {
+        "latitude": 43.7,
+        "longitude": 11.2,
+        "tilt": 30,
+        "azimuth": 0,
+        "referenceyear": 2015,
+        "TMY": true,
+        "losses": 0.1,
+        "peakP": 3
+		},
+	"battery":
+	         {
+             "maxcapacity": 5,
+             "ageing": false
+             }
+    },
+"p2":
+    {
+    "demand":
+	        {
+			"electricity": "EnCo_kWh_U1.csv"
+			},
+    "PV":
+	    {
+		"latitude": 43.7,
+        "longitude": 11.2,
+        "tilt": 30,
+        "azimuth": 0,
+        "referenceyear": 2015,
+        "TMY": true,
+        "losses": 0.1,
+        "peakP": 1.5
+		},
+    "electrolyzer":
+	              {
+				  "Npower": 1,
+                  "stackmodel": "Enapter 2.1"
+				  },
+    "fuel cell":
+	           {
+				"Npower": 3
+			   },
+    "H tank":
+            {
+		    "maxcapacity": 6,
+            "pressure": 30
+			}
+    },
+"c2":
+    {
+	"demand":
+	        {
+		    "electricity": "EnCo_kWh_U2.csv"
+			}
+	}
+}

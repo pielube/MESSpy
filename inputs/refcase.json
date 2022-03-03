@@ -1,0 +1,17 @@
+{
+"p1": {
+	   "demand": {
+		          "electricity": "EnCo_kWh_U0.csv"
+				  }
+	   },
+"p2": {
+	   "demand": {
+		          "electricity": "EnCo_kWh_U1.csv"
+				  }
+	   },
+"c2": {
+	   "demand": {
+		          "electricity": "EnCo_kWh_U2.csv"
+				  }
+	   }
+}   
