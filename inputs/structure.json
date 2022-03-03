@@ -11,14 +11,14 @@
         "longitude": 11.2,
         "tilt": 30,
         "azimuth": 0,
-        "referenceyear": 2015,
+        "reference year": 2015,
         "TMY": true,
         "losses": 0.1,
         "peakP": 3
 		},
 	"battery":
 	         {
-             "maxcapacity": 5,
+             "max capacity": 5,
              "ageing": false
              }
     },
@@ -34,7 +34,7 @@
         "longitude": 11.2,
         "tilt": 30,
         "azimuth": 0,
-        "referenceyear": 2015,
+        "reference year": 2015,
         "TMY": true,
         "losses": 0.1,
         "peakP": 1.5
@@ -42,7 +42,7 @@
     "electrolyzer":
 	              {
 				  "Npower": 1,
-                  "stackmodel": "Enapter 2.1"
+                  "stack model": "Enapter 2.1"
 				  },
     "fuel cell":
 	           {
@@ -50,7 +50,7 @@
 			   },
     "H tank":
             {
-		    "maxcapacity": 6,
+		    "max capacity": 6,
             "pressure": 30
 			}
     },

@@ -1,8 +1,9 @@
 from rec import REC
 from economics import NPV
 import postprocess as pp
-from inputs import *
 import time
+import os
+import json
 
 """
 MESSpy - Run
@@ -10,6 +11,41 @@ MESSpy - Run
 
 study_case = 'study case' # str name for results file.pkl
 reference_case = 'reference case' # str name for results file.pkl
+
+"""
+Input files
+"""
+
+path = r'./inputs'
+
+file = 'structure.json'
+filepath = os.path.join(path,file)
+
+with open(filepath,'r') as f:
+    structure = json.load(f)
+
+file = 'economics.json'
+filepath = os.path.join(path,file)
+
+with open(filepath,'r') as f:
+    economics = json.load(f)
+
+file = 'general.json'
+filepath = os.path.join(path,file)
+
+with open(filepath,'r') as f:
+    general = json.load(f)
+
+file = 'refcase.json'
+filepath = os.path.join(path,file)
+
+with open(filepath,'r') as f:
+    refcase = json.load(f)
+    
+simulation_years = general['simulation_years']
+structure0 = refcase
+economic_data = economics
+
 
 time1 = time.time()
  
