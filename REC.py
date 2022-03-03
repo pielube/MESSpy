@@ -1,5 +1,6 @@
 import numpy as np
-import pickle 
+import pickle
+import os
 from Location import location
 
 class REC:
@@ -111,11 +112,14 @@ class REC:
             if tech_name in self.locations[location_name].technologies:
                 SOC[location_name][tech_name] = self.locations[location_name].technologies[tech_name].SOC_volume()
         
+        directory = './results'
+        if not os.path.exists(directory):
+            os.makedirs(directory)
         
-        with open('Results/balances_'+simulation_name+".pkl", 'wb') as f:
+        with open('results/balances_'+simulation_name+".pkl", 'wb') as f:
             pickle.dump(balances, f) 
             
-        with open('Results/SOC_'+simulation_name+".pkl", 'wb') as f:
+        with open('results/SOC_'+simulation_name+".pkl", 'wb') as f:
             pickle.dump(SOC, f) 
             
         
