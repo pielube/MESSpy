@@ -1,8 +1,9 @@
 from scipy.interpolate import interp1d
+import numpy as np
 
 class fuel_cell:
     
-    def __init__(self,parameters):
+    def __init__(self,parameters,simulation_hours):
         """
         Create a Fuel ell object
     
@@ -44,8 +45,10 @@ class fuel_cell:
             P.append(pot)
         self.PI=interp1d(P,I,kind='cubic',bounds_error=False,fill_value='extrapolate')
         
+        self.energy_balance = {'electricity': {'out': np.zeros(simulation_hours)}, 'hydrogen': {'in': np.zeros(simulation_hours)}}
         
-    def use(self,e,available_hyd):
+        
+    def use(self,h,e,available_hyd):
         """
         The Fuel celle can absorb hydrogen and produce electricity: H2 --> 2H+ + 2e
     
@@ -74,7 +77,10 @@ class fuel_cell:
             p = 0
             # turn off the fuel cell
             # this behavior could be solved with more advanced models, necessary inverse production functions.
-        
+            
+            
+        self.energy_balance['electricity']['out'][h] = p/1000
+        self.energy_balance['hydrogen']['in'][h] = hyd
         return (-hyd,p/1000) # return hydrogen absorbed [kg] and electricity required [kWh]
         
     

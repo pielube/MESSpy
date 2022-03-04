@@ -53,7 +53,8 @@ class PV:
         self.production = np.tile(pv,int(simulation_hours/8760))
         # electricity produced every hour for the entire simulation [kWh]
         
-
+        self.energy_balance = {'electricity': {'out': self.production}}
+        
     def use(self,h):
         """
         Produce electricity
