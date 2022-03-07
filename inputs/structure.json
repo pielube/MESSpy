@@ -19,7 +19,8 @@
 	"battery":
 	         {
              "max capacity": 5,
-             "ageing": false
+             "ageing": false,
+			 "collective": false 
              }
     },
 "p2":

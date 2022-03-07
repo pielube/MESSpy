@@ -100,8 +100,18 @@ class REC:
         balances = {}
         SOC = {}
         balances['REC'] = self.energy_balance
+        
         for location_name in self.locations:
             balances[location_name] = self.locations[location_name].energy_balance
+            
+            for tech_name in self.locations[location_name].technologies:
+                for carrier in self.locations[location_name].technologies[tech_name].energy_balance:
+                    balances[location_name][carrier][tech_name] = {}
+                    for balance in self.locations[location_name].technologies[tech_name].energy_balance[carrier]:
+                        balances[location_name][carrier][tech_name][balance] = self.locations[location_name].technologies[tech_name].energy_balance[carrier][balance]
+                  
+            
+            
             SOC[location_name] = {}
             
             tech_name = 'battery'

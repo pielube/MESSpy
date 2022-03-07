@@ -46,6 +46,7 @@ class H_tank:
             
             self.energy_balance['hydrogen']['in'][h] = charge
             return(-charge) # return hydrogen absorbed
+    
             
         else: # discharge H tank (this logic allows to back-calculate the SOC[0], it's useful for long term storage systems)
             

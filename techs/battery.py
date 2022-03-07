@@ -10,9 +10,7 @@ class battery:
             'max capacity': float [kWh]
             'variable performance' bool true if the performance change based on SOC 
             'ageing': bool true if aging has to be calculated
-                weighte number of cycles
-                rainflow counting
-            'self discharge': bool true if the battery can self discharging
+            'collective': bool true if the battery is a collective one
             
                       
         output : battery object able to:
@@ -23,10 +21,9 @@ class battery:
                 
         self.SOC = np.zeros(simulation_hours+1) # array battery State of Charge 
         self.ageing = parameters['ageing'] # bool true if aging has to be calculated
+        self.collective = parameters['collective'] # bool true if the battery is a collective one
         self.max_capacity = parameters['max capacity'] # battery max capacity [kWh]
         self.used_capacity = 0 # battery used capacity <= max_capacity [kWh]
-        
-        self.energy_balance = {'electricity': {'in': np.zeros(simulation_hours), 'out': np.zeros(simulation_hours)}}
         
     def use(self,h,e):
         """
@@ -45,8 +42,7 @@ class battery:
             
             if self.SOC[h+1] > self.used_capacity: # update used capacity
                 self.used_capacity = self.SOC[h+1] 
-                
-            self.energy_balance['electricity']['in'][h] = charge    
+                   
             return(-charge) # return electricity absorbed
             
         else: # discharge battery (this logic allows to back-calculate the SOC[0], it's useful for long term storage systems)
@@ -64,7 +60,6 @@ class battery:
                     self.used_capacity += - self.SOC[h+1] # incrase the used capacity
                     self.SOC[:h+2] += - self.SOC[h+1]  # traslate the past SOC array
             
-            self.energy_balance['electricity']['out'][h] = discharge
             return(discharge) # return electricity supplied
     
         

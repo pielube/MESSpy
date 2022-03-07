@@ -76,20 +76,20 @@ def NPV(structure,structure0,study_case,reference_case,economic_data,simulation_
         
         # energy sold and purchased in study case 
         for carrier in rec[location_name]: # for each carrier (electricity, hydrogen, gas, heat, cool)
-            if 'out' in rec[location_name][carrier]: 
-                sold = rec[location_name][carrier]['out']*economic_data[carrier]['sales']
+            if 'into grid' in rec[location_name][carrier]: 
+                sold = rec[location_name][carrier]['into grid']*economic_data[carrier]['sales']
                 CF = CF + np.reshape(sold,(-1,8760)).sum(axis=1)
-            if 'in' in rec[location_name][carrier]:
-                purchase = rec[location_name][carrier]['in']*economic_data[carrier]['purchase']
+            if 'from grid' in rec[location_name][carrier]:
+                purchase = rec[location_name][carrier]['from grid']*economic_data[carrier]['purchase']
                 CF = CF - np.reshape(purchase,(-1,8760)).sum(axis=1)
                 
         # energy sold and purchased in reference case 
         for carrier in rec0[location_name]: # for each carrier (electricity, hydrogen, gas, heat)
-            if 'out' in rec0[location_name][carrier]: 
-                sold = rec0[location_name][carrier]['out']*economic_data[carrier]['sales']
+            if 'into grid' in rec0[location_name][carrier]: 
+                sold = rec0[location_name][carrier]['into grid']*economic_data[carrier]['sales']
                 CF = CF - np.reshape(sold,(-1,8760)).sum(axis=1)
-            if 'in' in rec0[location_name][carrier]:
-                purchase = rec0[location_name][carrier]['in']*economic_data[carrier]['purchase']
+            if 'from grid' in rec0[location_name][carrier]:
+                purchase = rec0[location_name][carrier]['from grid']*economic_data[carrier]['purchase']
                 CF = CF + np.reshape(purchase,(-1,8760)).sum(axis=1)
                       
         # refound

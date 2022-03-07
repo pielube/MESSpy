@@ -29,7 +29,6 @@ class electrolyzer:
     
         self.production_rate = stack_production_rate * self.Npower / stack_operative_power_consumption
         
-        self.energy_balance = {'electricity': {'in': np.zeros(simulation_hours)}, 'hydrogen': {'out': np.zeros(simulation_hours)}}
         
     def use(self,h,e,storable_hydrogen):
         """
@@ -52,8 +51,6 @@ class electrolyzer:
              # turn off the electrolyzer
             # this behavior could be solved with more advanced models, necessary inverse production functions.
             
-        self.energy_balance['electricity']['in'][h] = e_absorbed
-        self.energy_balance['hydrogen']['out'][h] = hyd
         return(hyd,-e_absorbed) # return hydrogen supplied and electricity absorbed
         
     

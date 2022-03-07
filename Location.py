@@ -37,28 +37,34 @@ class location:
         # create the objects of present technologies and add them to the technologies dictionary
         # initialise energy balance and add them to the energy_balance dictionary
         
-        for carrier in system['demand']:            
-            self.energy_balance[carrier]['demand'] = np.tile(pd.read_csv('Loads/'+system['demand'][carrier])['0'].to_numpy(),int(simulation_hours/8760)) # hourly energy carrier needed for the entire simulation
-            self.energy_balance[carrier]['in'] = np.zeros(simulation_hours) # array energy carrier bought from the grid
-  
+        for carrier in self.energy_balance:
+            self.energy_balance[carrier]['grid'] = np.zeros(simulation_hours) # array energy carrier bought from the grid (-) or feed into the grid (+)
+
+            if carrier in system['demand']:            
+                self.energy_balance[carrier]['demand'] = np.tile(pd.read_csv('Loads/'+system['demand'][carrier])['0'].to_numpy(),int(simulation_hours/8760)) # hourly energy carrier needed for the entire simulation
+
         if 'PV' in system:
             self.technologies['PV'] = PV(system['PV'],simulation_hours) # PV object created and add to 'technologies' dictionary
-            self.energy_balance['electricity']['production'] = np.zeros(simulation_hours) # array of electricity production
-            self.energy_balance['electricity']['out'] = np.zeros(simulation_hours) # array of electricity feed in to the grid
+            self.energy_balance['electricity']['PV'] = np.zeros(simulation_hours) # array PV electricity balance
             
         if 'battery' in system:
             self.technologies['battery'] = battery(system['battery'],simulation_hours) # battery object created and to 'technologies' dictionary
-            
+            self.energy_balance['electricity']['battery'] = np.zeros(simulation_hours) # array battery electricity balance
+                           
         if 'electrolyzer' in system:
             self.technologies['electrolyzer'] = electrolyzer(system['electrolyzer'],simulation_hours) # electrolyzer object created and to 'technologies' dictionary
-            self.energy_balance['hydrogen']['production'] = np.zeros(simulation_hours) # array of hydrogen production
-            self.energy_balance['hydrogen']['out'] = np.zeros(simulation_hours) # array of hydrogen feed in to the grid
+            self.energy_balance['electricity']['electrolyzer'] = np.zeros(simulation_hours) # array electrolyzer electricity balance
+            self.energy_balance['hydrogen']['electrolyzer'] = np.zeros(simulation_hours) # array electrolyzer hydrogen balance
             
         if 'fuel cell' in system:
             self.technologies['fuel cell'] = fuel_cell(system['fuel cell'],simulation_hours) # Fuel cell object created and to 'technologies' dictionary
+            self.energy_balance['electricity']['fuel cell'] = np.zeros(simulation_hours) # array fuel cell electricity balance
+            self.energy_balance['hydrogen']['fuel cell'] = np.zeros(simulation_hours) # array fuel cell hydrogen balance
             
         if 'H tank' in system:
             self.technologies['H tank'] = H_tank(system['H tank'],simulation_hours) # H tank object created and to 'technologies' dictionary
+            self.energy_balance['hydrogen']['H tank'] = np.zeros(simulation_hours) # array H tank hydrogen balance
+
         
         ### determine the location type: it could be usefull to decide a simulation order: work in progress...
         if 'demand' in self.energy_balance['electricity']:
@@ -85,26 +91,31 @@ class location:
                 EB[carrier] += -self.energy_balance[carrier]['demand'][h] # energy balance update: - energy demand
              
         if 'PV' in self.technologies: 
-            self.energy_balance['electricity']['production'][h] += self.technologies['PV'].use(h) # electricity produced from PV
-            EB['electricity'] += self.energy_balance['electricity']['production'][h] # electricity balance update: + electricity produced from PV
+            self.energy_balance['electricity']['PV'][h] = self.technologies['PV'].use(h) # electricity produced from PV
+            EB['electricity'] += self.energy_balance['electricity']['PV'][h] # elecricity balance update: + electricity produced from PV
         
         if 'battery' in self.technologies:
-            EB['electricity'] +=  self.technologies['battery'].use(h,EB['electricity']) # electricity balance update: +- electricity absorbed or supplied by battery
+            self.energy_balance['electricity']['battery'][h] = self.technologies['battery'].use(h,EB['electricity']) # electricity absorbed(-) or supplied(+) by battery
+            EB['electricity'] += self.energy_balance['electricity']['battery'][h]  # electricity balance update: +- electricity absorbed or supplied by battery
             
         if 'electrolyzer' in self.technologies:
             if EB['electricity'] > 0:
                 if 'H tank' in self.technologies: # if hydrogen is stored in a tank
-                    storable_hydrogen = self.technologies['H tank'].max_capacity-self.technologies['H tank'].SOC[h-1] # the tank can't be full
+                    storable_hydrogen = self.technologies['H tank'].max_capacity-self.technologies['H tank'].SOC[h] # the tank can't be full
                 else: # if hydrogen is sold to the grid 
-                    storable_hydrogen = 99999999999 # there are no limits f.i an hydrogen producer
-                hyd,ele = self.technologies['electrolyzer'].use(h,EB['electricity'],storable_hydrogen)
-                self.energy_balance['hydrogen']['production'][h] += hyd # array of hydrogen produced
-                EB['hydrogen'] += hyd
-                EB['electricity'] += ele
+                    storable_hydrogen = 99999999999 # there are no limits, f.i an hydrogen producer
+                    
+                self.energy_balance['hydrogen']['electrolyzer'][h], self.energy_balance['electricity']['electrolyzer'][h] = self.technologies['electrolyzer'].use(h,EB['electricity'],storable_hydrogen) # hydrogen supplied by electrolyzer(+) and electricity absorbed(-) 
+                EB['hydrogen'] += self.energy_balance['hydrogen']['electrolyzer'][h]
+                EB['electricity'] += self.energy_balance['electricity']['electrolyzer'][h]
                 
         if 'fuel cell' in self.technologies:
-            if EB['electricity'] < 0:                
-                hyd,ele = self.technologies['fuel cell'].use(h,EB['electricity'],self.technologies['H tank'].SOC[h-1])
+            if EB['electricity'] < 0:      
+                if 'H tank' in self.technologies: # if hydrogen is stored in a tank
+                    available_hyd = self.technologies['H tank'].SOC[h] + self.technologies['H tank'].max_capacity - self.technologies['H tank'].used_capacity
+                else: # if hydrogen is purchased
+                    available_hyd = 99999999999 # there are no limits
+                hyd,ele = self.technologies['fuel cell'].use(h,EB['electricity'],available_hyd)
                 EB['hydrogen'] += hyd
                 EB['electricity'] += ele
                 
@@ -112,12 +123,12 @@ class location:
             EB['hydrogen'] += self.technologies['H tank'].use(h,EB['hydrogen'])
         
         for carrier in EB:
-            if 'out' in self.energy_balance[carrier] and EB[carrier] > 0:
-                self.energy_balance[carrier]['out'][h] += EB[carrier]
+            if 'into grid' in self.energy_balance[carrier] and EB[carrier] > 0:
+                self.energy_balance[carrier]['into grid'][h] += EB[carrier]
                 # and from_grid = 0
                 
-            if 'in' in self.energy_balance[carrier] and EB[carrier] < 0:
-                self.energy_balance[carrier]['in'][h] += -EB[carrier]
+            if 'from grid' in self.energy_balance[carrier] and EB[carrier] < 0:
+                self.energy_balance[carrier]['from grid'][h] += -EB[carrier]
                 # and to grid = 0
             
             

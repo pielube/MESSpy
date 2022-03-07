@@ -45,8 +45,6 @@ class fuel_cell:
             P.append(pot)
         self.PI=interp1d(P,I,kind='cubic',bounds_error=False,fill_value='extrapolate')
         
-        self.energy_balance = {'electricity': {'out': np.zeros(simulation_hours)}, 'hydrogen': {'in': np.zeros(simulation_hours)}}
-        
         
     def use(self,h,e,available_hyd):
         """
@@ -78,9 +76,6 @@ class fuel_cell:
             # turn off the fuel cell
             # this behavior could be solved with more advanced models, necessary inverse production functions.
             
-            
-        self.energy_balance['electricity']['out'][h] = p/1000
-        self.energy_balance['hydrogen']['in'][h] = hyd
         return (-hyd,p/1000) # return hydrogen absorbed [kg] and electricity required [kWh]
         
     
