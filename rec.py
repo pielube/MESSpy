@@ -30,16 +30,6 @@ class REC:
         for location_name in structure: # location_name are the keys of 'structure' dictionary and will be used as keys of REC 'locations' dictionary too
             self.locations[location_name] = location(structure[location_name],self.simulation_hours) # create location object and add it to REC 'locations' dictionary                
             
-        # initialise all the required REC energy balances 
-        for location_name in self.locations: # each location
-            for carrier in self.locations[location_name].energy_balance: # each energy carrier
-                for balance in self.locations[location_name].energy_balance[carrier]: # each energy balance
-                    if balance not in self.energy_balance[carrier]: # if the balance is not yet in REC energy balances
-                        self.energy_balance[carrier][balance] = np.zeros(self.simulation_hours) # add the initialised balance to REC energy balances
-                
-        if 'into grid' in self.energy_balance['electricity'] and 'from grid' in self.energy_balance['electricity']: # is it's possibile to have collective self consumption
-            self.energy_balance['electricity']['collective self consumption'] = np.zeros(self.simulation_hours) # array of collective self consumed energy
-
                   
     def REC_energy_simulation(self):
         """
@@ -50,42 +40,24 @@ class REC:
             updating REC energy balances
         """
         
+        ### initialise REC electricity balances
+        self.energy_balance['electricity']['from grid'] = np.zeros(self.simulation_hours) # array of collective self consumed energy
+        self.energy_balance['electricity']['into grid'] = np.zeros(self.simulation_hours) # array of collective self consumed energy
+        self.energy_balance['electricity']['collective self consumption'] = np.zeros(self.simulation_hours) # array of collective self consumed energy
+        
         for h in range(self.simulation_hours): # h: hour to simulate from 0 to simulation_hours 
             for location_name in self.locations: # each locations 
                 self.locations[location_name].loc_energy_simulation(h) # simulate a single location updating its energy balances
                 
-                for carrier in self.energy_balance: # each energy carrier
-                    for balance in self.locations[location_name].energy_balance[carrier]: # each location energy balance          
-                        self.energy_balance[carrier][balance][h] += self.locations[location_name].energy_balance[carrier][balance][h] # add location energy balance to rec energy balance
-            
-            if 'collective self consumption' in self.energy_balance['electricity']:
-                self.energy_balance['electricity']['collective self consumption'][h] = min(self.energy_balance['electricity']['into grid'][h],self.energy_balance['electricity']['from grid'][h]) # calculate REC collective self consumption how regulation establishes      
-    
-    
-    def reset(self):
-        """
-        Reset REC and each location energy balances and SOCs        
-        """
-        
-        for carrier in self.energy_balance: # each energy carrier
-            
-            # reset REC energy balances
-            for balance in self.energy_balance[carrier]: # each balance
-                if balance != 'demand': # demand don't have to be resetted
-                    self.energy_balance[carrier][balance] = np.zeros(self.simulation_hours) # array reset energy balance
+            ### solve electricity grid 
+                if self.locations[location_name].energy_balance['electricity']['grid'][h] < 0:
+                    self.energy_balance['electricity']['into grid'] += self.locations[location_name].energy_balance['electricity']['grid'][h]
+                else:                                                     
+                    self.energy_balance['electricity']['from grid'] += self.locations[location_name].energy_balance['electricity']['grid'][h]
                 
-            # reset locations energy balances
-            for location_name in self.locations: # each location
-                for balance in self.locations[location_name].energy_balance[carrier]:
-                     if balance != 'demand': # demand don't have to be resetted
-                         self.locations[location_name].energy_balance[carrier][balance] = np.zeros(self.simulation_hours) # array reset energy balance
+            self.energy_balance['electricity']['collective self consumption'][h] = min(-self.energy_balance['electricity']['into grid'][h],self.energy_balance['electricity']['from grid'][h]) # calculate REC collective self consumption how regulation establishes      
     
-                # reset locations battery and H tank SOC 
-                for tech_name in ['battery','H tank']:
-                    if tech_name in self.locations[location_name].technologies:
-                        self.locations[location_name].technologies[tech_name].SOC = np.zeros(self.simulation_hours+1) # array reset SOC
-                        self.locations[location_name].technologies[tech_name].used_capacity = 0 # reset used_capacity
-                
+
     def save(self,simulation_name):
         """
         Save REC and each location energy balances
@@ -103,14 +75,6 @@ class REC:
         
         for location_name in self.locations:
             balances[location_name] = self.locations[location_name].energy_balance
-            
-            for tech_name in self.locations[location_name].technologies:
-                for carrier in self.locations[location_name].technologies[tech_name].energy_balance:
-                    balances[location_name][carrier][tech_name] = {}
-                    for balance in self.locations[location_name].technologies[tech_name].energy_balance[carrier]:
-                        balances[location_name][carrier][tech_name][balance] = self.locations[location_name].technologies[tech_name].energy_balance[carrier][balance]
-                  
-            
             
             SOC[location_name] = {}
             
@@ -132,6 +96,10 @@ class REC:
         with open('results/SOC_'+simulation_name+".pkl", 'wb') as f:
             pickle.dump(SOC, f) 
             
+            
+    def reset(self):
+        pass
+        # azzera gli SOC, i bilanci non dovrebbe esserci bisogno..? 
         
     
         

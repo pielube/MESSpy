@@ -24,8 +24,6 @@ class H_tank:
         self.max_capacity = parameters['max capacity'] # H tank max capacity [kg]
         self.used_capacity = 0 # H tank used capacity <= max_capacity [kg]      
         
-        self.energy_balance = {'hydrogen': {'in': np.zeros(simulation_hours), 'out': np.zeros(simulation_hours)}}
-        
     def use(self,h,hyd):
         """
         The H tank can supply or absorb hydrogen
@@ -44,7 +42,6 @@ class H_tank:
             if self.SOC[h+1] > self.used_capacity: # update used capacity
                 self.used_capacity = self.SOC[h+1]      
             
-            self.energy_balance['hydrogen']['in'][h] = charge
             return(-charge) # return hydrogen absorbed
     
             
@@ -64,7 +61,6 @@ class H_tank:
                     self.used_capacity += - self.SOC[h+1] # incrase the used capacity
                     self.SOC[:h+2] += - self.SOC[h+1]  # traslate the past SOC array
                     
-            self.energy_balance['hydrogen']['out'][h] = discharge
             return(discharge) # return hydrogen supplied
         
     def SOC_volume(self):

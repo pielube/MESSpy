@@ -38,10 +38,11 @@ class location:
         # initialise energy balance and add them to the energy_balance dictionary
         
         for carrier in self.energy_balance:
-            self.energy_balance[carrier]['grid'] = np.zeros(simulation_hours) # array energy carrier bought from the grid (-) or feed into the grid (+)
+            if system['grid'][carrier]:
+                self.energy_balance[carrier]['grid'] = np.zeros(simulation_hours) # array energy carrier bought from the grid (-) or feed into the grid (+)
 
             if carrier in system['demand']:            
-                self.energy_balance[carrier]['demand'] = np.tile(pd.read_csv('Loads/'+system['demand'][carrier])['0'].to_numpy(),int(simulation_hours/8760)) # hourly energy carrier needed for the entire simulation
+                self.energy_balance[carrier]['demand'] = - np.tile(pd.read_csv('Loads/'+system['demand'][carrier])['0'].to_numpy(),int(simulation_hours/8760)) # hourly energy carrier needed for the entire simulation
 
         if 'PV' in system:
             self.technologies['PV'] = PV(system['PV'],simulation_hours) # PV object created and add to 'technologies' dictionary
@@ -84,11 +85,11 @@ class location:
         output : updating of location energy balances
         """
         
-        EB = {'electricity': 0, 'heat': 0, 'hydrogen': 0, 'gas': 0} # initialise Energy Balances     
+        EB = {'electricity': 0, 'heat': 0, 'hydrogen': 0, 'gas': 0, 'cool': 0} # initialise Energy Balances     
         
         for carrier in EB: # for each energy carrier
             if 'demand' in self.energy_balance[carrier]:                
-                EB[carrier] += -self.energy_balance[carrier]['demand'][h] # energy balance update: - energy demand
+                EB[carrier] += self.energy_balance[carrier]['demand'][h] # energy balance update: energy demand(-)
              
         if 'PV' in self.technologies: 
             self.energy_balance['electricity']['PV'][h] = self.technologies['PV'].use(h) # electricity produced from PV
@@ -115,21 +116,18 @@ class location:
                     available_hyd = self.technologies['H tank'].SOC[h] + self.technologies['H tank'].max_capacity - self.technologies['H tank'].used_capacity
                 else: # if hydrogen is purchased
                     available_hyd = 99999999999 # there are no limits
-                hyd,ele = self.technologies['fuel cell'].use(h,EB['electricity'],available_hyd)
-                EB['hydrogen'] += hyd
-                EB['electricity'] += ele
+                self.energy_balance['hydrogen']['fuel cell'][h], self.energy_balance['electricity']['fuel cell'][h] =self.technologies['fuel cell'].use(h,EB['electricity'],available_hyd) # hydrogen absorbeed by fuel cell(-) and electricity supplied(+) 
+                EB['hydrogen'] += self.energy_balance['hydrogen']['fuel cell'][h]
+                EB['electricity'] += self.energy_balance['electricity']['fuel cell'][h]
                 
         if 'H tank' in self.technologies:
-            EB['hydrogen'] += self.technologies['H tank'].use(h,EB['hydrogen'])
+            self.energy_balance['hydrogen']['H tank'][h] = self.technologies['H tank'].use(h,EB['hydrogen'])
+            EB['hydrogen'] += self.energy_balance['hydrogen']['H tank'][h]
         
-        for carrier in EB:
-            if 'into grid' in self.energy_balance[carrier] and EB[carrier] > 0:
-                self.energy_balance[carrier]['into grid'][h] += EB[carrier]
-                # and from_grid = 0
-                
-            if 'from grid' in self.energy_balance[carrier] and EB[carrier] < 0:
-                self.energy_balance[carrier]['from grid'][h] += -EB[carrier]
-                # and to grid = 0
+        for carrier in EB:    
+            if 'grid' in self.energy_balance[carrier]:
+                self.energy_balance[carrier]['grid'][h] = - EB[carrier] # energy from grid(+) or into grid(-)
+
             
             
             

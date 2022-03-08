@@ -1,5 +1,3 @@
-import numpy as np
-
 class electrolyzer:
     
     def __init__(self,parameters,simulation_hours):

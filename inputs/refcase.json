@@ -2,16 +2,40 @@
 "p1": {
 	   "demand": {
 		          "electricity": "EnCo_kWh_U0.csv"
-				  }
+				  },
+		"grid":
+				{
+				"electricity": true,
+				"hydrogen": false,
+				"gas": false,
+				"heat": false,
+				"cool": false
+				}	
 	   },
 "p2": {
 	   "demand": {
 		          "electricity": "EnCo_kWh_U1.csv"
-				  }
+				  },
+		"grid":
+				{
+				"electricity": true,
+				"hydrogen": false,
+				"gas": false,
+				"heat": false,
+				"cool": false
+		}	
 	   },
 "c2": {
 	   "demand": {
 		          "electricity": "EnCo_kWh_U2.csv"
-				  }
+				  },
+		"grid":
+				{
+				"electricity": true,
+				"hydrogen": false,
+				"gas": false,
+				"heat": false,
+				"cool": false
+				}  
 	   }
 }   
