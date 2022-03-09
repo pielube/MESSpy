@@ -22,7 +22,7 @@ class H_tank:
         self.pressure = parameters['pressure'] # H tank storage pressure
         self.SOC = np.zeros(simulation_hours+1) # array H tank State of Charge 
         self.max_capacity = parameters['max capacity'] # H tank max capacity [kg]
-        self.used_capacity = 0 # H tank used capacity <= max_capacity [kg]        
+        self.used_capacity = 0 # H tank used capacity <= max_capacity [kg]      
         
     def use(self,h,hyd):
         """
@@ -43,6 +43,7 @@ class H_tank:
                 self.used_capacity = self.SOC[h+1]      
             
             return(-charge) # return hydrogen absorbed
+    
             
         else: # discharge H tank (this logic allows to back-calculate the SOC[0], it's useful for long term storage systems)
             
@@ -59,7 +60,7 @@ class H_tank:
                 if self.SOC[h+1] < 0: # if the state of charge has become negative
                     self.used_capacity += - self.SOC[h+1] # incrase the used capacity
                     self.SOC[:h+2] += - self.SOC[h+1]  # traslate the past SOC array
-
+                    
             return(discharge) # return hydrogen supplied
         
     def SOC_volume(self):

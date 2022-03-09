@@ -21,7 +21,16 @@ def total_balances(simulation_name):
         for loc in balances:
             print('\n'+loc)   
             for b in balances[loc][carrier]:
-                print(b+' '+str(round(sum(balances[loc][carrier][b]),1))+' '+units[carrier])
+                
+                positiv=balances[loc][carrier][b].sum(where=balances[loc][carrier][b]>0)
+                negativ=balances[loc][carrier][b].sum(where=balances[loc][carrier][b]<0)
+                
+                if positiv != 0:
+                    print(b+' '+str(round(positiv,1))+' '+units[carrier])
+                    
+                if negativ != 0:
+                    print(b+' '+str(round(negativ,1))+' '+units[carrier])
+    print('\n')
     
 def NPV_plot():
     ##### economic

@@ -34,8 +34,8 @@
          "OeM": 0
 		 },
  "electricity": {
-	             "purchase": 0.22, 
-                 "sales": 0.04
+	             "purchase": 0.26, 
+                 "sales": 0.05
 				 }, 
  "hydrogen": {
 		      "purchase": 0, 
@@ -48,6 +48,10 @@
  "heat": {
 	      "purchase": 0, 
           "sales": 0
-		  }, 
+		  },
+"cool": {
+	      "purchase": 0, 
+          "sales": 0
+		  },		  
  "interest rate": 0.05
 }

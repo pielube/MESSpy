@@ -1,6 +1,6 @@
 class electrolyzer:
     
-    def __init__(self,parameters):
+    def __init__(self,parameters,simulation_hours):
         """
         Create an electrolyzer object
     
@@ -27,7 +27,8 @@ class electrolyzer:
     
         self.production_rate = stack_production_rate * self.Npower / stack_operative_power_consumption
         
-    def use(self,e,storable_hydrogen):
+        
+    def use(self,h,e,storable_hydrogen):
         """
         Produce hydrogen
         

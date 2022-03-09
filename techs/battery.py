@@ -8,8 +8,10 @@ class battery:
     
         parameters : dictionary
             'max capacity': float [kWh]
+            'variable performance' bool true if the performance change based on SOC 
             'ageing': bool true if aging has to be calculated
-            'self discharge': ?
+            'collective': bool true if the battery is a collective one
+            
                       
         output : battery object able to:
             supply or abrosrb electricity .use(h,e)
@@ -19,9 +21,10 @@ class battery:
                 
         self.SOC = np.zeros(simulation_hours+1) # array battery State of Charge 
         self.ageing = parameters['ageing'] # bool true if aging has to be calculated
+        self.collective = parameters['collective'] # bool true if the battery is a collective one
         self.max_capacity = parameters['max capacity'] # battery max capacity [kWh]
         self.used_capacity = 0 # battery used capacity <= max_capacity [kWh]
-               
+        
     def use(self,h,e):
         """
         The battery can supply or absorb electricity
@@ -39,7 +42,7 @@ class battery:
             
             if self.SOC[h+1] > self.used_capacity: # update used capacity
                 self.used_capacity = self.SOC[h+1] 
-                
+                   
             return(-charge) # return electricity absorbed
             
         else: # discharge battery (this logic allows to back-calculate the SOC[0], it's useful for long term storage systems)
@@ -56,17 +59,19 @@ class battery:
                 if self.SOC[h+1] < 0: # if the state of charge has become negative
                     self.used_capacity += - self.SOC[h+1] # incrase the used capacity
                     self.SOC[:h+2] += - self.SOC[h+1]  # traslate the past SOC array
-
+            
             return(discharge) # return electricity supplied
+    
         
+        if self.ageing and h == 100: ### ogni quanto calcolo l'aging e aggiorno capacity???
+            pass
+            battery.calculate_aging()
         
-# =============================================================================
-#         if self.ageing and h == 100: ### ogni quanto calcolo l'aging e aggiorno capacity???
-#             battery.calculate_aging()
-#         
-#     def calculate_ageing(self):
-#         ### based on SOC self.max_capacity must decrease 
-# =============================================================================
+    def calculate_ageing(self):
+        pass
+    
+        # degradation 
+        # corrosion
     
 
 
@@ -88,6 +93,8 @@ if __name__ == "__main__":
     #flow = [-2,-10, +2, +10, +1, -4, -20]
     for h in range(len(flow)):
         b1.use(h,flow[h])        
+    
+    print(b1.SOC[:15])
     
     
     

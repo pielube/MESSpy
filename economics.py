@@ -76,21 +76,25 @@ def NPV(structure,structure0,study_case,reference_case,economic_data,simulation_
         
         # energy sold and purchased in study case 
         for carrier in rec[location_name]: # for each carrier (electricity, hydrogen, gas, heat, cool)
-            if 'into grid' in rec[location_name][carrier]: 
-                sold = rec[location_name][carrier]['into grid']*economic_data[carrier]['sales']
-                CF = CF + np.reshape(sold,(-1,8760)).sum(axis=1)
-            if 'from grid' in rec[location_name][carrier]:
-                purchase = rec[location_name][carrier]['from grid']*economic_data[carrier]['purchase']
-                CF = CF - np.reshape(purchase,(-1,8760)).sum(axis=1)
+            if 'grid' in rec[location_name][carrier]: 
+                sold = rec[location_name][carrier]['grid']*economic_data[carrier]['sales']
+                sold = np.reshape(sold,(-1,8760))
+                CF = CF - sold.sum(axis=1,where=sold<0)
+            if 'grid' in rec[location_name][carrier]:
+                purchase = rec[location_name][carrier]['grid']*economic_data[carrier]['purchase']
+                purchase = np.reshape(purchase,(-1,8760))
+                CF = CF - purchase.sum(axis=1,where=purchase>0)
                 
         # energy sold and purchased in reference case 
         for carrier in rec0[location_name]: # for each carrier (electricity, hydrogen, gas, heat)
-            if 'into grid' in rec0[location_name][carrier]: 
-                sold = rec0[location_name][carrier]['into grid']*economic_data[carrier]['sales']
-                CF = CF - np.reshape(sold,(-1,8760)).sum(axis=1)
-            if 'from grid' in rec0[location_name][carrier]:
-                purchase = rec0[location_name][carrier]['from grid']*economic_data[carrier]['purchase']
-                CF = CF + np.reshape(purchase,(-1,8760)).sum(axis=1)
+            if 'grid' in rec0[location_name][carrier]: 
+                sold = rec0[location_name][carrier]['grid']*economic_data[carrier]['sales']
+                sold = np.reshape(sold,(-1,8760))
+                CF = CF + sold.sum(axis=1,where=sold<0)
+            if 'grid' in rec0[location_name][carrier]:
+                purchase = rec0[location_name][carrier]['grid']*economic_data[carrier]['purchase']
+                purchase = np.reshape(purchase,(-1,8760))
+                CF = CF + purchase.sum(axis=1,where=purchase>0)
                       
         # refound
         yearly_refound = I0*(economic_data['refound']['rate']/100)/economic_data['refound']['time'] # yearly refound [€]

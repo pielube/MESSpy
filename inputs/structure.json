@@ -5,6 +5,14 @@
             {
             "electricity": "EnCo_kWh_U0.csv"
             },
+	"grid":
+			{
+			"electricity": true,
+			"hydrogen": false,
+			"gas": false,
+			"heat": false,
+			"cool": false
+			},		
     "PV":
         {
         "latitude": 43.7,
@@ -19,7 +27,8 @@
 	"battery":
 	         {
              "max capacity": 5,
-             "ageing": false
+             "ageing": false,
+			 "collective": false 
              }
     },
 "p2":
@@ -28,6 +37,14 @@
 	        {
 			"electricity": "EnCo_kWh_U1.csv"
 			},
+	"grid":
+			{
+			"electricity": true,
+			"hydrogen": false,
+			"gas": false,
+			"heat": false,
+			"cool": false
+			},	
     "PV":
 	    {
 		"latitude": 43.7,
@@ -59,6 +76,14 @@
 	"demand":
 	        {
 		    "electricity": "EnCo_kWh_U2.csv"
+			},
+	"grid":
+			{
+			"electricity": true,
+			"hydrogen": false,
+			"gas": true,
+			"heat": false,
+			"cool": false
 			}
 	}
 }

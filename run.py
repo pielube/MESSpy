@@ -61,7 +61,7 @@ print('Running the model')
 rec.REC_energy_simulation() # simulate REC structure
 rec.save(study_case) # save results in 'study_case.pkl'
 pp.total_balances(study_case)
-# pp.SOC_plot(study_case)
+pp.SOC_plot(study_case)
 
 time3 = time.time()
   
