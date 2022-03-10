@@ -67,8 +67,8 @@ class REC:
         output: 
             balances/simulation_name.pkl
             soc/simulation_name.pkl
-        
         """
+        
         balances = {}
         SOC = {}
         balances['REC'] = self.energy_balance
@@ -98,9 +98,18 @@ class REC:
             
             
     def reset(self):
-        pass
-        # azzera gli SOC, i bilanci non dovrebbe esserci bisogno..? 
+        """
+        Use this function before a new simulation if you don't want to recreate the rec object
         
+        output: initialise SOC
+        """
+        
+        to_reset = ['battery','H tank'] # technologies for which the SOC must be reset
+        for location_name in self.locations: # each location
+            for tech_name in to_reset:
+                if tech_name in self.locations[location_name].technologies: 
+                    self.locations[location_name].technologies[tech_name].SOC = np.zeros(self.simulation_hours+1) # array State of Charge 
+                    self.locations[location_name].technologies[tech_name].used_capacity = 0 # used capacity <= max_capacity   
     
         
    

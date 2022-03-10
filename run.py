@@ -52,6 +52,7 @@ time1 = time.time()
 print('Creating structure')
 # Creating initial structure
 rec = REC(structure,simulation_years) # create REC structure
+
 #rec.reset() # reset REC energy balances
 
 time2 = time.time()
