@@ -22,8 +22,8 @@ def total_balances(simulation_name):
             print('\n'+loc)   
             for b in balances[loc][carrier]:
                 
-                positiv=balances[loc][carrier][b].sum(where=balances[loc][carrier][b]>0)
-                negativ=balances[loc][carrier][b].sum(where=balances[loc][carrier][b]<0)
+                positiv=balances[loc][carrier][b][balances[loc][carrier][b]>0].sum()
+                negativ=balances[loc][carrier][b][balances[loc][carrier][b]<0].sum()
                 
                 if positiv != 0:
                     print(b+' '+str(round(positiv,1))+' '+units[carrier])
