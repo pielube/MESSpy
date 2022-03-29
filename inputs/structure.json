@@ -3,7 +3,7 @@
     {
     "demand":
             {
-            "electricity": "EnCo_kWh_U0.csv"
+            "electricity": "load_test_1.csv"
             },
 	"grid":
 			{
@@ -31,7 +31,7 @@
     {
     "demand":
 	        {
-			"electricity": "EnCo_kWh_U1.csv"
+			"electricity": "load_test_2.csv"
 			},
 	"grid":
 			{
@@ -59,7 +59,7 @@
 			   },
     "H tank":
             {
-		    "max capacity": 6,
+		    "max capacity": 2.5,
             "pressure": 30
 			}
     },
@@ -67,7 +67,7 @@
     {
 	"demand":
 	        {
-		    "electricity": "EnCo_kWh_U2.csv"
+		    "electricity": "load_test_3.csv"
 			},
 	"grid":
 			{
