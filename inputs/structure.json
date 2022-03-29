@@ -15,12 +15,8 @@
 			},		
     "PV":
         {
-        "latitude": 43.7,
-        "longitude": 11.2,
         "tilt": 30,
         "azimuth": 0,
-        "reference year": 2015,
-        "TMY": true,
         "losses": 0.1,
         "peakP": 3
 		},
@@ -47,12 +43,8 @@
 			},	
     "PV":
 	    {
-		"latitude": 43.7,
-        "longitude": 11.2,
         "tilt": 30,
         "azimuth": 0,
-        "reference year": 2015,
-        "TMY": true,
         "losses": 0.1,
         "peakP": 1.5
 		},

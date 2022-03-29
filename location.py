@@ -8,7 +8,7 @@ from techs import PV,battery,H_tank,fuel_cell,electrolyzer
 
 class location:
     
-    def __init__(self,system,simulation_hours):
+    def __init__(self,system,general):
         """
         Create a location object (producer, consumer or prosumer) 
     
@@ -26,6 +26,9 @@ class location:
             'H tank': dictionary parameters needed to create H_tank object (see H_tank.py)
             'fuel cell': dictionary parameters needed to create fuel_cell object (see fuel_cell.py)
             
+        general: dictionary 
+            see rec.py
+            
         output : location object able to:
             simulate the energy flows of present technologies .loc_simulation
             record energy balances .energy_balance (electricity, heat, gas and hydrogen)
@@ -33,38 +36,40 @@ class location:
         
         self.technologies = {} # initialise technologies dictionary
         self.energy_balance = {'electricity': {}, 'heat': {}, 'cool': {}, 'hydrogen': {}, 'gas': {}} # initialise energy balances dictionaries
+       
+        self.simulation_hours = int(general['simulation years']*8760) # hourly timestep     
         
         # create the objects of present technologies and add them to the technologies dictionary
         # initialise energy balance and add them to the energy_balance dictionary
         
         for carrier in self.energy_balance:
             if system['grid'][carrier]:
-                self.energy_balance[carrier]['grid'] = np.zeros(simulation_hours) # array energy carrier bought from the grid (-) or feed into the grid (+)
+                self.energy_balance[carrier]['grid'] = np.zeros(self.simulation_hours) # array energy carrier bought from the grid (-) or feed into the grid (+)
 
             if carrier in system['demand']:            
-                self.energy_balance[carrier]['demand'] = - np.tile(pd.read_csv('Loads/'+system['demand'][carrier])['0'].to_numpy(),int(simulation_hours/8760)) # hourly energy carrier needed for the entire simulation
+                self.energy_balance[carrier]['demand'] = - np.tile(pd.read_csv('Loads/'+system['demand'][carrier])['0'].to_numpy(),int(self.simulation_hours/8760)) # hourly energy carrier needed for the entire simulation
 
         if 'PV' in system:
-            self.technologies['PV'] = PV(system['PV'],simulation_hours) # PV object created and add to 'technologies' dictionary
-            self.energy_balance['electricity']['PV'] = np.zeros(simulation_hours) # array PV electricity balance
+            self.technologies['PV'] = PV(system['PV'],general,self.simulation_hours) # PV object created and add to 'technologies' dictionary
+            self.energy_balance['electricity']['PV'] = np.zeros(self.simulation_hours) # array PV electricity balance
             
         if 'battery' in system:
-            self.technologies['battery'] = battery(system['battery'],simulation_hours) # battery object created and to 'technologies' dictionary
-            self.energy_balance['electricity']['battery'] = np.zeros(simulation_hours) # array battery electricity balance
+            self.technologies['battery'] = battery(system['battery'],self.simulation_hours) # battery object created and to 'technologies' dictionary
+            self.energy_balance['electricity']['battery'] = np.zeros(self.simulation_hours) # array battery electricity balance
                            
         if 'electrolyzer' in system:
-            self.technologies['electrolyzer'] = electrolyzer(system['electrolyzer'],simulation_hours) # electrolyzer object created and to 'technologies' dictionary
-            self.energy_balance['electricity']['electrolyzer'] = np.zeros(simulation_hours) # array electrolyzer electricity balance
-            self.energy_balance['hydrogen']['electrolyzer'] = np.zeros(simulation_hours) # array electrolyzer hydrogen balance
+            self.technologies['electrolyzer'] = electrolyzer(system['electrolyzer'],self.simulation_hours) # electrolyzer object created and to 'technologies' dictionary
+            self.energy_balance['electricity']['electrolyzer'] = np.zeros(self.simulation_hours) # array electrolyzer electricity balance
+            self.energy_balance['hydrogen']['electrolyzer'] = np.zeros(self.simulation_hours) # array electrolyzer hydrogen balance
             
         if 'fuel cell' in system:
-            self.technologies['fuel cell'] = fuel_cell(system['fuel cell'],simulation_hours) # Fuel cell object created and to 'technologies' dictionary
-            self.energy_balance['electricity']['fuel cell'] = np.zeros(simulation_hours) # array fuel cell electricity balance
-            self.energy_balance['hydrogen']['fuel cell'] = np.zeros(simulation_hours) # array fuel cell hydrogen balance
+            self.technologies['fuel cell'] = fuel_cell(system['fuel cell'],self.simulation_hours) # Fuel cell object created and to 'technologies' dictionary
+            self.energy_balance['electricity']['fuel cell'] = np.zeros(self.simulation_hours) # array fuel cell electricity balance
+            self.energy_balance['hydrogen']['fuel cell'] = np.zeros(self.simulation_hours) # array fuel cell hydrogen balance
             
         if 'H tank' in system:
-            self.technologies['H tank'] = H_tank(system['H tank'],simulation_hours) # H tank object created and to 'technologies' dictionary
-            self.energy_balance['hydrogen']['H tank'] = np.zeros(simulation_hours) # array H tank hydrogen balance
+            self.technologies['H tank'] = H_tank(system['H tank'],self.simulation_hours) # H tank object created and to 'technologies' dictionary
+            self.energy_balance['hydrogen']['H tank'] = np.zeros(self.simulation_hours) # array H tank hydrogen balance
 
         
         ### determine the location type: it could be usefull to decide a simulation order: work in progress...

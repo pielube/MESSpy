@@ -4,32 +4,32 @@ import numpy as np
 
 class PV:    
     
-    def __init__(self,parameters,simulation_hours):
+    def __init__(self,parameters,general,simulation_hours):
         """
         Create a PV object based on PV production taken from PVGIS data 
     
         parameters : dictionary
-            'latitude': float
-            'longitude': float
-            'peakP': float peak DC power [kWp]
-            'reference year': int year [2005 - 2015] used for output data and to get data from PVGIS if TMY = False 
+            'peakP': float peak DC power [kWp] 
             'losses': float losses in cables, power inverters, dirt (sometimes snow), over the years loss of power [%]
             'tilt':  float surface tilt [deg]
-            'azimuth': float azimuth angle 0 = south, 180 = north [deg]
-            'TMY': bool true if data of TMY is to be used    
+            'azimuth': float azimuth angle 0 = south, 180 = north [deg]  
+            
+        general: dictironary
+            see rec.py
 
         output : PV object able to:
             produce electricity .use(h)
         """
                 
-        latitude = parameters['latitude']
-        longitude = parameters['longitude']
+        latitude = general['latitude']
+        longitude = general['longitude']
+        tmybool = general['TMY']
+        year = general['reference year']
+        
         peakP = parameters['peakP']
-        year = parameters['reference year']
         losses = parameters['losses']
         tilt = parameters['tilt']
         azimuth = parameters['azimuth']
-        tmybool = parameters['TMY']
         
         index60min = pd.date_range(start=str(year)+'-01-01 00:00:00',end=str(year)+'-12-31 23:00:00',freq='60T')
         
