@@ -5,7 +5,7 @@ from location import location
 
 class REC:
     
-    def __init__(self,structure,simulation_years):
+    def __init__(self,structure,general):
         """
         Create a Renewable Energy Comunity object composed of several locations (producers, consumers, prosumers)
     
@@ -14,21 +14,27 @@ class REC:
             'location_2_name': 
                 ...
             'location_n_name':
+                
+        general : dictionary
+            'simulation years': number of years to be simulated
+            'latitude': float
+            'longitude': float
+            'reference year': int year [2005 - 2015] used for output data and to get data from PVGIS if TMY = False
+            'TMY': bool true if data of TMY is to be used              
                         
         output : REC object able to:
             simulate the energy flows of each present locations .REC_simulation
             record REC energy balances .energy_balance (electricity, heat, cool, gas and hydrogen) 
         """
-        
-        self.simulation_hours = int(simulation_years*8760) # hourly timestep      
-        
-        self.energy_balance = {'electricity': {}, 'heat': {}, 'cool': {}, 'hydrogen': {}, 'gas': {}} # initialise energy balances dictionaries of each energy carrier
-       
+
         self.locations = {} # initialise REC locations dictionary
+        self.energy_balance = {'electricity': {}, 'heat': {}, 'cool': {}, 'hydrogen': {}, 'gas': {}} # initialise energy balances dictionaries of each energy carrier
+        
+        self.simulation_hours = int(general['simulation years']*8760) # hourly timestep  
         
         ### create location objects and add them to the REC locations dictionary
         for location_name in structure: # location_name are the keys of 'structure' dictionary and will be used as keys of REC 'locations' dictionary too
-            self.locations[location_name] = location(structure[location_name],self.simulation_hours) # create location object and add it to REC 'locations' dictionary                
+            self.locations[location_name] = location(structure[location_name],general) # create location object and add it to REC 'locations' dictionary                
             
                   
     def REC_energy_simulation(self):

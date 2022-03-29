@@ -42,7 +42,6 @@ filepath = os.path.join(path,file)
 with open(filepath,'r') as f:
     refcase = json.load(f)
     
-simulation_years = general['simulation_years']
 structure0 = refcase
 economic_data = economics
 
@@ -51,8 +50,7 @@ time1 = time.time()
  
 print('Creating structure')
 # Creating initial structure
-rec = REC(structure,simulation_years) # create REC structure
-
+rec = REC(structure,general) # create REC structure
 #rec.reset() # reset REC energy balances
 
 time2 = time.time()
@@ -68,11 +66,11 @@ time3 = time.time()
   
 print('Economic analysis')
 # Reference case simulation (run only if changed)
-rec0 = REC(structure0,simulation_years) # create REC
+rec0 = REC(structure0,general) # create REC
 rec0.REC_energy_simulation() # simulate REC 
 rec0.save(reference_case) # save results in 'reference_case.pkl'
 # Actual economic analysis (It has no sense if simulation_years = 1)
-NPV(structure,structure0,study_case,reference_case,economic_data,simulation_years) 
+NPV(structure,structure0,study_case,reference_case,economic_data,general['simulation years']) 
 pp.NPV_plot()
 
 time4 = time.time()  
