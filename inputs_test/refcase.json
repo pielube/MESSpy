@@ -1,0 +1,41 @@
+{
+"p1": {
+	   "demand": {
+		          "electricity": "load_test_1.csv"
+				  },
+		"grid":
+				{
+				"electricity": true,
+				"hydrogen": false,
+				"gas": false,
+				"heat": false,
+				"cool": false
+				}	
+	   },
+"p2": {
+	   "demand": {
+		          "electricity": "load_test_2.csv"
+				  },
+		"grid":
+				{
+				"electricity": true,
+				"hydrogen": false,
+				"gas": false,
+				"heat": false,
+				"cool": false
+		}	
+	   },
+"c2": {
+	   "demand": {
+		          "electricity": "load_test_3.csv"
+				  },
+		"grid":
+				{
+				"electricity": true,
+				"hydrogen": false,
+				"gas": false,
+				"heat": false,
+				"cool": false
+				}  
+	   }
+}   

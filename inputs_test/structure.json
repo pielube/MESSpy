@@ -1,0 +1,81 @@
+{
+"p1":
+    {
+    "demand":
+            {
+            "electricity": "load_test_1.csv"
+            },
+	"grid":
+			{
+			"electricity": true,
+			"hydrogen": false,
+			"gas": false,
+			"heat": false,
+			"cool": false
+			},		
+    "PV":
+        {
+        "tilt": 30,
+        "azimuth": 0,
+        "losses": 0.1,
+        "peakP": 3
+		},
+	"battery":
+	         {
+             "max capacity": 5,
+             "ageing": false,
+			 "collective": false 
+             }
+    },
+"p2":
+    {
+    "demand":
+	        {
+			"electricity": "load_test_2.csv"
+			},
+	"grid":
+			{
+			"electricity": true,
+			"hydrogen": false,
+			"gas": false,
+			"heat": false,
+			"cool": false
+			},	
+    "PV":
+	    {
+        "tilt": 30,
+        "azimuth": 0,
+        "losses": 0.1,
+        "peakP": 1.5
+		},
+    "electrolyzer":
+	              {
+				  "Npower": 1,
+                  "stack model": "Enapter 2.1"
+				  },
+    "fuel cell":
+	           {
+				"Npower": 3
+			   },
+    "H tank":
+            {
+		    "max capacity": 2.5,
+            "pressure": 30
+			}
+    },
+"c2":
+    {
+	"demand":
+	        {
+		    "electricity": "load_test_3.csv"
+			},
+	"grid":
+			{
+			"electricity": true,
+			"hydrogen": false,
+			"gas": true,
+			"heat": false,
+			"cool": false
+			}
+	}
+}
