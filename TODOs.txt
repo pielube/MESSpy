@@ -1,7 +1,6 @@
 
 - option for pv from .csv
 - economic assessment
-   - add not float electricity price (series)
    - add redistribution of REC incentives
 - general production from .csv
   Useful f.i. for wind production

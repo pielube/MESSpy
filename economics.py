@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import pickle
 
 def NPV(structure,structure0,study_case,reference_case,economic_data,simulation_years):
@@ -76,23 +77,42 @@ def NPV(structure,structure0,study_case,reference_case,economic_data,simulation_
         
         # energy sold and purchased in study case 
         for carrier in rec[location_name]: # for each carrier (electricity, hydrogen, gas, heat, cool)
-            if 'grid' in rec[location_name][carrier]: 
-                sold = rec[location_name][carrier]['grid']*economic_data[carrier]['sales']
+            if 'grid' in rec[location_name][carrier]:          
+                
+                if type(economic_data[carrier]['sale']) == str: # if there is the price serie
+                    sale_serie = np.tile(pd.read_csv('inputs/energy_price/'+economic_data[carrier]['sale'])['0'].to_numpy(),int(simulation_years))  
+                    sold = rec[location_name][carrier]['grid'] * sale_serie
+                else: # if the price is always the same 
+                    sold = rec[location_name][carrier]['grid']*economic_data[carrier]['sale'] 
+               
                 sold = np.reshape(sold,(-1,8760))
                 CF = CF - sold.sum(axis=1,where=sold<0)
-            if 'grid' in rec[location_name][carrier]:
-                purchase = rec[location_name][carrier]['grid']*economic_data[carrier]['purchase']
+          
+                if type(economic_data[carrier]['purchase']) == str: # if there is the price serie
+                    purchase_serie = np.tile(pd.read_csv('inputs/energy_price/'+economic_data[carrier]['purchase'])['0'].to_numpy(),int(simulation_years))  
+                    purchase = rec[location_name][carrier]['grid'] * purchase_serie
+                else: # if the price is always the same 
+                    purchase = rec[location_name][carrier]['grid']*economic_data[carrier]['purchase']
+               
                 purchase = np.reshape(purchase,(-1,8760))
                 CF = CF - purchase.sum(axis=1,where=purchase>0)
                 
         # energy sold and purchased in reference case 
         for carrier in rec0[location_name]: # for each carrier (electricity, hydrogen, gas, heat)
             if 'grid' in rec0[location_name][carrier]: 
-                sold = rec0[location_name][carrier]['grid']*economic_data[carrier]['sales']
+               
+                if type(economic_data[carrier]['sale']) == str: # if there is the price serie
+                    sold = rec0[location_name][carrier]['grid'] * sale_serie
+                else: # if the price is always the same 
+                    sold = rec0[location_name][carrier]['grid']*economic_data[carrier]['sale'] 
                 sold = np.reshape(sold,(-1,8760))
                 CF = CF + sold.sum(axis=1,where=sold<0)
-            if 'grid' in rec0[location_name][carrier]:
-                purchase = rec0[location_name][carrier]['grid']*economic_data[carrier]['purchase']
+
+                if type(economic_data[carrier]['purchase']) == str: # if there is the price serie
+                    purchase = rec0[location_name][carrier]['grid'] * purchase_serie
+                else: # if the price is always the same 
+                    purchase = rec0[location_name][carrier]['grid']*economic_data[carrier]['purchase']
+              
                 purchase = np.reshape(purchase,(-1,8760))
                 CF = CF + purchase.sum(axis=1,where=purchase>0)
                       

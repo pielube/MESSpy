@@ -34,24 +34,24 @@
          "OeM": 0
 		 },
  "electricity": {
-	             "purchase": 0.26, 
-                 "sales": 0.05
+	             "purchase": "energy_price.csv", 
+                 "sale": 0.06
 				 }, 
  "hydrogen": {
 		      "purchase": 0, 
-              "sales": 0
+              "sale": 0
 			  },
  "gas": {
 	     "purchase": 0, 
-         "sales": 0
+         "sale": 0
 		 }, 
  "heat": {
 	      "purchase": 0, 
-          "sales": 0
+          "sale": 0
 		  },
 "cool": {
 	      "purchase": 0, 
-          "sales": 0
+          "sale": 0
 		  },		  
  "interest rate": 0.05
 }
