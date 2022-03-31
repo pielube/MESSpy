@@ -8,7 +8,7 @@ from techs import PV,battery,H_tank,fuel_cell,electrolyzer
 
 class location:
     
-    def __init__(self,system,general):
+    def __init__(self,system,general,location_name):
         """
         Create a location object (producer, consumer or prosumer) 
     
@@ -34,6 +34,7 @@ class location:
             record energy balances .energy_balance (electricity, heat, gas and hydrogen)
         """
         
+        self.name = location_name
         self.technologies = {} # initialise technologies dictionary
         self.energy_balance = {'electricity': {}, 'heat': {}, 'cool': {}, 'hydrogen': {}, 'gas': {}} # initialise energy balances dictionaries
        
@@ -50,7 +51,7 @@ class location:
                 self.energy_balance[carrier]['demand'] = - np.tile(pd.read_csv('inputs/loads/'+system['demand'][carrier])['0'].to_numpy(),int(self.simulation_hours/8760)) # hourly energy carrier needed for the entire simulation
 
         if 'PV' in system:
-            self.technologies['PV'] = PV(system['PV'],general,self.simulation_hours) # PV object created and add to 'technologies' dictionary
+            self.technologies['PV'] = PV(system['PV'],general,self.simulation_hours,self.name) # PV object created and add to 'technologies' dictionary
             self.energy_balance['electricity']['PV'] = np.zeros(self.simulation_hours) # array PV electricity balance
             
         if 'battery' in system:

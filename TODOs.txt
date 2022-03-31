@@ -37,7 +37,6 @@ For students
 
 Futuristic suggestions:
 - Caching
-  - pvlib standardised serie (it changes only is a PV parameter different from Ppeak changes)
   - load
   - reference_case
 - parallelizations of locations that can be solved simultaneously

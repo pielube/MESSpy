@@ -33,7 +33,6 @@ time1 = time.time()
 print('Creating structure')
 # Creating initial structure
 rec = REC(structure,general) # create REC structure
-#rec.reset() # reset REC energy balances
 
 time2 = time.time()
 print('Time to create structure {:.2f} seconds'.format(time2-time1))
@@ -42,7 +41,9 @@ print('Time to create structure {:.2f} seconds'.format(time2-time1))
 print('Running the model')
 time2 = time.time()
 
+
 # Running the model
+#rec.reset() # reset REC energy balances
 rec.REC_energy_simulation() # simulate REC structure
 rec.save(study_case) # save results in 'study_case.pkl'
 pp.total_balances(study_case)
