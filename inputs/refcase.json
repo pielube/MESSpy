@@ -25,7 +25,7 @@
 				"cool": false
 		}	
 	   },
-"c2": {
+"c1": {
 	   "demand": {
 		          "electricity": "load_test_3.csv"
 				  },

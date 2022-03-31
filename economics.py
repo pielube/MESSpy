@@ -122,14 +122,21 @@ def NPV(structure,structure0,study_case,reference_case,economic_data,simulation_
         refounds[:min(simulation_years,economic_data['refound']['time'])] = yearly_refound # array repet yearly refond for 
         CF = CF + refounds # add refound to Cash Flow
         
+        # REC incentives redistribution
+        inc = economic_data['REC']['incentives redistribution'][location_name]/100 * rec['REC']['electricity']['collective self consumption'] * economic_data['REC']['collective self consumption incentives']
+        inc = np.reshape(inc,(-1,8760))
+        CF = CF + inc.sum(axis=1)       
+        
+        
         # calculate NPV
         results[location_name]['NPV'] = np.zeros(simulation_years) # array initialise Net Present Value
         results[location_name]['NPV'][0] = -I0 # NPV at time 0 is - the initial investment
         i = economic_data['interest rate'] # interest rate [%]
         for y in range(1,simulation_years): # for each year
             results[location_name]['NPV'][y] = results[location_name]['NPV'][y-1] + CF[y-1]/(1+i)**y # calculate NPV 
-                   
-    # RES incentives redistribution???
+                         
+    
+            
     
     # save results in Results/economic_assesment.pkl
     with open('Results/economic_assessment.pkl', 'wb') as f:
