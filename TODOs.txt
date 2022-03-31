@@ -1,7 +1,4 @@
-
 - option for pv from .csv
-- economic assessment
-   - add redistribution of REC incentives
 - general production from .csv
   Useful f.i. for wind production
 - electrolyzer
