@@ -35,7 +35,7 @@ class boiler:
             
         outputs : 
             consumption float energy consumption [kWh]
-            heatprod float heat produced [kWh]
+            heatprod float heat produced [kWh] 
         """
         
         heatprod = min(demand,self.Ppeak*timestep)
