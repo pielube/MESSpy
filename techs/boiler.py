@@ -19,7 +19,7 @@ class boiler:
             
 
         outputs : boiler object able to:
-            burn fuel and produce heat .use(h)
+            consume fuel or electricity and produce heat .use(demand,timestep)
         """
         
         self.Ppeak = parameters['Ppeak']
@@ -34,7 +34,7 @@ class boiler:
             demand float energy demand in timestep [kWh]
             
         outputs : 
-            consumption float fuel consumption [kWh]
+            consumption float energy consumption [kWh]
             heatprod float heat produced [kWh]
         """
         
