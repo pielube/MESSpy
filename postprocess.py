@@ -181,9 +181,7 @@ def Flows(simulation_name,carrier='electricity'):
                           )] )
     fig.show()
 
-
-#%%
-    
+ 
 def prosumer_plot(simulation_name,location_name,first_day,last_day,carrier='electricity',width=0.9):
     
         with open('Results/balances_'+simulation_name+'.pkl', 'rb') as f:
@@ -260,4 +258,36 @@ def prosumer_plot(simulation_name,location_name,first_day,last_day,carrier='elec
         #plt.xticks([0,6,12,18,24],['0','6','12','18','24'],fontsize=10,color='g')
         #plt.yticks([-2,-1,0,1,2],['-2','-1','0','1','2'])
         plt.show()
+        
+
+#%%
+def csc_allocation(simulation_name):
+
+    with open('Results/balances_'+simulation_name+'.pkl', 'rb') as f:
+        balances = pickle.load(f)
+            
+    simulation_hours = len(balances['REC']['electricity']['collective self consumption'])
+    csc_allocation = {}
+    for location_name in balances:
+        if location_name != 'REC':
+            csc_allocation[location_name] = {}
+            csc_allocation[location_name]['to csc'] = np.zeros(simulation_hours)
+            csc_allocation[location_name]['from csc'] = np.zeros(simulation_hours)
+            
+    for h,csc in enumerate(balances['REC']['electricity']['collective self consumption']):
+        if csc > 0.0000001:
+            for location_name in csc_allocation:
+                e = balances[location_name]['electricity']['grid'][h]
+                if e < 0: 
+                    csc_allocation[location_name]['to csc'][h] = - csc * e / balances['REC']['electricity']['into grid'][h]
+                if e > 0:
+                    csc_allocation[location_name]['from csc'][h] = csc * e / balances['REC']['electricity']['from grid'][h]
+                
+    return(csc_allocation)
+        
+    
+                
+
+    
+        
         

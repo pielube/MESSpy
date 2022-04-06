@@ -72,16 +72,7 @@ class location:
             self.technologies['H tank'] = H_tank(system['H tank'],self.simulation_hours) # H tank object created and to 'technologies' dictionary
             self.energy_balance['hydrogen']['H tank'] = np.zeros(self.simulation_hours) # array H tank hydrogen balance
 
-        
-        ### determine the location type: it could be usefull to decide a simulation order: work in progress...
-        if 'demand' in self.energy_balance['electricity']:
-            self.location_type = 'consumer' # it consumes energy
-            if 'production' in self.energy_balance['electricity']:            
-                self.location_type = 'prosumer' # it produces and consumes energy
-        else:  
-            self.location_type = 'producer' # it produces energy
-  
-            
+
     def loc_energy_simulation(self,h):
         """
         Simulate the location

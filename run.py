@@ -88,6 +88,7 @@ time4 = time.time()
 #pp.Flows(study_case)
 #pp.prosumer_plot(study_case,'p1', 10, 12)
 #pp.prosumer_plot(study_case,'p2', 10, 11)
+#pp.csc_allocation(study_case)
 
 time5 = time.time()  
 print('Post process performend in {:.2f} seconds'.format(time5-time4))
