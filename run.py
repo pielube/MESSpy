@@ -86,7 +86,7 @@ time4 = time.time()
 #pp.SOC_plot(study_case)
 #pp.NPV_plot()
 #pp.Flows(study_case)
-#pp.prosumer_plot(study_case,'p1', 10, 12)
+pp.prosumer_plot(study_case,'p1', 10, 11)
 #pp.prosumer_plot(study_case,'p2', 10, 11)
 #pp.csc_allocation(study_case)
 

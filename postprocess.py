@@ -219,7 +219,7 @@ def prosumer_plot(simulation_name,location_name,first_day,last_day,carrier='elec
                         
         x = np.linspace(first_day*24+1,(last_day+1)*24,(last_day-first_day+1)*24)
              
-        #collective=
+        to_csc = csc_allocation(simulation_name)[location_name]['to csc'][first_day*24:last_day*24+24]
         
         fig = plt.figure(dpi=1000)
         from mpl_toolkits.axisartist.axislines import SubplotZero
@@ -249,7 +249,7 @@ def prosumer_plot(simulation_name,location_name,first_day,last_day,carrier='elec
             ax.bar(x, np.array(ele), width,  label='to electrolyzer', zorder=1, color='orange')
             ax.bar(x, fc, width, bottom = pv, label='from fuel cell', zorder=3, color='purple')
         
-        #ax.bar(x, -np.array(collective), width,  label='collective s.c.', zorder=1, color='y')
+        ax.bar(x, np.array(to_csc), width, bottom=charge_battery, label='collective self consumption', zorder=1, color='y')
        
         plt.plot(x,load,'k',label='load', zorder=3)     
         plt.legend()
@@ -260,7 +260,6 @@ def prosumer_plot(simulation_name,location_name,first_day,last_day,carrier='elec
         plt.show()
         
 
-#%%
 def csc_allocation(simulation_name):
 
     with open('Results/balances_'+simulation_name+'.pkl', 'rb') as f:
