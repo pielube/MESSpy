@@ -34,6 +34,7 @@ def total_balances(simulation_name):
                 if negativ != 0:
                     print(b+' '+str(round(negativ,1))+' '+units[carrier])
     print('\n')
+   
     
 def NPV_plot():
     ##### economic
@@ -56,6 +57,7 @@ def NPV_plot():
     #plt.ylim(-12000,12000)
     plt.show()
     
+    
 def SOC_plot(simulation_name):
       
     with open('Results/SOC_'+simulation_name+'.pkl', 'rb') as f:
@@ -75,9 +77,6 @@ def SOC_plot(simulation_name):
             plt.title(loc+' '+tech)
             plt.show()
         
-
-
-#%%
 
 def Flows(simulation_name,carrier='electricity'):
 
@@ -183,5 +182,82 @@ def Flows(simulation_name,carrier='electricity'):
     fig.show()
 
 
+#%%
     
+def prosumer_plot(simulation_name,location_name,first_day,last_day,carrier='electricity',width=0.9):
+    
+        with open('Results/balances_'+simulation_name+'.pkl', 'rb') as f:
+            balances = pickle.load(f)
+            
+        balances = balances[location_name][carrier]
+        
+        if 'demand' in balances:
+            load = -balances['demand'][first_day*24:last_day*24+24]
+        
+        if 'PV' in balances:
+            pv = balances['PV'][first_day*24:last_day*24+24]
+            
+        if 'grid' in balances:                
+            into_grid = np.zeros(24*(last_day-first_day+1))
+            from_grid = np.zeros(24*(last_day-first_day+1)) 
+            for i,e in enumerate(balances['grid'][first_day*24:last_day*24+24]):
+                if e > 0:
+                    from_grid[i] = e
+                else:
+                    into_grid[i] = e 
+        
+        if 'battery' in balances:
+            charge_battery = np.zeros(24*(last_day-first_day+1))
+            discharge_battery = np.zeros(24*(last_day-first_day+1))
+            for i,e in enumerate(balances['battery'][first_day*24:last_day*24+24]):
+                if e > 0:
+                    discharge_battery[i] = e
+                else:
+                    charge_battery[i] = e 
+                    
+        if 'electrolyzer' in balances and 'fuel cell' in balances:
+            fc = balances['fuel cell'][first_day*24:last_day*24+24]
+            ele = balances['electrolyzer'][first_day*24:last_day*24+24]
+                        
+        x = np.linspace(first_day*24+1,(last_day+1)*24,(last_day-first_day+1)*24)
+             
+        #collective=
+        
+        fig = plt.figure(dpi=1000)
+        from mpl_toolkits.axisartist.axislines import SubplotZero
+        ax = SubplotZero(fig, 1, 1, 1)
+        fig.add_subplot(ax)
+        ax.axis["xzero"].set_visible(True)
+        ax.axis( zorder=3)
+        for n in ["bottom", "top", "right"]:
+            ax.axis[n].set_visible(False)
+        ax.grid(axis='y',zorder=0)
+        
+        ax.bar(x, pv, width,  label='PV', zorder=3,color='g')
+        
+        if 'battery' in balances:
+            ax.bar(x, from_grid, width,  bottom=pv+discharge_battery,label='from grid', zorder=3,color='r')
+            ax.bar(x, np.array(into_grid), width,bottom=charge_battery , label='into grid', zorder=1,color='b')
+            ax.bar(x, np.array(charge_battery), width,  label='charge battery', zorder=1, color='orange')
+            ax.bar(x, discharge_battery, width, bottom = pv, label='discharge battery', zorder=3, color='purple')
+        
+        if not 'battery' in balances and not 'electrolyzer' in balances:
+            ax.bar(x, from_grid, width,  bottom=pv,label='from grid', zorder=3,color='r')
+            ax.bar(x, np.array(into_grid), width, label='into grid', zorder=1,color='b')
+        
+        if 'electrolyzer' in balances and 'fuel cell' in balances:
+            ax.bar(x, from_grid, width,  bottom=pv+fc,label='from grid', zorder=3,color='r')
+            ax.bar(x, np.array(into_grid), width,bottom=ele , label='into grid', zorder=1,color='b')
+            ax.bar(x, np.array(ele), width,  label='to electrolyzer', zorder=1, color='orange')
+            ax.bar(x, fc, width, bottom = pv, label='from fuel cell', zorder=3, color='purple')
+        
+        #ax.bar(x, -np.array(collective), width,  label='collective s.c.', zorder=1, color='y')
+       
+        plt.plot(x,load,'k',label='load', zorder=3)     
+        plt.legend()
+        plt.ylabel("Hourly energy (kWh/h) ")
+        #plt.title("Energy community 4.6 kW 1.7 kWh Day "+str(70))
+        #plt.xticks([0,6,12,18,24],['0','6','12','18','24'],fontsize=10,color='g')
+        #plt.yticks([-2,-1,0,1,2],['-2','-1','0','1','2'])
+        plt.show()
         
