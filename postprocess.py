@@ -5,6 +5,7 @@ import pickle
 import numpy as np
 import matplotlib.pyplot as plt
 
+
 def total_balances(simulation_name):
 
     with open('Results/balances_'+simulation_name+'.pkl', 'rb') as f:
@@ -13,7 +14,7 @@ def total_balances(simulation_name):
     ###### load analysys
     
     ##### total electricity balances
-    carriers = ['electricity','hydrogen']
+    carriers = ['electricity']
     units = {'electricity': 'kWh', 'hydrogen': 'kg'}
     
     for carrier in carriers:
@@ -49,6 +50,8 @@ def NPV_plot():
     plt.grid()
     plt.ylabel('Net Present Value [€]')
     plt.xlabel('Time [years]')
+    plt.xlim(0,len(y)-1)
+    #plt.ylim(-12000,12000)
     plt.show()
     
 def SOC_plot(simulation_name):
@@ -71,7 +74,5 @@ def SOC_plot(simulation_name):
             plt.show()
         
 
-           
-    
-    
+
         

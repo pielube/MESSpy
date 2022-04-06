@@ -46,8 +46,8 @@ time2 = time.time()
 #rec.reset() # reset REC energy balances
 rec.REC_energy_simulation() # simulate REC structure
 rec.save(study_case) # save results in 'study_case.pkl'
-pp.total_balances(study_case)
-pp.SOC_plot(study_case)
+#pp.total_balances(study_case)
+#pp.SOC_plot(study_case)
 
 time3 = time.time()
 print('Time to run the model {:.2f} seconds'.format(time3-time2))
