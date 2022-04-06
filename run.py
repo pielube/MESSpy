@@ -5,6 +5,8 @@ import time
 import os
 import json
 
+#%%
+
 """
 MESSpy - Run
 """
@@ -30,15 +32,15 @@ with open(filepath,'r') as f:
 
 time1 = time.time()
  
-print('Creating structure')
+print('Creating structure..')
 # Creating initial structure
 rec = REC(structure,general) # create REC structure
 
 time2 = time.time()
-print('Time to create structure {:.2f} seconds'.format(time2-time1))
+print('Structure created in {:.2f} seconds'.format(time2-time1))
 
 #%% ###########################################################################
-print('Running the model')
+print('Running the model..')
 time2 = time.time()
 
 
@@ -46,15 +48,13 @@ time2 = time.time()
 #rec.reset() # reset REC energy balances
 rec.REC_energy_simulation() # simulate REC structure
 rec.save(study_case) # save results in 'study_case.pkl'
-#pp.total_balances(study_case)
-#pp.SOC_plot(study_case)
 
 time3 = time.time()
-print('Time to run the model {:.2f} seconds'.format(time3-time2))
+print('Model runned in {:.2f} seconds'.format(time3-time2))
   
 
 #%% ###########################################################################
-print('Economic analysis') 
+print('Economic analysis..') 
 time3 = time.time()
 
 file = 'economics.json'
@@ -74,8 +74,18 @@ rec0.save(reference_case) # save results in 'reference_case.pkl'
 
 # Actual economic analysis (It has no sense if simulation_years = 1)
 NPV(structure,structure0,study_case,reference_case,economic_data,general['simulation years']) 
-pp.NPV_plot()
 
 time4 = time.time()  
-print('Time for economic analysis {:.2f} seconds'.format(time4-time3))
+print('Eonomic analysis performend in {:.2f} seconds'.format(time4-time3))
 
+#%% post process
+print('Post processing..')
+time4 = time.time()
+
+#pp.total_balances(study_case)
+#pp.SOC_plot(study_case)
+pp.NPV_plot()
+pp.Flows(study_case)
+
+time5 = time.time()  
+print('Post process performend in {:.2f} seconds'.format(time5-time4))
