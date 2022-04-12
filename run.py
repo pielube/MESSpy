@@ -1,6 +1,5 @@
 from rec import REC
 from economics import NPV
-import postprocess as pp
 import time
 import os
 import json
@@ -79,6 +78,7 @@ time4 = time.time()
 print('Eonomic analysis performend in {:.2f} seconds'.format(time4-time3))
 
 #%% post process
+import postprocess as pp
 print('Post processing..')
 time4 = time.time()
 
@@ -86,8 +86,11 @@ time4 = time.time()
 #pp.SOC_plot(study_case)
 #pp.NPV_plot()
 #pp.Flows(study_case)
-pp.prosumer_plot(study_case,'p1', 10, 11)
-#pp.prosumer_plot(study_case,'p2', 10, 11)
+#first_day=34
+#last_day=35
+#pp.hourly_balances(study_case,'p1', first_day, last_day)
+#pp.hourly_balances(study_case,'p2', first_day, last_day)
+#pp.hourly_balances(study_case,'c1', first_day, last_day)
 #pp.csc_allocation(study_case)
 
 time5 = time.time()  
