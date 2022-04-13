@@ -50,12 +50,12 @@ def NPV_plot():
         plt.plot(x,y,label=loc)
         
     plt.legend()
+    plt.title("Investments")
     plt.grid()
     plt.ylabel('Net Present Value [€]')
     plt.xlabel('Time [years]')
     plt.xlim(0,len(y)-1)
     #plt.ylim(-12000,12000)
-    plt.title('Investments')
     plt.show()
     
     
@@ -153,7 +153,7 @@ def Flows(simulation_name,carrier='electricity'):
     link_label.append('to grid')
                 
     fig = go.Figure(data=[go.Sankey(
-        valueformat = "0.f",
+        valueformat = ".1f",
         valuesuffix = " kWh",
         arrangement = "snap",
         node = {
@@ -180,6 +180,7 @@ def Flows(simulation_name,carrier='electricity'):
                           text='',
                           showarrow=False
                           )] )
+    fig.write_html("Results/energy_flows.html")
     fig.show()
 
  
@@ -230,50 +231,50 @@ def hourly_balances(simulation_name,location_name,first_day,last_day,carrier='el
         ax = SubplotZero(fig, 1, 1, 1)
         fig.add_subplot(ax)
         ax.axis["xzero"].set_visible(True)
-        ax.axis( zorder=3)
         for n in ["bottom", "top", "right"]:
             ax.axis[n].set_visible(False)
-        ax.grid(axis='y',zorder=0)
+        ax.grid(axis='y')
         
         if 'PV' in balances:
-            ax.bar(x, pv, width,  label='PV', zorder=3,color='g')
+            ax.bar(x, load, width,  label='PV self consumption', color='yellowgreen')
+            ax.bar(x, pv-load, width, bottom=load, label='PV surplus', color='cornflowerblue')
                 
             if 'battery' in balances:
-                ax.bar(x, from_grid-from_csc, width ,bottom=pv+discharge_battery+from_csc, label='from grid', zorder=3,color='r')
-                ax.bar(x, np.array(from_csc), width, bottom=pv+discharge_battery, zorder=1, color='y')
+                ax.bar(x, from_grid-from_csc, width ,bottom=pv+discharge_battery+from_csc, label='from grid', color='tomato')
+                ax.bar(x, np.array(from_csc), width, bottom=pv+discharge_battery,  color='y')
             
-                ax.bar(x, np.array(into_grid), width,bottom=charge_battery , label='into grid', zorder=1,color='b')
-                ax.bar(x, np.array(charge_battery), width,  label='charge battery', zorder=1, color='orange')
-                ax.bar(x, discharge_battery, width, bottom = pv, label='discharge battery', zorder=3, color='purple')
-                ax.bar(x, np.array(to_csc), width, bottom=charge_battery, label='collective self consumption', zorder=1, color='y')
+                ax.bar(x, np.array(into_grid), width,bottom=charge_battery , label='into grid', color='orange')
+                ax.bar(x, np.array(charge_battery), width,  label='charge battery',  color='violet')
+                ax.bar(x, discharge_battery, width, bottom = pv, label='discharge battery',  color='purple')
+                ax.bar(x, np.array(to_csc), width, bottom=charge_battery, label='collective self consumption',  color='gold')
             
             if not 'battery' in balances and not 'electrolyzer' in balances:
-                ax.bar(x, from_grid-from_csc, width ,bottom=pv+from_csc, label='from grid', zorder=3,color='r')
-                ax.bar(x, np.array(from_csc), width, bottom=pv, zorder=1, color='y')
+                ax.bar(x, from_grid-from_csc, width ,bottom=pv+from_csc, label='from grid', color='tomato')
+                ax.bar(x, np.array(from_csc), width, bottom=pv,  color='gold')
             
-                ax.bar(x, np.array(into_grid), width, label='into grid', zorder=1,color='b')
-                ax.bar(x, np.array(to_csc), width, label='collective self consumption', zorder=1, color='y')
+                ax.bar(x, np.array(into_grid), width, label='into grid', color='orange')
+                ax.bar(x, np.array(to_csc), width, label='collective self consumption',  color='gold')
     
             if 'electrolyzer' in balances and 'fuel cell' in balances:
-                ax.bar(x, from_grid-from_csc, width ,bottom=pv+fc+from_csc, label='from grid', zorder=3,color='r')
-                ax.bar(x, np.array(from_csc), width, bottom=pv+fc, zorder=1, color='y')
+                ax.bar(x, from_grid-from_csc, width ,bottom=pv+fc+from_csc, label='from grid', color='tomato')
+                ax.bar(x, np.array(from_csc), width, bottom=pv+fc,  color='y')
             
-                ax.bar(x, np.array(into_grid), width,bottom=ele , label='into grid', zorder=1,color='b')
-                ax.bar(x, np.array(ele), width,  label='to electrolyzer', zorder=1, color='orange')
-                ax.bar(x, fc, width, bottom = pv, label='from fuel cell', zorder=3, color='purple')
-                ax.bar(x, np.array(to_csc), width, bottom=ele, label='collective self consumption', zorder=1, color='y')
+                ax.bar(x, np.array(into_grid), width,bottom=ele , label='into grid', color='orange')
+                ax.bar(x, np.array(ele), width,  label='to electrolyzer',  color='violet')
+                ax.bar(x, fc, width, bottom = pv, label='from fuel cell',  color='purple')
+                ax.bar(x, np.array(to_csc), width, bottom=ele, label='collective self consumption',  color='gold')
             
-            plt.ylim(-3.3,3)
+            #plt.ylim(-3.3,3)
             plt.title('Prosumer')
             
         else:
-            ax.bar(x, from_grid-from_csc, width ,bottom=from_csc, label='from grid', zorder=3,color='r')
-            ax.bar(x, np.array(from_csc), width, label='collective self consumption', zorder=1, color='y')
-            plt.ylim(0,3.3)
+            ax.bar(x, from_grid-from_csc, width ,bottom=from_csc, label='from grid', color='tomato')
+            ax.bar(x, np.array(from_csc), width, label='collective self consumption',  color='gold')
+            #plt.ylim(0,3.3)
             plt.title('Consumer')
         
-        plt.plot(x,load,'k',label='load', zorder=3)     
-        plt.legend(ncol=3, bbox_to_anchor=(1, 0))
+        plt.plot(x,load,'k',label='load')     
+        plt.legend(ncol=3, bbox_to_anchor=(1.2, 0))
         plt.ylabel("Hourly energy [kWh/h] ")
         #plt.xticks([0,6,12,18,24],['0','6','12','18','24'],fontsize=10,color='g')
         plt.xticks([0,6,12,18,24,30,36,42,48],['0','6','12','18','24','30','36','42','48'],fontsize=10,color='g')
