@@ -79,7 +79,7 @@ def SOC_plot(simulation_name):
             plt.show()
         
 
-def Flows(simulation_name,carrier='electricity'):
+def Flows(simulation_name,filename,carrier='electricity'):
 
     pio.renderers.default='browser'
     with open('Results/balances_'+simulation_name+'.pkl', 'rb') as f:
@@ -99,7 +99,7 @@ def Flows(simulation_name,carrier='electricity'):
     for loc in balances:
         if loc != 'REC':
             
-            node_color.append('peru')
+            node_color.append('brown')
             node_label.append('load '+loc)
             
             source.append(0)
@@ -133,12 +133,63 @@ def Flows(simulation_name,carrier='electricity'):
                 # self consumption
                 source.append(node_number)
                 target.append(node_number2)
-                value.append(-np.sum(balances[loc][carrier]['demand']) - np.sum(balances[loc][carrier]['grid'], where = balances[loc][carrier]['grid'] > 0))
-                link_color.append('yellowgreen')
-                link_label.append('self consumption')
                 
-                node_number += 1
-                node_number2 += 1
+                if 'battery' in balances[loc][carrier]:
+                    value.append(-np.sum(balances[loc][carrier]['demand']) - np.sum(balances[loc][carrier]['grid'], where = balances[loc][carrier]['grid'] > 0) -np.sum(balances[loc][carrier]['battery'], where = balances[loc][carrier]['battery'] > 0))
+                    link_color.append('yellowgreen')
+                    link_label.append('self consumption (directly from PV)')
+                    node_number += 1
+                    
+                    node_color.append('plum')
+                    node_label.append('battery '+loc)
+                    
+                    source.append(node_number)
+                    target.append(node_number2)
+                    value.append(np.sum(balances[loc][carrier]['battery'], where = balances[loc][carrier]['battery'] > 0))
+                    link_color.append('purple')
+                    link_label.append('self consumption (from battery)')
+                    
+                    source.append(node_number-1)
+                    target.append(node_number)
+                    value.append(-np.sum(balances[loc][carrier]['battery'], where = balances[loc][carrier]['battery'] < 0))
+                    link_color.append('violet')
+                    link_label.append('to battery')   
+                    
+                    node_number += 1
+                    
+                elif 'electrolyzer' in balances[loc][carrier] and 'fuel cell' in balances[loc][carrier]:
+                    value.append(-np.sum(balances[loc][carrier]['demand']) - np.sum(balances[loc][carrier]['grid'], where = balances[loc][carrier]['grid'] > 0) -np.sum(balances[loc][carrier]['fuel cell']))
+                    link_color.append('yellowgreen')
+                    link_label.append('self consumption (directly from PV)')
+                    node_number += 1
+                    
+                    node_color.append('sandybrown')
+                    node_label.append('hydrogen '+loc)
+                    
+                    source.append(node_number)
+                    target.append(node_number2)
+                    value.append(np.sum(balances[loc][carrier]['fuel cell']))
+                    link_color.append('peru')
+                    link_label.append('self consumption (from fuel cell)')
+                    
+                    source.append(node_number-1)
+                    target.append(node_number)
+                    value.append(-np.sum(balances[loc][carrier]['electrolyzer']))
+                    link_color.append('chocolate')
+                    link_label.append('to electrolyzer')   
+                    
+                    node_number += 1
+                                        
+                else:
+                    value.append(-np.sum(balances[loc][carrier]['demand']) - np.sum(balances[loc][carrier]['grid'], where = balances[loc][carrier]['grid'] > 0))
+                
+                    link_color.append('yellowgreen')
+                    link_label.append('self consumption')
+                    node_number += 1
+                    
+                    
+                    
+                node_number2 += 1 # load
                 
     ### LV to MV
     source.append(1)
@@ -151,6 +202,10 @@ def Flows(simulation_name,carrier='electricity'):
     link_label.append('collective self consumption')
     link_color.append('orange')
     link_label.append('to grid')
+    
+    print(node_label)
+    print(source)
+    print(target)
                 
     fig = go.Figure(data=[go.Sankey(
         valueformat = ".1f",
@@ -180,7 +235,7 @@ def Flows(simulation_name,carrier='electricity'):
                           text='',
                           showarrow=False
                           )] )
-    fig.write_html("Results/energy_flows.html")
+    fig.write_html(f"Results/energy_flows_{filename}.html")
     fig.show()
 
  
@@ -238,6 +293,13 @@ def hourly_balances(simulation_name,location_name,first_day,last_day,carrier='el
         if 'PV' in balances:
             ax.bar(x, load, width,  label='PV self consumption', color='yellowgreen')
             ax.bar(x, pv-load, width, bottom=load, label='PV surplus', color='cornflowerblue')
+            
+            if not 'battery' in balances and not 'electrolyzer' in balances:
+                ax.bar(x, from_grid-from_csc, width ,bottom=pv+from_csc, label='from grid', color='tomato')
+                ax.bar(x, np.array(from_csc), width, bottom=pv,  color='gold')
+            
+                ax.bar(x, np.array(into_grid), width, label='into grid', color='orange')
+                ax.bar(x, np.array(to_csc), width, label='collective self consumption',  color='gold')
                 
             if 'battery' in balances:
                 ax.bar(x, from_grid-from_csc, width ,bottom=pv+discharge_battery+from_csc, label='from grid', color='tomato')
@@ -248,20 +310,14 @@ def hourly_balances(simulation_name,location_name,first_day,last_day,carrier='el
                 ax.bar(x, discharge_battery, width, bottom = pv, label='discharge battery',  color='purple')
                 ax.bar(x, np.array(to_csc), width, bottom=charge_battery, label='collective self consumption',  color='gold')
             
-            if not 'battery' in balances and not 'electrolyzer' in balances:
-                ax.bar(x, from_grid-from_csc, width ,bottom=pv+from_csc, label='from grid', color='tomato')
-                ax.bar(x, np.array(from_csc), width, bottom=pv,  color='gold')
-            
-                ax.bar(x, np.array(into_grid), width, label='into grid', color='orange')
-                ax.bar(x, np.array(to_csc), width, label='collective self consumption',  color='gold')
     
             if 'electrolyzer' in balances and 'fuel cell' in balances:
                 ax.bar(x, from_grid-from_csc, width ,bottom=pv+fc+from_csc, label='from grid', color='tomato')
                 ax.bar(x, np.array(from_csc), width, bottom=pv+fc,  color='y')
             
                 ax.bar(x, np.array(into_grid), width,bottom=ele , label='into grid', color='orange')
-                ax.bar(x, np.array(ele), width,  label='to electrolyzer',  color='violet')
-                ax.bar(x, fc, width, bottom = pv, label='from fuel cell',  color='purple')
+                ax.bar(x, np.array(ele), width,  label='to electrolyzer',  color='chocolate')
+                ax.bar(x, fc, width, bottom = pv, label='from fuel cell',  color='peru')
                 ax.bar(x, np.array(to_csc), width, bottom=ele, label='collective self consumption',  color='gold')
             
             #plt.ylim(-3.3,3)
