@@ -202,10 +202,6 @@ def Flows(simulation_name,filename,carrier='electricity'):
     link_label.append('collective self consumption')
     link_color.append('orange')
     link_label.append('to grid')
-    
-    print(node_label)
-    print(source)
-    print(target)
                 
     fig = go.Figure(data=[go.Sankey(
         valueformat = ".1f",
