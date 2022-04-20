@@ -8,21 +8,22 @@ class battery:
     
         parameters : dictionary
             'max capacity': float [kWh]
-            'variable performance' bool true if the performance change based on SOC 
+            'E-rate': float charging and discharging rate related to maximum capacity [kW/kWh]
             'ageing': bool true if aging has to be calculated
-            'collective': bool true if the battery is a collective one
+            'collective': int 0: no collective rules. 1: charging collective rules. 2: charging and disharging collective rules.
             
-                      
         output : battery object able to:
             supply or abrosrb electricity .use(h,e)
             record the state of charge .SOC
             take account of ageing .calculate_aging()   
         """
                 
-        self.SOC = np.zeros(simulation_hours+1) # array battery State of Charge 
         self.ageing = parameters['ageing'] # bool true if aging has to be calculated
-        self.collective = parameters['collective'] # bool true if the battery is a collective one
+        self.collective = parameters['collective'] # int 0: no collective rules. 1: charging collective rules. 2: charging and disharging collective rules.
         self.max_capacity = parameters['max capacity'] # battery max capacity [kWh]
+        self.E_rate= parameters['E-rate'] # battery E-rate [kW/kWh]
+        
+        self.SOC = np.zeros(simulation_hours+1) # array battery State of Charge 
         self.used_capacity = 0 # battery used capacity <= max_capacity [kWh]
         
     def use(self,h,e):
@@ -37,7 +38,8 @@ class battery:
         
         if e >= 0: # charge battery
             
-            charge = min(e,self.max_capacity-self.SOC[h]) # how much electricity can battery absorb?
+            charge = min(e,self.max_capacity-self.SOC[h],self.max_capacity*self.E_rate) # how much electricity can battery absorb?
+            
             self.SOC[h+1] = self.SOC[h]+charge # charge battery
             
             if self.SOC[h+1] > self.used_capacity: # update used capacity
@@ -49,12 +51,12 @@ class battery:
             
             if(self.used_capacity==self.max_capacity):  # the max_capacity has been reached, so SOC[h+1] can't become negative 
                    
-                discharge = min(-e,self.SOC[h]) # how much electricity can battery supply?
+                discharge = min(-e,self.SOC[h],self.max_capacity*self.E_rate) # how much electricity can battery supply?
                 self.SOC[h+1] = self.SOC[h]-discharge # discharge battery
                 
             else: # the max_capacity has not yet been reached, so SOC[h+1] may become negative and then the past SOC may be translated   
                                                   
-                discharge = min(-e,self.SOC[h]+self.max_capacity-self.used_capacity) # how much electricity can battery supply?
+                discharge = min(-e,self.SOC[h]+self.max_capacity-self.used_capacity,self.max_capacity*self.E_rate) # how much electricity can battery supply?
                 self.SOC[h+1] = self.SOC[h]-discharge # discharge battery
                 if self.SOC[h+1] < 0: # if the state of charge has become negative
                     self.used_capacity += - self.SOC[h+1] # incrase the used capacity
@@ -84,7 +86,9 @@ if __name__ == "__main__":
     """
     
     inp_test = {'max capacity': 10,
-                'ageing': False
+                'E-rate': 0.5,
+                'ageing': False,
+                'collective': 0
                 }
     
     b1 = battery(inp_test,simulation_hours=8760)   

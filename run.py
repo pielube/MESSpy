@@ -80,18 +80,17 @@ print('Eonomic analysis performend in {:.2f} seconds'.format(time4-time3))
 #%% post process
 import postprocess as pp
 print('Post processing..')
-import postprocess as pp
 time4 = time.time()
 
 #pp.total_balances(study_case)
-pp.SOC_plot(study_case)
+#pp.SOC_plot(study_case)
 pp.NPV_plot()
-pp.Flows(study_case,'test')
-first_day=34
-last_day=35
-pp.hourly_balances(study_case,'p1', first_day, last_day)
-pp.hourly_balances(study_case,'p2', first_day, last_day)
-pp.hourly_balances(study_case,'c1', first_day, last_day)
+#pp.Flows(study_case,'test')
+#first_day=34
+#last_day=35
+#pp.hourly_balances(study_case,'p1', first_day, last_day)
+#pp.hourly_balances(study_case,'p2', first_day, last_day)
+#pp.hourly_balances(study_case,'c1', first_day, last_day)
 
 #pp.csc_allocation(study_case)
 

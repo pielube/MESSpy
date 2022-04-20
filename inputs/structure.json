@@ -23,8 +23,9 @@
 	"battery":
 	         {
              "max capacity": 5,
+             "E-rate": 0.5,
              "ageing": false,
-			 "collective": false 
+			 "collective": 0 
              }
     },
 "p2":
