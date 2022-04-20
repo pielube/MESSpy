@@ -11,9 +11,9 @@ def NPV(structure,structure0,study_case,reference_case,economic_data,simulation_
             'total installation cost': tech_name cost + installation costs [€]
             'OeM': operations and maintenance costs [€/kW/y]
             'lifetime': time after which the tech_name must be replaced [years]            
-        'refound': dictionary inventives definition
-            'rate': rate of initial investemt that will be refound [%]
-            'time': refound time [years]
+        'refund': dictionary inventives definition
+            'rate': rate of initial investemt that will be refund [%]
+            'time': refund time [years]
         'CER': dictionary REC economic parameters definition
             'collective self consumption incentives': [€/kWh]
             'costitution cost': [€]
@@ -123,11 +123,11 @@ def NPV(structure,structure0,study_case,reference_case,economic_data,simulation_
                 purchase = np.reshape(purchase,(-1,8760))
                 CF = CF + purchase.sum(axis=1,where=purchase>0)
                       
-        # refound
-        yearly_refound = I0*(economic_data['refound']['rate']/100)/economic_data['refound']['time'] # yearly refound [€]
-        refounds = np.zeros(economic_data['investment years']) # array initialise
-        refounds[:min(economic_data['investment years'],economic_data['refound']['time'])] = yearly_refound # array repet yearly refond for 
-        CF = CF + refounds # add refound to Cash Flow
+        # refund
+        yearly_refund = I0*(economic_data['refund']['rate']/100)/economic_data['refund']['time'] # yearly refund [€]
+        refunds = np.zeros(economic_data['investment years']) # array initialise
+        refunds[:min(economic_data['investment years'],economic_data['refund']['time'])] = yearly_refund # array repet yearly refond for 
+        CF = CF + refunds # add refund to Cash Flow
         
         # REC incentives redistribution
         inc = economic_data['REC']['incentives redistribution'][location_name]/100 * rec['REC']['electricity']['collective self consumption'] * economic_data['REC']['collective self consumption incentives']
