@@ -93,9 +93,10 @@ class location:
             EB['electricity'] += self.energy_balance['electricity']['PV'][h] # elecricity balance update: + electricity produced from PV
         
         if 'battery' in self.technologies:
-            self.energy_balance['electricity']['battery'][h] = self.technologies['battery'].use(h,EB['electricity']) # electricity absorbed(-) or supplied(+) by battery
-            EB['electricity'] += self.energy_balance['electricity']['battery'][h]  # electricity balance update: +- electricity absorbed or supplied by battery
-            
+            if self.technologies['battery'].collective == 0 or EB['electricity'] < 0: 
+                self.energy_balance['electricity']['battery'][h] = self.technologies['battery'].use(h,EB['electricity']) # electricity absorbed(-) or supplied(+) by battery
+                EB['electricity'] += self.energy_balance['electricity']['battery'][h]  # electricity balance update: +- electricity absorbed or supplied by battery
+                
         if 'electrolyzer' in self.technologies:
             if EB['electricity'] > 0:
                 if 'H tank' in self.technologies: # if hydrogen is stored in a tank

@@ -79,7 +79,7 @@ def SOC_plot(simulation_name):
             plt.show()
         
 
-def Flows(simulation_name,filename,carrier='electricity'):
+def Flows(simulation_name,carrier='electricity'):
 
     pio.renderers.default='browser'
     with open('Results/balances_'+simulation_name+'.pkl', 'rb') as f:
@@ -231,7 +231,7 @@ def Flows(simulation_name,filename,carrier='electricity'):
                           text='',
                           showarrow=False
                           )] )
-    fig.write_html(f"Results/energy_flows_{filename}.html")
+    fig.write_html(f"Results/energy_flows_{simulation_name}.html")
     fig.show()
 
  
@@ -296,15 +296,20 @@ def hourly_balances(simulation_name,location_name,first_day,last_day,carrier='el
             
                 ax.bar(x, np.array(into_grid), width, label='into grid', color='orange')
                 ax.bar(x, np.array(to_csc), width, label='collective self consumption',  color='gold')
+                print(to_csc[11])
+                print(into_grid[11])
                 
             if 'battery' in balances:
                 ax.bar(x, from_grid-from_csc, width ,bottom=pv+discharge_battery+from_csc, label='from grid', color='tomato')
                 ax.bar(x, np.array(from_csc), width, bottom=pv+discharge_battery,  color='y')
             
-                ax.bar(x, np.array(into_grid), width,bottom=charge_battery , label='into grid', color='orange')
+                ax.bar(x, np.array(into_grid), width, bottom=charge_battery , label='into grid', color='orange')
                 ax.bar(x, np.array(charge_battery), width,  label='charge battery',  color='violet')
                 ax.bar(x, discharge_battery, width, bottom = pv, label='discharge battery',  color='purple')
                 ax.bar(x, np.array(to_csc), width, bottom=charge_battery, label='collective self consumption',  color='gold')
+                print(to_csc[11])
+                print(into_grid[11])
+                print(charge_battery[11])
             
     
             if 'electrolyzer' in balances and 'fuel cell' in balances:
