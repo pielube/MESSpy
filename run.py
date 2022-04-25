@@ -10,8 +10,9 @@ import json
 MESSpy - Run
 """
 
+study_case = 'Bs 100kWh p2'
 #study_case = 'B 10kWh p2' # str name for results file.pkl
-study_case = 'only pv' # str name for results file.pkl
+#study_case = 'only pv' # str name for results file.pkl
 reference_case = 'reference case' # str name for results file.pkl
 
 """
@@ -20,8 +21,9 @@ Input files
 
 path = r'./inputs'
 
+file = 'structure_bs.json'
 #file = 'structure_b.json'
-file = 'structure.json'
+#file = 'structure.json'
 filepath = os.path.join(path,file)
 with open(filepath,'r') as f:
     structure = json.load(f)
@@ -81,21 +83,35 @@ print('Eonomic analysis performend in {:.2f} seconds'.format(time4-time3))
 
 #%% post process
 import postprocess as pp
-print('Post processing..')
+#print('Post processing..')
 time4 = time.time()
 
-#pp.total_balances(study_case)
+study_case = 'Bs 100kWh p2'
+#study_case = 'B 10kWh p2' # str name for results file.pkl
+#study_case = 'only pv' # str name for results file.pkl
+
+pp.total_balances(study_case)
 #pp.SOC_plot(study_case)
 #pp.NPV_plot()
 #pp.Flows(study_case)
-first_day=100
-last_day=101
-pp.hourly_balances(study_case,'p2', first_day, last_day)
-##pp.hourly_balances(study_case,'p1', first_day, last_day)
-#pp.hourly_balances(study_case,'p2', first_day, last_day)
-#pp.hourly_balances(study_case,'c1', first_day, last_day)
+# =============================================================================
+# first_day=0
+# last_day=0
+# pp.hourly_balances(study_case,'p1', first_day, last_day)
+# pp.hourly_balances(study_case,'p2', first_day, last_day)
+# pp.hourly_balances(study_case,'p3', first_day, last_day)
+# pp.hourly_balances(study_case,'c1', first_day, last_day)
+# pp.hourly_balances(study_case,'c2', first_day, last_day)
+# pp.hourly_balances(study_case,'c3', first_day, last_day)
+# pp.hourly_balances(study_case,'c4', first_day, last_day)
+# pp.hourly_balances(study_case,'c5', first_day, last_day)
+# =============================================================================
 
 #pp.csc_allocation(study_case)
-
+pp.csc_allocation_sum(study_case)
 time5 = time.time()  
-print('Post process performend in {:.2f} seconds'.format(time5-time4))
+#print('Post process performend in {:.2f} seconds'.format(time5-time4))
+
+### normal battery
+### -3410 csc
+###  2634.4 - 2624.4 battery

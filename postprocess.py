@@ -296,8 +296,6 @@ def hourly_balances(simulation_name,location_name,first_day,last_day,carrier='el
             
                 ax.bar(x, np.array(into_grid), width, label='into grid', color='orange')
                 ax.bar(x, np.array(to_csc), width, label='collective self consumption',  color='gold')
-                print(to_csc[11])
-                print(into_grid[11])
                 
             if 'battery' in balances:
                 ax.bar(x, from_grid-from_csc, width ,bottom=pv+discharge_battery+from_csc, label='from grid', color='tomato')
@@ -307,9 +305,6 @@ def hourly_balances(simulation_name,location_name,first_day,last_day,carrier='el
                 ax.bar(x, np.array(charge_battery), width,  label='charge battery',  color='violet')
                 ax.bar(x, discharge_battery, width, bottom = pv, label='discharge battery',  color='purple')
                 ax.bar(x, np.array(to_csc), width, bottom=charge_battery, label='collective self consumption',  color='gold')
-                print(to_csc[11])
-                print(into_grid[11])
-                print(charge_battery[11])
             
     
             if 'electrolyzer' in balances and 'fuel cell' in balances:
@@ -321,20 +316,19 @@ def hourly_balances(simulation_name,location_name,first_day,last_day,carrier='el
                 ax.bar(x, fc, width, bottom = pv, label='from fuel cell',  color='peru')
                 ax.bar(x, np.array(to_csc), width, bottom=ele, label='collective self consumption',  color='gold')
             
-            #plt.ylim(-3.3,3)
-            plt.title('Prosumer')
+            plt.ylim(-3.3,3)
             
         else:
             ax.bar(x, from_grid-from_csc, width ,bottom=from_csc, label='from grid', color='tomato')
             ax.bar(x, np.array(from_csc), width, label='collective self consumption',  color='gold')
-            #plt.ylim(0,3.3)
-            plt.title('Consumer')
+            plt.ylim(0,3.3)
         
+        plt.title(location_name)
         plt.plot(x,load,'k',label='load')     
         plt.legend(ncol=3, bbox_to_anchor=(1.2, 0))
         plt.ylabel("Hourly energy [kWh/h] ")
         #plt.xticks([0,6,12,18,24],['0','6','12','18','24'],fontsize=10,color='g')
-        plt.xticks([0,6,12,18,24,30,36,42,48],['0','6','12','18','24','30','36','42','48'],fontsize=10,color='g')
+        #plt.xticks([0,6,12,18,24,30,36,42,48],['0','6','12','18','24','30','36','42','48'],fontsize=10,color='g')
         #plt.yticks([-2,-1,0,1,2],['-2','-1','0','1','2'])
         plt.show()
         
@@ -364,7 +358,16 @@ def csc_allocation(simulation_name):
     return(csc_allocation)
         
     
-                
+def csc_allocation_sum(simulation_name):
+    res = csc_allocation(simulation_name)
+    from_csc = 0
+    to_csc = 0
+    for location_name in res:
+        from_csc += sum(res[location_name]['from csc'])
+        to_csc += sum(res[location_name]['to csc'])
+        print(f"{location_name} {int(sum(res[location_name]['to csc']))}  {int(sum(res[location_name]['from csc']))}")
+   
+    print(f"tot {int(to_csc)}  {int(from_csc)}")
 
     
         

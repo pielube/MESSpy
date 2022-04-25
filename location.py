@@ -87,13 +87,13 @@ class location:
         for carrier in EB: # for each energy carrier
             if 'demand' in self.energy_balance[carrier]:                
                 EB[carrier] += self.energy_balance[carrier]['demand'][h] # energy balance update: energy demand(-)
-             
+        
         if 'PV' in self.technologies: 
             self.energy_balance['electricity']['PV'][h] = self.technologies['PV'].use(h) # electricity produced from PV
             EB['electricity'] += self.energy_balance['electricity']['PV'][h] # elecricity balance update: + electricity produced from PV
         
         if 'battery' in self.technologies:
-            if self.technologies['battery'].collective == 0 or EB['electricity'] < 0: 
+            if self.technologies['battery'].collective == 0 or EB['electricity'] <= 0: 
                 self.energy_balance['electricity']['battery'][h] = self.technologies['battery'].use(h,EB['electricity']) # electricity absorbed(-) or supplied(+) by battery
                 EB['electricity'] += self.energy_balance['electricity']['battery'][h]  # electricity balance update: +- electricity absorbed or supplied by battery
                 

@@ -26,6 +26,8 @@ class battery:
         self.SOC = np.zeros(simulation_hours+1) # array battery State of Charge 
         self.used_capacity = 0 # battery used capacity <= max_capacity [kWh]
         
+        self.time_used = 0
+        
     def use(self,h,e):
         """
         The battery can supply or absorb electricity
@@ -36,16 +38,18 @@ class battery:
         output : electricity supplied or absorbed that hour [kWh]
         """
         
+        self.time_used += 1
+        
         if e >= 0: # charge battery
             
             charge = min(e,self.max_capacity-self.SOC[h],self.max_capacity*self.E_rate) # how much electricity can battery absorb?
-            
             self.SOC[h+1] = self.SOC[h]+charge # charge battery
             
             if self.SOC[h+1] > self.used_capacity: # update used capacity
                 self.used_capacity = self.SOC[h+1] 
                    
             return(-charge) # return electricity absorbed
+        
             
         else: # discharge battery (this logic allows to back-calculate the SOC[0], it's useful for long term storage systems)
             
