@@ -100,7 +100,7 @@ class location:
         if 'electrolyzer' in self.technologies:
             if EB['electricity'] > 0:
                 if 'H tank' in self.technologies: # if hydrogen is stored in a tank
-                    storable_hydrogen = self.technologies['H tank'].max_capacity-self.technologies['H tank'].SOC[h] # the tank can't be full
+                    storable_hydrogen = self.technologies['H tank'].max_capacity-self.technologies['H tank'].LOC[h] # the tank can't be full
                 else: # if hydrogen is sold to the grid 
                     storable_hydrogen = 99999999999 # there are no limits, f.i an hydrogen producer
                     
@@ -111,7 +111,7 @@ class location:
         if 'fuel cell' in self.technologies:
             if EB['electricity'] < 0:      
                 if 'H tank' in self.technologies: # if hydrogen is stored in a tank
-                    available_hyd = self.technologies['H tank'].SOC[h] + self.technologies['H tank'].max_capacity - self.technologies['H tank'].used_capacity
+                    available_hyd = self.technologies['H tank'].LOC[h] + self.technologies['H tank'].max_capacity - self.technologies['H tank'].used_capacity
                 else: # if hydrogen is purchased
                     available_hyd = 99999999999 # there are no limits
                 self.energy_balance['hydrogen']['fuel cell'][h], self.energy_balance['electricity']['fuel cell'][h] =self.technologies['fuel cell'].use(h,EB['electricity'],available_hyd) # hydrogen absorbeed by fuel cell(-) and electricity supplied(+) 

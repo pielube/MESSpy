@@ -97,25 +97,25 @@ class REC:
         
         output: 
             balances/simulation_name.pkl
-            soc/simulation_name.pkl
+            LOC/simulation_name.pkl
         """
         
         balances = {}
-        SOC = {}
+        LOC = {}
         balances['REC'] = self.energy_balance
         
         for location_name in self.locations:
             balances[location_name] = self.locations[location_name].energy_balance
             
-            SOC[location_name] = {}
+            LOC[location_name] = {}
             
             tech_name = 'battery'
             if tech_name in self.locations[location_name].technologies:
-                SOC[location_name][tech_name] = self.locations[location_name].technologies[tech_name].SOC
+                LOC[location_name][tech_name] = self.locations[location_name].technologies[tech_name].LOC
         
             tech_name = 'H tank'
             if tech_name in self.locations[location_name].technologies:
-                SOC[location_name][tech_name] = self.locations[location_name].technologies[tech_name].SOC_volume()
+                LOC[location_name][tech_name] = self.locations[location_name].technologies[tech_name].LOC_volume()
         
         directory = './results'
         if not os.path.exists(directory):
@@ -124,22 +124,22 @@ class REC:
         with open('results/balances_'+simulation_name+".pkl", 'wb') as f:
             pickle.dump(balances, f) 
             
-        with open('results/SOC_'+simulation_name+".pkl", 'wb') as f:
-            pickle.dump(SOC, f) 
+        with open('results/LOC_'+simulation_name+".pkl", 'wb') as f:
+            pickle.dump(LOC, f) 
             
             
     def reset(self):
         """
         Use this function before a new simulation if you don't want to recreate the rec object
         
-        output: initialise SOC
+        output: initialise LOC
         """
         
-        to_reset = ['battery','H tank'] # technologies for which the SOC must be reset
+        to_reset = ['battery','H tank'] # technologies for which the LOC must be reset
         for location_name in self.locations: # each location
             for tech_name in to_reset:
                 if tech_name in self.locations[location_name].technologies: 
-                    self.locations[location_name].technologies[tech_name].SOC = np.zeros(self.simulation_hours+1) # array State of Charge 
+                    self.locations[location_name].technologies[tech_name].LOC = np.zeros(self.simulation_hours+1) # array level of Charge 
                     self.locations[location_name].technologies[tech_name].used_capacity = 0 # used capacity <= max_capacity   
     
         

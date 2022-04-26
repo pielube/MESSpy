@@ -59,23 +59,23 @@ def NPV_plot():
     plt.show()
     
     
-def SOC_plot(simulation_name):
+def LOC_plot(simulation_name):
       
-    with open('Results/SOC_'+simulation_name+'.pkl', 'rb') as f:
-        SOC = pickle.load(f)
+    with open('Results/LOC_'+simulation_name+'.pkl', 'rb') as f:
+        LOC = pickle.load(f)
            
     unit = {'H tank': '[m3]', 'battery': '[kWh]'}
     
-    for loc in SOC:
-        for tech in SOC[loc]:
+    for location_name in LOC:
+        for tech in LOC[location_name]:
             
-            y = SOC[loc][tech]
+            y = LOC[location_name][tech]
             x = np.linspace(0,len(y)-1,len(y))        
-            plt.plot(x,y,label=loc)
+            plt.plot(x,y,label=location_name)
             plt.grid()
-            plt.ylabel('SOC '+unit[tech])
+            plt.ylabel('LOC '+unit[tech])
             plt.xlabel('Time [hours]')
-            plt.title(loc+' '+tech)
+            plt.title(location_name+' '+tech)
             plt.show()
         
 

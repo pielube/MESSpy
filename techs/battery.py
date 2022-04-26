@@ -14,7 +14,7 @@ class battery:
             
         output : battery object able to:
             supply or abrosrb electricity .use(h,e)
-            record the state of charge .SOC
+            record the level of charge .LOC
             take account of ageing .calculate_aging()   
         """
                 
@@ -23,7 +23,7 @@ class battery:
         self.max_capacity = parameters['max capacity'] # battery max capacity [kWh]
         self.E_rate= parameters['E-rate'] # battery E-rate [kW/kWh]
         
-        self.SOC = np.zeros(simulation_hours+1) # array battery State of Charge 
+        self.LOC = np.zeros(simulation_hours+1) # array battery level of Charge 
         self.used_capacity = 0 # battery used capacity <= max_capacity [kWh]
         
         self.time_used = 0
@@ -42,29 +42,29 @@ class battery:
         
         if e >= 0: # charge battery
             
-            charge = min(e,self.max_capacity-self.SOC[h],self.max_capacity*self.E_rate) # how much electricity can battery absorb?
-            self.SOC[h+1] = self.SOC[h]+charge # charge battery
+            charge = min(e,self.max_capacity-self.LOC[h],self.max_capacity*self.E_rate) # how much electricity can battery absorb?
+            self.LOC[h+1] = self.LOC[h]+charge # charge battery
             
-            if self.SOC[h+1] > self.used_capacity: # update used capacity
-                self.used_capacity = self.SOC[h+1] 
+            if self.LOC[h+1] > self.used_capacity: # update used capacity
+                self.used_capacity = self.LOC[h+1] 
                    
             return(-charge) # return electricity absorbed
         
             
-        else: # discharge battery (this logic allows to back-calculate the SOC[0], it's useful for long term storage systems)
+        else: # discharge battery (this logic allows to back-calculate the LOC[0], it's useful for long term storage systems)
             
-            if(self.used_capacity==self.max_capacity):  # the max_capacity has been reached, so SOC[h+1] can't become negative 
+            if(self.used_capacity==self.max_capacity):  # the max_capacity has been reached, so LOC[h+1] can't become negative 
                    
-                discharge = min(-e,self.SOC[h],self.max_capacity*self.E_rate) # how much electricity can battery supply?
-                self.SOC[h+1] = self.SOC[h]-discharge # discharge battery
+                discharge = min(-e,self.LOC[h],self.max_capacity*self.E_rate) # how much electricity can battery supply?
+                self.LOC[h+1] = self.LOC[h]-discharge # discharge battery
                 
-            else: # the max_capacity has not yet been reached, so SOC[h+1] may become negative and then the past SOC may be translated   
+            else: # the max_capacity has not yet been reached, so LOC[h+1] may become negative and then the past LOC may be translated   
                                                   
-                discharge = min(-e,self.SOC[h]+self.max_capacity-self.used_capacity,self.max_capacity*self.E_rate) # how much electricity can battery supply?
-                self.SOC[h+1] = self.SOC[h]-discharge # discharge battery
-                if self.SOC[h+1] < 0: # if the state of charge has become negative
-                    self.used_capacity += - self.SOC[h+1] # incrase the used capacity
-                    self.SOC[:h+2] += - self.SOC[h+1]  # traslate the past SOC array
+                discharge = min(-e,self.LOC[h]+self.max_capacity-self.used_capacity,self.max_capacity*self.E_rate) # how much electricity can battery supply?
+                self.LOC[h+1] = self.LOC[h]-discharge # discharge battery
+                if self.LOC[h+1] < 0: # if the level of charge has become negative
+                    self.used_capacity += - self.LOC[h+1] # incrase the used capacity
+                    self.LOC[:h+2] += - self.LOC[h+1]  # traslate the past LOC array
             
             return(discharge) # return electricity supplied
     
@@ -102,7 +102,7 @@ if __name__ == "__main__":
     for h in range(len(flow)):
         b1.use(h,flow[h])        
     
-    print(b1.SOC[:15])
+    print(b1.LOC[:15])
     
     
     
