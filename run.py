@@ -10,10 +10,14 @@ import json
 MESSpy - Run
 """
 
-study_case = 'Bs 10kWh p2'
-study_case = 'B 10kWh p2' # str name for results file.pkl
-#study_case = 'only pv' # str name for results file.pkl
+#study_case = 'Bs 10kWh p2'
+#study_case = 'B 10kWh p2' # str name for results file.pkl
+study_case = 'only pv' # str name for results file.pkl
 reference_case = 'reference case' # str name for results file.pkl
+
+#file = 'structure_bs.json'
+#file = 'structure_b.json'
+file = 'structure.json'
 
 """
 Input files
@@ -21,9 +25,7 @@ Input files
 
 path = r'./inputs'
 
-file = 'structure_bs.json'
-file = 'structure_b.json'
-#file = 'structure.json'
+
 filepath = os.path.join(path,file)
 with open(filepath,'r') as f:
     structure = json.load(f)
@@ -83,22 +85,33 @@ print('Eonomic analysis performend in {:.2f} seconds'.format(time4-time3))
 
 #%% post process
 import postprocess as pp
+import numpy as np
 #print('Post processing..')
 time4 = time.time()
 
-#study_case = 'Bs 100kWh p2'
+#study_case = 'Bs 10kWh p2'
 #study_case = 'B 10kWh p2' # str name for results file.pkl
 #study_case = 'only pv' # str name for results file.pkl
 
-pp.total_balances(study_case)
-pp.LOC_plot(study_case)
-pp.NPV_plot()
-pp.Flows(study_case)
+#pp.total_balances(study_case)
+#pp.LOC_plot(study_case)
+#pp.NPV_plot()
+#pp.Flows(study_case)
+
+for first_day in [212]:#[277,258,256,242,235,220,212,209,203] :
+    last_day=first_day
+    #pp.hourly_balances(study_case,'p1', first_day, last_day)
+   
+    study_case = 'B 10kWh p2'
+    pp.hourly_balances(study_case,'p1', first_day, last_day, collective=0)
+    pp.hourly_balances(study_case,'p2', first_day, last_day, collective=0)
+    pp.hourly_balances(study_case,'p3', first_day, last_day, collective=0)
+    study_case = 'Bs 10kWh p2'
+    pp.hourly_balances(study_case,'p1', first_day, last_day, collective=1)
+    pp.hourly_balances(study_case,'p2', first_day, last_day, collective=1)
+    pp.hourly_balances(study_case,'p3', first_day, last_day, collective=1)
+
 # =============================================================================
-# first_day=0
-# last_day=0
-# pp.hourly_balances(study_case,'p1', first_day, last_day)
-# pp.hourly_balances(study_case,'p2', first_day, last_day)
 # pp.hourly_balances(study_case,'p3', first_day, last_day)
 # pp.hourly_balances(study_case,'c1', first_day, last_day)
 # pp.hourly_balances(study_case,'c2', first_day, last_day)
@@ -107,11 +120,16 @@ pp.Flows(study_case)
 # pp.hourly_balances(study_case,'c5', first_day, last_day)
 # =============================================================================
 
-#pp.csc_allocation(study_case)
 pp.csc_allocation_sum(study_case)
 time5 = time.time()  
 #print('Post process performend in {:.2f} seconds'.format(time5-time4))
 
-### normal battery
-### -3410 csc
-###  2634.4 - 2624.4 battery
+# =============================================================================
+# for h,v in enumerate(rec.energy_balance['electricity']['into grid']):
+#     if - v - rec.energy_balance['electricity']['from grid'][h] >0:
+#         print(h)
+# =============================================================================
+    
+
+
+

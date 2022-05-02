@@ -72,6 +72,7 @@ class location:
             self.technologies['H tank'] = H_tank(system['H tank'],self.simulation_hours) # H tank object created and to 'technologies' dictionary
             self.energy_balance['hydrogen']['H tank'] = np.zeros(self.simulation_hours) # array H tank hydrogen balance
 
+        self.energy_balance['electricity']['collective self consumption'] = np.zeros(self.simulation_hours) # array contribution to collective-self-consumption as producer (-) or as consumer (+)
 
     def loc_energy_simulation(self,h):
         """

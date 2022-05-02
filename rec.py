@@ -51,6 +51,7 @@ class REC:
         self.energy_balance['electricity']['into grid'] = np.zeros(self.simulation_hours) # array of electricity withdrawn from the grid
         self.energy_balance['electricity']['collective self consumption'] = np.zeros(self.simulation_hours) # array of collective self consumed electricity from the whole rec
         
+        
         for h in range(self.simulation_hours): # h: hour to simulate from 0 to simulation_hours 
             for location_name in self.locations: # each locations 
                 self.locations[location_name].loc_energy_simulation(h) # simulate a single location updating its energy balances
@@ -61,6 +62,20 @@ class REC:
                 else:                                                     
                     self.energy_balance['electricity']['from grid'][h] += self.locations[location_name].energy_balance['electricity']['grid'][h] # electricity withdrawn from the grid the whole rec at hour h
                 
+                
+            ### calculate collective self consumption and who contributed to it
+            self.energy_balance['electricity']['collective self consumption'][h] = min(-self.energy_balance['electricity']['into grid'][h],self.energy_balance['electricity']['from grid'][h]) # calculate REC collective self consumption how regulation establishes      
+            
+            if self.energy_balance['electricity']['collective self consumption'][h] > 0:
+                for location_name in self.locations:
+                    if self.locations[location_name].energy_balance['electricity']['grid'][h] < 0: # contribution as producer
+                        self.locations[location_name].energy_balance['electricity']['collective self consumption'][h] = - self.energy_balance['electricity']['collective self consumption'][h] * self.locations[location_name].energy_balance['electricity']['grid'][h] / self.energy_balance['electricity']['into grid'][h]
+                    else: # contribution as consumer
+                        self.locations[location_name].energy_balance['electricity']['collective self consumption'][h] = self.energy_balance['electricity']['collective self consumption'][h] * self.locations[location_name].energy_balance['electricity']['grid'][h] / self.energy_balance['electricity']['from grid'][h]
+
+
+
+
             ### solve smart batteries
             for location_name in self.locations:
                 
@@ -69,25 +84,25 @@ class REC:
                 
                 if 'battery' in self.locations[location_name].technologies and self.locations[location_name].technologies['battery'].collective == 1 and self.locations[location_name].energy_balance['electricity']['grid'][h] < 0:
                     
-                    # the location can stored in his battery the minimin beetwen how mutch it's feeding into the grid and how mutch it's not useful for collective self consumption 
-                    E = min(-self.locations[location_name].energy_balance['electricity']['grid'][h], -self.energy_balance['electricity']['into grid'][h] - self.energy_balance['electricity']['from grid'][h])
-                    E = max(0,E) # only charging
+                    ### ognuno può mettere in batteria al massimo c'ho che ha immesso in rete - c'ho che è servito per l'autoconsumo collettivo.
+                        # quest'ultimo dato deve quindi già essere stato calcolato e non essere calcolato in post processing
+                    
+                    # how much energy can be stored in the batteries cause it's not usefull for collective-self-consumption
+                    E = -self.energy_balance['electricity']['into grid'][h] - self.energy_balance['electricity']['from grid'][h] 
+                    
+                    if E > 0:
+                        # how much of this energy can the location use
+                        E = E * -self.locations[location_name].energy_balance['electricity']['grid'][h] / -self.energy_balance['electricity']['into grid'][h] 
+                    else:                    
+                        E = 0 # only charging
+     
                     self.locations[location_name].energy_balance['electricity']['battery'][h] = self.locations[location_name].technologies['battery'].use(h,E) # electricity absorbed(-) by battery
                     self.locations[location_name].energy_balance['electricity']['grid'][h] += - self.locations[location_name].energy_balance['electricity']['battery'][h] # update grid balance (locatiom)
                     self.energy_balance['electricity']['into grid'][h] += - self.locations[location_name].energy_balance['electricity']['battery'][h] # update grid balan ce (rec)
+                       
+             ### recalculate csc
                 
-                ### if there are more then one battery with .collective == 1 ???
-                    ## proportion redistribution to add
-                    
-                ### collective battery    
-                if 'battery' in self.locations[location_name].technologies and self.locations[location_name].technologies['battery'].collective == 2:
-                    pass
-                    
-                    
-                
-            ### calculate collective self consumption
-            self.energy_balance['electricity']['collective self consumption'][h] = min(-self.energy_balance['electricity']['into grid'][h],self.energy_balance['electricity']['from grid'][h]) # calculate REC collective self consumption how regulation establishes      
-
+           
 
     def save(self,simulation_name):
         """

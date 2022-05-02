@@ -235,7 +235,7 @@ def Flows(simulation_name,carrier='electricity'):
     fig.show()
 
  
-def hourly_balances(simulation_name,location_name,first_day,last_day,carrier='electricity',width=0.9):
+def hourly_balances(simulation_name,location_name,first_day,last_day,carrier='electricity',width=0.9,collective=0):
     
         with open('Results/balances_'+simulation_name+'.pkl', 'rb') as f:
             balances = pickle.load(f)
@@ -269,13 +269,17 @@ def hourly_balances(simulation_name,location_name,first_day,last_day,carrier='el
         if 'electrolyzer' in balances and 'fuel cell' in balances:
             fc = balances['fuel cell'][first_day*24:last_day*24+24]
             ele = balances['electrolyzer'][first_day*24:last_day*24+24]
-                        
+                     
+        to_csc = np.zeros(24*(last_day-first_day+1))
+        from_csc = np.zeros(24*(last_day-first_day+1))
+        for i,e in enumerate(balances['collective self consumption'][first_day*24:last_day*24+24]):
+            if e > 0:
+                from_csc[i] = e
+            else:
+                to_csc[i] = e 
+            
         x = np.linspace(first_day*24+1,(last_day+1)*24,(last_day-first_day+1)*24)
         x = np.arange((last_day-first_day+1)*24)
-             
-        csc = csc_allocation(simulation_name)[location_name]
-        to_csc = csc['to csc'][first_day*24:last_day*24+24]
-        from_csc = csc['from csc'][first_day*24:last_day*24+24]
         
         fig = plt.figure(dpi=1000)
         from mpl_toolkits.axisartist.axislines import SubplotZero
@@ -287,8 +291,8 @@ def hourly_balances(simulation_name,location_name,first_day,last_day,carrier='el
         ax.grid(axis='y')
         
         if 'PV' in balances:
-            ax.bar(x, load, width,  label='PV self consumption', color='yellowgreen')
-            ax.bar(x, pv-load, width, bottom=load, label='PV surplus', color='cornflowerblue')
+            ax.bar(x, np.minimum(load,pv), width,  label='PV self consumption', color='yellowgreen')
+            ax.bar(x, np.maximum(pv-load,np.zeros(len(pv))), width, bottom=load, label='PV surplus', color='cornflowerblue')
             
             if not 'battery' in balances and not 'electrolyzer' in balances:
                 ax.bar(x, from_grid-from_csc, width ,bottom=pv+from_csc, label='from grid', color='tomato')
@@ -298,15 +302,18 @@ def hourly_balances(simulation_name,location_name,first_day,last_day,carrier='el
                 ax.bar(x, np.array(to_csc), width, label='collective self consumption',  color='gold')
                 
             if 'battery' in balances:
-                ax.bar(x, from_grid-from_csc, width ,bottom=pv+discharge_battery+from_csc, label='from grid', color='tomato')
-                ax.bar(x, np.array(from_csc), width, bottom=pv+discharge_battery,  color='y')
-            
-                ax.bar(x, np.array(into_grid), width, bottom=charge_battery , label='into grid', color='orange')
-                ax.bar(x, np.array(charge_battery), width,  label='charge battery',  color='violet')
+                ax.bar(x, from_grid-from_csc, width, bottom=pv+discharge_battery+from_csc, label='from grid', color='tomato')
+                ax.bar(x, np.array(from_csc), width, bottom=discharge_battery+pv,  color='gold')
                 ax.bar(x, discharge_battery, width, bottom = pv, label='discharge battery',  color='purple')
-                ax.bar(x, np.array(to_csc), width, bottom=charge_battery, label='collective self consumption',  color='gold')
-            
-    
+                
+                ax.bar(x, np.array(into_grid), width, bottom=charge_battery , label='into grid', color='orange')
+                if collective == 0:
+                    ax.bar(x, np.array(charge_battery), width,  label='charge battery',  color='violet')
+                    ax.bar(x, np.array(to_csc), width, bottom=charge_battery, label='collective self consumption',  color='gold')
+                else:
+                    ax.bar(x, np.array(charge_battery), width, bottom=np.array(to_csc),  label='charge battery',  color='violet')
+                    ax.bar(x, np.array(to_csc), width, label='collective self consumption',  color='gold')
+                    
             if 'electrolyzer' in balances and 'fuel cell' in balances:
                 ax.bar(x, from_grid-from_csc, width ,bottom=pv+fc+from_csc, label='from grid', color='tomato')
                 ax.bar(x, np.array(from_csc), width, bottom=pv+fc,  color='y')
@@ -316,59 +323,34 @@ def hourly_balances(simulation_name,location_name,first_day,last_day,carrier='el
                 ax.bar(x, fc, width, bottom = pv, label='from fuel cell',  color='peru')
                 ax.bar(x, np.array(to_csc), width, bottom=ele, label='collective self consumption',  color='gold')
             
-            plt.ylim(-3.3,3)
+            plt.ylim(-4,4)
             
         else:
             ax.bar(x, from_grid-from_csc, width ,bottom=from_csc, label='from grid', color='tomato')
             ax.bar(x, np.array(from_csc), width, label='collective self consumption',  color='gold')
             plt.ylim(0,3.3)
         
-        plt.title(location_name)
+        plt.title(location_name+' '+str(first_day))
         plt.plot(x,load,'k',label='load')     
-        plt.legend(ncol=3, bbox_to_anchor=(1.2, 0))
+        #plt.legend(ncol=3, bbox_to_anchor=(1.2, 0))
         plt.ylabel("Hourly energy [kWh/h] ")
         #plt.xticks([0,6,12,18,24],['0','6','12','18','24'],fontsize=10,color='g')
         #plt.xticks([0,6,12,18,24,30,36,42,48],['0','6','12','18','24','30','36','42','48'],fontsize=10,color='g')
         #plt.yticks([-2,-1,0,1,2],['-2','-1','0','1','2'])
         plt.show()
         
-
-def csc_allocation(simulation_name):
-
+            
+def csc_allocation_sum(simulation_name):
     with open('Results/balances_'+simulation_name+'.pkl', 'rb') as f:
         balances = pickle.load(f)
-            
-    simulation_hours = len(balances['REC']['electricity']['collective self consumption'])
-    csc_allocation = {}
-    for location_name in balances:
-        if location_name != 'REC':
-            csc_allocation[location_name] = {}
-            csc_allocation[location_name]['to csc'] = np.zeros(simulation_hours)
-            csc_allocation[location_name]['from csc'] = np.zeros(simulation_hours)
-            
-    for h,csc in enumerate(balances['REC']['electricity']['collective self consumption']):
-        if csc > 0.0000001:
-            for location_name in csc_allocation:
-                e = balances[location_name]['electricity']['grid'][h]
-                if e < 0: 
-                    csc_allocation[location_name]['to csc'][h] = - csc * e / balances['REC']['electricity']['into grid'][h]
-                if e > 0:
-                    csc_allocation[location_name]['from csc'][h] = csc * e / balances['REC']['electricity']['from grid'][h]
-                
-    return(csc_allocation)
         
+    for location_name in balances:
+        csc = balances[location_name]['electricity']['collective self consumption']
+        from_csc = csc.sum(where=csc>0)
+        to_csc = csc.sum(where=csc<0)
     
-def csc_allocation_sum(simulation_name):
-    res = csc_allocation(simulation_name)
-    from_csc = 0
-    to_csc = 0
-    for location_name in res:
-        from_csc += sum(res[location_name]['from csc'])
-        to_csc += sum(res[location_name]['to csc'])
-        print(f"{location_name} {int(sum(res[location_name]['to csc']))}  {int(sum(res[location_name]['from csc']))}")
+        print(f"{location_name} {int(from_csc)}  {int(to_csc)}")
    
-    print(f"tot {int(to_csc)}  {int(from_csc)}")
-
     
         
         
