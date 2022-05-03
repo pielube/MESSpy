@@ -130,10 +130,15 @@ def NPV(structure,structure0,study_case,reference_case,economic_data,simulation_
         CF = CF + refunds # add refund to Cash Flow
         
         # REC incentives redistribution
-        inc = economic_data['REC']['incentives redistribution'][location_name]/100 * rec['REC']['electricity']['collective self consumption'] * economic_data['REC']['collective self consumption incentives']
-        inc = np.tile(inc,years_factor)
-        inc = np.reshape(inc,(-1,8760))
-        CF = CF + inc.sum(axis=1)       
+        csc = rec[location_name]['electricity']['collective self consumption']
+        inc_pro = - csc * economic_data['REC']['incentives redistribution']['producers']/100 * economic_data['REC']['collective self consumption incentives']
+        inc_pro = np.tile(inc_pro,years_factor)
+        inc_pro = np.reshape(inc_pro,(-1,8760))
+        CF = CF + inc_pro.sum(axis=1,where=inc_pro>0)       
+        inc_con = csc * economic_data['REC']['incentives redistribution']['consumers']/100 * economic_data['REC']['collective self consumption incentives']
+        inc_con= np.tile(inc_con,years_factor)
+        inc_con = np.reshape(inc_con,(-1,8760))
+        CF = CF + inc_con.sum(axis=1,where=inc_con>0)   
         
         
         # calculate NPV
@@ -146,7 +151,7 @@ def NPV(structure,structure0,study_case,reference_case,economic_data,simulation_
     
             
     # save results in Results/economic_assesment.pkl
-    with open('Results/economic_assessment.pkl', 'wb') as f:
+    with open(f"Results/economic_assessment_{study_case}.pkl", 'wb') as f:
         pickle.dump(results,f) 
         
     

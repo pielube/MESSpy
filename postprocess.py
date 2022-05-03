@@ -8,7 +8,7 @@ import plotly.io as pio
 import plotly.graph_objects as go
 
 
-def total_balances(simulation_name):
+def total_balances(simulation_name,loc):
 
     with open('Results/balances_'+simulation_name+'.pkl', 'rb') as f:
         balances = pickle.load(f)
@@ -21,25 +21,24 @@ def total_balances(simulation_name):
     
     for carrier in carriers:
         print('\nTotal '+carrier+' balances:\n')
-        for loc in balances:
-            print('\n'+loc)   
-            for b in balances[loc][carrier]:
+        print('\n'+loc)   
+        for b in balances[loc][carrier]:
+            
+            positiv=balances[loc][carrier][b][balances[loc][carrier][b]>0].sum()
+            negativ=balances[loc][carrier][b][balances[loc][carrier][b]<0].sum()
+            
+            if positiv != 0:
+                print(b+' '+str(round(positiv,1))+' '+units[carrier])
                 
-                positiv=balances[loc][carrier][b][balances[loc][carrier][b]>0].sum()
-                negativ=balances[loc][carrier][b][balances[loc][carrier][b]<0].sum()
-                
-                if positiv != 0:
-                    print(b+' '+str(round(positiv,1))+' '+units[carrier])
-                    
-                if negativ != 0:
-                    print(b+' '+str(round(negativ,1))+' '+units[carrier])
+            if negativ != 0:
+                print(b+' '+str(round(negativ,1))+' '+units[carrier])
     print('\n')
    
     
-def NPV_plot():
+def NPV_plot(study_case):
     ##### economic
-    simulation_name = 'economic_assessment'
-    with open('Results/'+simulation_name+'.pkl', 'rb') as f:
+    simulation_name = 'economic_assessment_'
+    with open('Results/'+simulation_name+study_case+'.pkl', 'rb') as f:
         economic = pickle.load(f)
     
     plt.figure(dpi=1000)
@@ -55,7 +54,7 @@ def NPV_plot():
     plt.ylabel('Net Present Value [€]')
     plt.xlabel('Time [years]')
     plt.xlim(0,len(y)-1)
-    #plt.ylim(-12000,12000)
+    plt.ylim(-15000,15000)
     plt.show()
     
     
@@ -323,16 +322,17 @@ def hourly_balances(simulation_name,location_name,first_day,last_day,carrier='el
                 ax.bar(x, fc, width, bottom = pv, label='from fuel cell',  color='peru')
                 ax.bar(x, np.array(to_csc), width, bottom=ele, label='collective self consumption',  color='gold')
             
-            plt.ylim(-4,4)
+           # plt.ylim(-4,4)
             
         else:
             ax.bar(x, from_grid-from_csc, width ,bottom=from_csc, label='from grid', color='tomato')
             ax.bar(x, np.array(from_csc), width, label='collective self consumption',  color='gold')
-            plt.ylim(0,3.3)
+           # plt.ylim(0,3.3)
         
-        plt.title(location_name+' '+str(first_day))
+        #plt.title(location_name+' '+str(first_day))
+        plt.annotate("PBSm",(20,-1.5))
         plt.plot(x,load,'k',label='load')     
-        #plt.legend(ncol=3, bbox_to_anchor=(1.2, 0))
+        plt.legend(ncol=2, bbox_to_anchor=(1.2, 0))
         plt.ylabel("Hourly energy [kWh/h] ")
         #plt.xticks([0,6,12,18,24],['0','6','12','18','24'],fontsize=10,color='g')
         #plt.xticks([0,6,12,18,24,30,36,42,48],['0','6','12','18','24','30','36','42','48'],fontsize=10,color='g')

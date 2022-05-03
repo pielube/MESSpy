@@ -74,35 +74,25 @@ class REC:
                         self.locations[location_name].energy_balance['electricity']['collective self consumption'][h] = self.energy_balance['electricity']['collective self consumption'][h] * self.locations[location_name].energy_balance['electricity']['grid'][h] / self.energy_balance['electricity']['from grid'][h]
 
 
-
-
             ### solve smart batteries
             for location_name in self.locations:
                 
-                # collective = 1: REC tels to location how mutch energy could be stored in the battery every hour
-                # if the location has a smart battery type 1 and it is feeding electricity into the grid at hour h
+                # battery.collective = 1: 
+                # REC tels to location how mutch electricity can be absorbed or supplied by battery every hour, without decreasing the collective-self-consumption
                 
-                if 'battery' in self.locations[location_name].technologies and self.locations[location_name].technologies['battery'].collective == 1 and self.locations[location_name].energy_balance['electricity']['grid'][h] < 0:
+                if 'battery' in self.locations[location_name].technologies and self.locations[location_name].technologies['battery'].collective == 1:
                     
-                    ### ognuno può mettere in batteria al massimo c'ho che ha immesso in rete - c'ho che è servito per l'autoconsumo collettivo.
-                        # quest'ultimo dato deve quindi già essere stato calcolato e non essere calcolato in post processing
-                    
-                    # how much energy can be stored in the batteries cause it's not usefull for collective-self-consumption
-                    E = -self.energy_balance['electricity']['into grid'][h] - self.energy_balance['electricity']['from grid'][h] 
-                    
-                    if E > 0:
-                        # how much of this energy can the location use
-                        E = E * -self.locations[location_name].energy_balance['electricity']['grid'][h] / -self.energy_balance['electricity']['into grid'][h] 
-                    else:                    
-                        E = 0 # only charging
-     
+                    # how much energy can be absorbed or supplied by the batteries cause it's not usefull for collective-self-consumption
+                    E = - self.locations[location_name].energy_balance['electricity']['grid'][h] + self.locations[location_name].energy_balance['electricity']['collective self consumption'][h]
+                      
                     self.locations[location_name].energy_balance['electricity']['battery'][h] = self.locations[location_name].technologies['battery'].use(h,E) # electricity absorbed(-) by battery
                     self.locations[location_name].energy_balance['electricity']['grid'][h] += - self.locations[location_name].energy_balance['electricity']['battery'][h] # update grid balance (locatiom)
-                    self.energy_balance['electricity']['into grid'][h] += - self.locations[location_name].energy_balance['electricity']['battery'][h] # update grid balan ce (rec)
-                       
-             ### recalculate csc
-                
-           
+                  
+                    if self.locations[location_name].energy_balance['electricity']['battery'][h] < 0:
+                        self.energy_balance['electricity']['into grid'][h] += - self.locations[location_name].energy_balance['electricity']['battery'][h] # update grid balance (rec)
+                    else:
+                        self.energy_balance['electricity']['from grid'][h] += - self.locations[location_name].energy_balance['electricity']['battery'][h] # update grid balance (rec)
+
 
     def save(self,simulation_name):
         """
