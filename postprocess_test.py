@@ -54,7 +54,7 @@ def NPV_plot(study_case):
     plt.ylabel('Net Present Value [€]')
     plt.xlabel('Time [years]')
     plt.xlim(0,len(y)-1)
-    plt.ylim(-15000,15000)
+    #plt.ylim(-15000,15000)
     plt.show()
     
     
