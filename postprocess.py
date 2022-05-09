@@ -85,8 +85,8 @@ def Flows(simulation_name,carrier='electricity'):
         balances = pickle.load(f)
     
     ### data prepearing
-    node_label = ["transformer","transformer","grid"]
-    node_color = ['silver','silver','gray']
+    node_label = ["","","from grid","to grid"]
+    node_color = ['silver','silver','gray','gray']
     source = []
     target = []
     value = []
@@ -94,7 +94,7 @@ def Flows(simulation_name,carrier='electricity'):
     link_label = []
         
     ### add from grid
-    node_number = 3
+    node_number = 4
     for loc in balances:
         if loc != 'REC':
             
@@ -114,7 +114,7 @@ def Flows(simulation_name,carrier='electricity'):
     link_label.append('from grid')
     
     ### add to grid and self consumption
-    node_number2 = 3
+    node_number2 = 4
     for loc in balances:
         if loc != 'REC':
             if 'PV' in balances[loc][carrier]:
@@ -194,11 +194,13 @@ def Flows(simulation_name,carrier='electricity'):
     source.append(1)
     source.append(1)
     target.append(0)
-    target.append(2)
+    target.append(3)
     value.append(sum(balances['REC'][carrier]['collective self consumption'])) 
     value.append(- np.sum(balances['REC'][carrier]['into grid'])-sum(balances['REC'][carrier]['collective self consumption']))   
+    
     link_color.append('gold')
     link_label.append('collective self consumption')
+    
     link_color.append('orange')
     link_label.append('to grid')
                 
@@ -211,8 +213,8 @@ def Flows(simulation_name,carrier='electricity'):
                 #'line': dict(color = "black", width = 0.5),
                 'label': node_label,
                 'color': node_color,
-                "x": [0.7,0.3,0.5],
-                "y": [0.1,0.1,0.25], # stranamente è ribaltata rispetto ad annotations
+                #["x": [0.7,0.3,1,0],
+                #"y": [0.1,0.1,0.1,0.1], # stranamente è ribaltata rispetto ad annotations
                 'pad': 100
                 },
         link = {

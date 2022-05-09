@@ -1,0 +1,98 @@
+{
+	"p1": {
+		"demand": {
+			"electricity": "load_p1.csv"
+		},
+		"grid": {
+			"electricity": true,
+			"hydrogen": false,
+			"gas": false,
+			"heat": false,
+			"cool": false
+		}
+	},
+	"p2": {
+		"demand": {
+			"electricity": "load_p2.csv"
+		},
+		"grid": {
+			"electricity": true,
+			"hydrogen": false,
+			"gas": false,
+			"heat": false,
+			"cool": false
+		}
+	},
+	"p3": {
+		"demand": {
+			"electricity": "load_p3.csv"
+		},
+		"grid": {
+			"electricity": true,
+			"hydrogen": false,
+			"gas": false,
+			"heat": false,
+			"cool": false
+		}
+	},
+	"c5": {
+		"demand": {
+			"electricity": "load_c5.csv"
+		},
+		"grid": {
+			"electricity": true,
+			"hydrogen": false,
+			"gas": false,
+			"heat": false,
+			"cool": false
+		}
+	},
+	"c1": {
+		"demand": {
+			"electricity": "load_c1.csv"
+		},
+		"grid": {
+			"electricity": true,
+			"hydrogen": false,
+			"gas": false,
+			"heat": false,
+			"cool": false
+		}
+	},
+	"c2": {
+		"demand": {
+			"electricity": "load_c2.csv"
+		},
+		"grid": {
+			"electricity": true,
+			"hydrogen": false,
+			"gas": false,
+			"heat": false,
+			"cool": false
+		}
+	},
+	"c3": {
+		"demand": {
+			"electricity": "load_c3.csv"
+		},
+		"grid": {
+			"electricity": true,
+			"hydrogen": false,
+			"gas": false,
+			"heat": false,
+			"cool": false
+		}
+	},
+	"c4": {
+		"demand": {
+			"electricity": "load_c4.csv"
+		},
+		"grid": {
+			"electricity": true,
+			"hydrogen": false,
+			"gas": false,
+			"heat": false,
+			"cool": false
+		}
+	}
+}

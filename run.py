@@ -10,13 +10,13 @@ import json
 MESSpy - Run
 """
 
-study_case = 'Bs 10kWh p2'
-study_case = 'B 10kWh p2' # str name for results file.pkl
+#study_case = 'Bs 10kWh p2'
+#study_case = 'B 10kWh p2' # str name for results file.pkl
 study_case = 'only pv' # str name for results file.pkl
 reference_case = 'reference case' # str name for results file.pkl
 
-file = 'structure_bs.json'
-file = 'structure_b.json'
+#file = 'structure_bs.json'
+#file = 'structure_b.json'
 file = 'structure.json'
 
 """
@@ -98,7 +98,7 @@ time4 = time.time()
 #pp.total_balances(study_case,'p2')
 #pp.LOC_plot(study_case)
 pp.NPV_plot(study_case)
-#pp.Flows(study_case)
+pp.Flows(study_case)
 
 # =============================================================================
 # for first_day in [43] :

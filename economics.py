@@ -124,10 +124,13 @@ def NPV(structure,structure0,study_case,reference_case,economic_data,simulation_
                 CF = CF + purchase.sum(axis=1,where=purchase>0)
                       
         # refund
-        yearly_refund = I0*(economic_data['refund']['rate']/100)/economic_data['refund']['time'] # yearly refund [€]
-        refunds = np.zeros(economic_data['investment years']) # array initialise
-        refunds[:min(economic_data['investment years'],economic_data['refund']['time'])] = yearly_refund # array repet yearly refond for 
-        CF = CF + refunds # add refund to Cash Flow
+        if economic_data['refund']['time'] == 0:
+            I0 += - I0*economic_data['refund']['rate']/100
+        else:
+            yearly_refund = I0*(economic_data['refund']['rate']/100)/economic_data['refund']['time'] # yearly refund [€]
+            refunds = np.zeros(economic_data['investment years']) # array initialise
+            refunds[:min(economic_data['investment years'],economic_data['refund']['time'])] = yearly_refund # array repet yearly refond for 
+            CF = CF + refunds # add refund to Cash Flow
         
         # REC incentives redistribution
         csc = rec[location_name]['electricity']['collective self consumption']
