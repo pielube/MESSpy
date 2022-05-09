@@ -7,24 +7,23 @@ import json
 #%%
 
 """
-MESSpy - Run
+MESSpy - Run_test
+
+doon't work on this script:
+    you should create your own run_dev.py and input_dev/ 
 """
 
-#study_case = 'Bs 10kWh p2'
-#study_case = 'B 10kWh p2' # str name for results file.pkl
-study_case = 'only pv' # str name for results file.pkl
-reference_case = 'reference case' # str name for results file.pkl
+path = r'./input_test' # change the put with r'./input_dev' if you are working on your own run_dev
 
-#file = 'structure_bs.json'
-#file = 'structure_b.json'
-file = 'structure.json'
+study_case = 'REC_test' # str name for results file.pkl
+reference_case = 'buiseness as usual' # str name for results file.pkl
+
 
 """
 Input files
 """
 
-path = r'./input_test'
-
+file = 'structure.json'
 filepath = os.path.join(path,file)
 with open(filepath,'r') as f:
     structure = json.load(f)
@@ -35,8 +34,8 @@ with open(filepath,'r') as f:
     general = json.load(f)
 
 time1 = time.time()
- 
 print('Creating structure..')
+
 # Creating initial structure
 rec = REC(structure,general,path) # create REC structure
 
@@ -47,7 +46,6 @@ print('Structure created in {:.2f} seconds'.format(time2-time1))
 print('Running the model..')
 time2 = time.time()
 
-
 # Running the model
 #rec.reset() # reset REC energy balances
 rec.REC_energy_simulation() # simulate REC structure
@@ -56,7 +54,6 @@ rec.save(study_case) # save results in 'study_case.pkl'
 time3 = time.time()
 print('Model runned in {:.2f} seconds'.format(time3-time2))
   
-
 #%% ###########################################################################
 print('Economic analysis..') 
 time3 = time.time()
@@ -83,54 +80,34 @@ time4 = time.time()
 print('Eonomic analysis performend in {:.2f} seconds'.format(time4-time3))
 
 #%% post process
-import postprocess as pp
-import numpy as np
-#print('Post processing..')
+import postprocess_test as pp
+
+"""
+some post-process are alredy avaiable as examples in postprocess_test
+you should create your own postprocess_dev.py
+"""
+
+print('Post processing..')
 time4 = time.time()
 
-#study_case = 'Bs 10kWh p2'
-#study_case = 'B 10kWh p2' # str name for results file.pkl
-#study_case = 'only pv' # str name for results file.pkl
+pp.total_balances(study_case, 'p1')
+pp.total_balances(study_case,'p2')
+pp.total_balances(study_case,'c1')
 
-# p2 43
+pp.LOC_plot(study_case)
 
-#pp.total_balances(study_case,'p2')
-#pp.LOC_plot(study_case)
 pp.NPV_plot(study_case)
-pp.Flows(study_case)
 
-# =============================================================================
-# for first_day in [43] :
-#     last_day=first_day
-#     #pp.hourly_balances(study_case,'p1', first_day, last_day)
-#    
-#     study_case = 'only pv'
-#     pp.hourly_balances(study_case,'p1', first_day, last_day, collective=0)
-#     study_case = 'B 10kWh p2'
-#     pp.hourly_balances(study_case,'p1', first_day, last_day, collective=0)
-#     study_case = 'Bs 10kWh p2'
-#     pp.hourly_balances(study_case,'p1', first_day, last_day, collective=1)
-# =============================================================================
-  
-# =============================================================================
-# pp.hourly_balances(study_case,'p3', first_day, last_day)
-# pp.hourly_balances(study_case,'c1', first_day, last_day)
-# pp.hourly_balances(study_case,'c2', first_day, last_day)
-# pp.hourly_balances(study_case,'c3', first_day, last_day)
-# pp.hourly_balances(study_case,'c4', first_day, last_day)
-# pp.hourly_balances(study_case,'c5', first_day, last_day)
-# =============================================================================
+pp.hourly_balances(study_case,'p1', 2, 3)
+pp.hourly_balances(study_case,'p2', 2, 3)
+pp.hourly_balances(study_case,'c1', 2, 3)
 
-#pp.csc_allocation_sum(study_case)
+pp.csc_allocation_sum(study_case)
+
+pp.Flows(study_case) # if it doesn't work try to open the file.html directrly from the results/ folder
+
 time5 = time.time()  
-#print('Post process performend in {:.2f} seconds'.format(time5-time4))
-
-# =============================================================================
-# for h,v in enumerate(rec.energy_balance['electricity']['into grid']):
-#     if - v - rec.energy_balance['electricity']['from grid'][h] >0:
-#         print(h)
-# =============================================================================
-    
+print('Post process performend in {:.2f} seconds'.format(time5-time4))
 
 
 
