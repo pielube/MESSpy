@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import pickle
 
-def NPV(structure,structure0,study_case,reference_case,economic_data,simulation_years):
+def NPV(structure,structure0,study_case,reference_case,economic_data,simulation_years,path):
     """
     Economic assesment 
     
@@ -82,7 +82,7 @@ def NPV(structure,structure0,study_case,reference_case,economic_data,simulation_
             if 'grid' in rec[location_name][carrier]:          
                 
                 if type(economic_data[carrier]['sale']) == str: # if there is the price serie
-                    sale_serie = np.tile(pd.read_csv('inputs/energy_price/'+economic_data[carrier]['sale'])['0'].to_numpy(),int(simulation_years))  
+                    sale_serie = np.tile(pd.read_csv(path+'/energy_price/'+economic_data[carrier]['sale'])['0'].to_numpy(),int(simulation_years))  
                     sold = rec[location_name][carrier]['grid'] * sale_serie
                 else: # if the price is always the same 
                     sold = rec[location_name][carrier]['grid']*economic_data[carrier]['sale'] 
@@ -92,7 +92,7 @@ def NPV(structure,structure0,study_case,reference_case,economic_data,simulation_
                 CF = CF - sold.sum(axis=1,where=sold<0)
           
                 if type(economic_data[carrier]['purchase']) == str: # if there is the price serie
-                    purchase_serie = np.tile(pd.read_csv('inputs/energy_price/'+economic_data[carrier]['purchase'])['0'].to_numpy(),int(simulation_years))  
+                    purchase_serie = np.tile(pd.read_csv(path+'/energy_price/'+economic_data[carrier]['purchase'])['0'].to_numpy(),int(simulation_years))  
                     purchase = rec[location_name][carrier]['grid'] * purchase_serie
                 else: # if the price is always the same 
                     purchase = rec[location_name][carrier]['grid']*economic_data[carrier]['purchase']

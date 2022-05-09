@@ -8,7 +8,7 @@ from techs import PV,battery,H_tank,fuel_cell,electrolyzer
 
 class location:
     
-    def __init__(self,system,general,location_name):
+    def __init__(self,system,general,location_name,path):
         """
         Create a location object (producer, consumer or prosumer) 
     
@@ -48,7 +48,7 @@ class location:
                 self.energy_balance[carrier]['grid'] = np.zeros(self.simulation_hours) # array energy carrier bought from the grid (-) or feed into the grid (+)
 
             if carrier in system['demand']:            
-                self.energy_balance[carrier]['demand'] = - np.tile(pd.read_csv('inputs/loads/'+system['demand'][carrier])['0'].to_numpy(),int(self.simulation_hours/8760)) # hourly energy carrier needed for the entire simulation
+                self.energy_balance[carrier]['demand'] = - np.tile(pd.read_csv(path+'/loads/'+system['demand'][carrier])['0'].to_numpy(),int(self.simulation_hours/8760)) # hourly energy carrier needed for the entire simulation
 
         if 'PV' in system:
             self.technologies['PV'] = PV(system['PV'],general,self.simulation_hours,self.name) # PV object created and add to 'technologies' dictionary

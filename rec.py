@@ -5,7 +5,7 @@ from location import location
 
 class REC:
     
-    def __init__(self,structure,general):
+    def __init__(self,structure,general,path):
         """
         Create a Renewable Energy Comunity object composed of several locations (producers, consumers, prosumers)
     
@@ -34,7 +34,7 @@ class REC:
         
         ### create location objects and add them to the REC locations dictionary
         for location_name in structure: # location_name are the keys of 'structure' dictionary and will be used as keys of REC 'locations' dictionary too
-            self.locations[location_name] = location(structure[location_name],general,location_name) # create location object and add it to REC 'locations' dictionary                
+            self.locations[location_name] = location(structure[location_name],general,location_name,path) # create location object and add it to REC 'locations' dictionary                
             
                   
     def REC_energy_simulation(self):

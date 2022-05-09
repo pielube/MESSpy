@@ -23,8 +23,7 @@ file = 'structure.json'
 Input files
 """
 
-path = r'./inputs'
-
+path = r'./input_test'
 
 filepath = os.path.join(path,file)
 with open(filepath,'r') as f:
@@ -39,7 +38,7 @@ time1 = time.time()
  
 print('Creating structure..')
 # Creating initial structure
-rec = REC(structure,general) # create REC structure
+rec = REC(structure,general,path) # create REC structure
 
 time2 = time.time()
 print('Structure created in {:.2f} seconds'.format(time2-time1))
@@ -73,12 +72,12 @@ with open(filepath,'r') as f:
     structure0 = json.load(f)
     
 # Reference case simulation (run only if changed)
-rec0 = REC(structure0,general) # create REC
+rec0 = REC(structure0,general,path) # create REC
 rec0.REC_energy_simulation() # simulate REC 
 rec0.save(reference_case) # save results in 'reference_case.pkl'
 
 # Actual economic analysis (It has no sense if simulation_years = 1)
-NPV(structure,structure0,study_case,reference_case,economic_data,general['simulation years']) 
+NPV(structure,structure0,study_case,reference_case,economic_data,general['simulation years'],path) 
 
 time4 = time.time()  
 print('Eonomic analysis performend in {:.2f} seconds'.format(time4-time3))
