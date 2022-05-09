@@ -25,6 +25,10 @@ class PV:
         
         
         check = True # True if no PV parameters are changed from the old simulation
+        
+        directory = './previous_simulation'
+        if not os.path.exists(directory):
+            os.makedirs(directory)
        
         if os.path.exists('previous_simulation/parameters_'+location_name+'.pkl'):
             with open('previous_simulation/parameters_'+location_name+'.pkl', 'rb') as f:
