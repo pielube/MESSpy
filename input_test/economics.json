@@ -26,7 +26,7 @@
 			   },
  "refund": {
 	         "rate": 50,
-             "time": 10
+             "time": 0
 			 },
  "REC": {
 	     "collective self consumption incentives": 0.118,

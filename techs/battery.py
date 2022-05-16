@@ -7,27 +7,41 @@ class battery:
         Create a battery object
     
         parameters : dictionary
-            'max capacity': float [kWh]
-            'E-rate': float charging and discharging rate related to maximum capacity [kW/kWh]
-            'ageing': bool true if aging has to be calculated
-            'collective': int 0: no collective rules. 1: charging collective rules. 2: charging and disharging collective rules.
+            'nominal capacity': float [kWh]
+            'max E-rate': float charging and discharging rate related to maximum capacity [kW/kWh]
+            'efficiency': float charge and discharge efficiency
             
+            'ageing': bool true if aging has to be calculated
+            'life cycles': int number of life cycles to reach the end of battery life
+            'end life capacity': float maximum capacity left at end of life [%]
+            
+            'collective': int 0: no collective rules. 1: priority to csc and then charge or discharge the battery.
+        
         output : battery object able to:
             supply or abrosrb electricity .use(h,e)
             record the level of charge .LOC
             take account of ageing .calculate_aging()   
         """
-                
-        self.ageing = parameters['ageing'] # bool true if aging has to be calculated
-        self.collective = parameters['collective'] # int 0: no collective rules. 1: charging collective rules. 2: charging and disharging collective rules.
-        self.max_capacity = parameters['max capacity'] # battery max capacity [kWh]
-        self.E_rate= parameters['E-rate'] # battery E-rate [kW/kWh]
         
+        self.nom_capacity = parameters['nominal capacity'] # battery early life max capacity [kWh]
+        self.max_capacity = parameters['nominal capacity'] # battery max capacity [kWh]
+        self.max_E_rate = parameters['max E-rate'] # battery max_E_rate [kW/kWh]
+        self.eta = parameters['efficiency'] # float charge and discharge efficiency
+        
+        self.ageing = parameters['ageing'] # bool true if aging has to be calculated
+        self.LC = parameters['life cycles'] # int number of life cycles to reach the end of battery life
+        self.deg = self.max_capacity*(100-parameters['end life capacity'])/100 # float capacity that is going to be degradated in life cycles
+        self.ageing_day = 7 # How often ageing has to bee calculated? [days]
+        self.completed_cycles = 0 # float initialise completed_cycles, this parameter is usefull to calculate replacements
+        self.replacements = [] # list initialise: h at which replecaments occur
+    
+
         self.LOC = np.zeros(simulation_hours+1) # array battery level of Charge 
         self.used_capacity = 0 # battery used capacity <= max_capacity [kWh]
-        
-        self.time_used = 0
-        
+      
+        self.collective = parameters['collective'] # int 0: no collective rules. 1: priority to csc and then charge or discharge the battery.
+
+       
     def use(self,h,e):
         """
         The battery can supply or absorb electricity
@@ -38,12 +52,13 @@ class battery:
         output : electricity supplied or absorbed that hour [kWh]
         """
         
-        self.time_used += 1
-        
+        if self.ageing and (h/24%self.ageing_day == 0) and h!=0: # if aeging == 0 and it's time to calculat it
+            self.calculate_ageing(h)
+            
         if e >= 0: # charge battery
             
-            charge = min(e,self.max_capacity-self.LOC[h],self.max_capacity*self.E_rate) # how much electricity can battery absorb?
-            self.LOC[h+1] = self.LOC[h]+charge # charge battery
+            charge = min(e,self.max_capacity-self.LOC[h],self.max_capacity*self.max_E_rate) # how much electricity can battery absorb?
+            self.LOC[h+1] = self.LOC[h]+charge*self.eta # charge battery
             
             if self.LOC[h+1] > self.used_capacity: # update used capacity
                 self.used_capacity = self.LOC[h+1] 
@@ -53,31 +68,110 @@ class battery:
             
         else: # discharge battery (this logic allows to back-calculate the LOC[0], it's useful for long term storage systems)
             
+            e = e/self.eta # how much energy is really required
             if(self.used_capacity==self.max_capacity):  # the max_capacity has been reached, so LOC[h+1] can't become negative 
                    
-                discharge = min(-e,self.LOC[h],self.max_capacity*self.E_rate) # how much electricity can battery supply?
+                e = e/self.eta
+                discharge = min(-e,self.LOC[h],self.max_capacity*self.max_E_rate) # how much electricity can battery supply?
+                
                 self.LOC[h+1] = self.LOC[h]-discharge # discharge battery
                 
             else: # the max_capacity has not yet been reached, so LOC[h+1] may become negative and then the past LOC may be translated   
                                                   
-                discharge = min(-e,self.LOC[h]+self.max_capacity-self.used_capacity,self.max_capacity*self.E_rate) # how much electricity can battery supply?
+                discharge = min(-e,self.LOC[h]+self.max_capacity-self.used_capacity,self.max_capacity*self.max_E_rate) # how much electricity can battery supply?
                 self.LOC[h+1] = self.LOC[h]-discharge # discharge battery
                 if self.LOC[h+1] < 0: # if the level of charge has become negative
                     self.used_capacity += - self.LOC[h+1] # incrase the used capacity
                     self.LOC[:h+2] += - self.LOC[h+1]  # traslate the past LOC array
             
-            return(discharge) # return electricity supplied
-    
+            return(discharge*self.eta) # return electricity supplied
         
-        if self.ageing and h == 100: ### ogni quanto calcolo l'aging e aggiorno capacity???
-            pass
-            battery.calculate_aging()
+    def calculate_ageing(self,h):      
         
-    def calculate_ageing(self):
-        pass
+        # degradation (equivalent number of cycles, life cycles, end of life capacity)
+        cycles = self.rainflow(h) # number of equivalent cycles completed
+        self.max_capacity += - (cycles / self.LC) * self.deg      
+        self.completed_cycles += cycles
+        
+        if self.completed_cycles > self.LC: # replacement
+            self.replacements.append(h)
+            self.completed_cycles = 0
+            self.max_capacity = self.nom_capacity
+
+        # corrosion?    
+        # calendar?  
+        
+    def rainflow(self,h):
+        
+        #https://ieeexplore.ieee.org/document/7741532
+        
+        LOC = self.LOC[h-self.ageing_day*24:h] # part of the LOC whose contribution to aging is to be calculated
+        
+        # elimination of the plains 
+        new=[LOC[0]] # initialise new LOC withouth plains
+        for i in range(1,len(LOC)):
+            if LOC[i]!=LOC[i-1]:
+                new.append(LOC[i])
+        LOC=new # new LOC withouth plains
+        
+        # elimination of what is not a pick or a valley
+        def PoV(a,b,c):
+            r=0
+            if b>=a and b>=c: #peak
+                r=1
+            if b<=a and b<=c: #valley
+                r=1
+            return(r)     
+        
+        new=[LOC[0]] # initialise new LOC without pick or valley         
+        for i in range(1,len(LOC)-1):
+            r=PoV(LOC[i-1],LOC[i],LOC[i+1])
+            if r==1:
+                new.append(LOC[i])
+        new.append(LOC[len(LOC)-1])
+        LOC=new # new LOC without pick or valley
+            
+        # find half and full cicles and calculate their depth
+        hc=[] #depth of half cycles
+        fc=[] #depth of full cycles
+        stop=0
+        while(len(LOC)>3):
+            if stop==1:
+                break
+                  
+            for i in range(len(LOC)-2):    
+                Rx=abs(LOC[i]-LOC[i+1])
+                Ry=abs(LOC[i+1]-LOC[i+2])
+                if Rx<=Ry: #half cycle finded
+                    if i==0:
+                        hc.append(Rx)
+                        LOC.pop(i)
+                        break
+                if Rx<=Ry: #full cycle finded
+                    fc.append(Rx)
+                    LOC.pop(i)
+                    LOC.pop(i)
+                    break
+                # if only half cicles remain and len(LOC) is still >3 we need break
+                if i==len(LOC)-3:
+                    stop=1
+                    break
+                
+        # final cicles control
+        for i in range(len(LOC)-1):
+            hc.append(abs(LOC[i]-LOC[i+1]))
+            
+        # calculate the equivalent number of cycles
+        n_cycles = 0        
+        for c in hc:
+            # depth of the cycle / depth of a complete cycle / 2 because it's an half cycle
+            n_cycles += 0.5 * c / self.max_capacity            
+        for c in fc:
+            # depth of the cycle / depth of a complete cycle
+            n_cycles += c / self.max_capacity 
+        
+        return(n_cycles)
     
-        # degradation 
-        # corrosion
     
 
 
@@ -89,20 +183,6 @@ if __name__ == "__main__":
     Functional test
     """
     
-    inp_test = {'max capacity': 10,
-                'E-rate': 0.5,
-                'ageing': False,
-                'collective': 0
-                }
-    
-    b1 = battery(inp_test,simulation_hours=8760)   
-    
-    flow = [+5,-2,-15,+3,-1,-6,+20,0]
-    #flow = [-2,-10, +2, +10, +1, -4, -20]
-    for h in range(len(flow)):
-        b1.use(h,flow[h])        
-    
-    print(b1.LOC[:15])
     
     
     

@@ -2,5 +2,7 @@ __pycache__/
 results/
 previous_simulation/
 input_dev/
+input_seminar/
 run_dev.py
+run_seminar.py
 postprocess_dev.py

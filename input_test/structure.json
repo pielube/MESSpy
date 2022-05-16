@@ -22,10 +22,13 @@
 		},
 	"battery":
 	         {
-             "max capacity": 5,
-             "E-rate": 0.5,
-             "ageing": false,
-			 "collective": 0 
+            	"nominal capacity": 3,
+             	"max E-rate": 0.5,
+		"efficiency": 0.9,
+         	"ageing": true,
+		"life cycles": 8000,
+		"end life capacity": 80,
+	 	"collective": 0 
              }
     },
 "p2":

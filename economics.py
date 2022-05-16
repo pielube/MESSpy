@@ -54,7 +54,7 @@ def NPV(structure,structure0,study_case,reference_case,economic_data,simulation_
         OeM = 0 # initialise OeM        
         
         # each tech has a different sizing parameter:
-        size = {'PV': 'peakP', 'battery': 'max capacity', 'electrolyzer': 'Npower', 'fuel cell': 'Npower', 'H tank': 'max capacity'} 
+        size = {'PV': 'peakP', 'battery': 'nominal capacity', 'electrolyzer': 'Npower', 'fuel cell': 'Npower', 'H tank': 'max capacity'} 
         
         for tech_name in system: # considering each techonlogies in the location
             if tech_name in economic_data: # to not consider 'electricity demand' as a technology and avoid bugs
@@ -62,9 +62,19 @@ def NPV(structure,structure0,study_case,reference_case,economic_data,simulation_
                 # Calculate I0, OeM and replacements
                 I0 += system[tech_name][size[tech_name]]*economic_data[tech_name]['total installation cost'] # add technology total installation cost to location I0
                 OeM += system[tech_name][size[tech_name]]*economic_data[tech_name]['OeM'] # add technology OeM to location OeM
+               
                 if economic_data[tech_name]['lifetime'] < economic_data['investment years']: # if tech_name replacement happens before the end of the simulation
                     CF[economic_data[tech_name]['lifetime']] += - system[tech_name][size[tech_name]]*economic_data[tech_name]['total installation cost'] # subtract technology replacement to location Cash Flow
-               
+                    
+        # refund
+        if economic_data['refund']['time'] == 0:
+            I0 += - I0*economic_data['refund']['rate']/100
+        else:
+            yearly_refund = I0*(economic_data['refund']['rate']/100)/economic_data['refund']['time'] # yearly refund [€]
+            refunds = np.zeros(economic_data['investment years']) # array initialise
+            refunds[:min(economic_data['investment years'],economic_data['refund']['time'])] = yearly_refund # array repet yearly refond for 
+            CF = CF + refunds # add refund to Cash Flow
+                
         # OeM in the reference case (must be subtracted)
         for tech_name in system0: # considering each techonlogies in the locations (reference_case)
             if tech_name in economic_data: # to not consider 'electricity demand' as a technology and avoid bugs
@@ -123,15 +133,7 @@ def NPV(structure,structure0,study_case,reference_case,economic_data,simulation_
                 purchase = np.reshape(purchase,(-1,8760))
                 CF = CF + purchase.sum(axis=1,where=purchase>0)
                       
-        # refund
-        if economic_data['refund']['time'] == 0:
-            I0 += - I0*economic_data['refund']['rate']/100
-        else:
-            yearly_refund = I0*(economic_data['refund']['rate']/100)/economic_data['refund']['time'] # yearly refund [€]
-            refunds = np.zeros(economic_data['investment years']) # array initialise
-            refunds[:min(economic_data['investment years'],economic_data['refund']['time'])] = yearly_refund # array repet yearly refond for 
-            CF = CF + refunds # add refund to Cash Flow
-        
+                
         # REC incentives redistribution
         csc = rec[location_name]['electricity']['collective self consumption']
         inc_pro = - csc * economic_data['REC']['incentives redistribution']['producers']/100 * economic_data['REC']['collective self consumption incentives']
