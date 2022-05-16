@@ -2,7 +2,7 @@
 "battery": {
             "total installation cost": 600, 
             "OeM": 0, 
-            "lifetime": 15
+            "lifetime": "ageing"
             }, 
 "PV": {
        "total installation cost": 1250, 
@@ -12,7 +12,7 @@
 "electrolyzer": {
                  "total installation cost": 1500, 
                  "OeM": 0, 
-                 "lifetime": 20
+                 "lifetime": 15
 				 }, 
 "H tank": {
 	        "total installation cost": 400,
@@ -22,7 +22,7 @@
  "fuel cell": {
 	           "total installation cost": 1500,
                "OeM": 0, 
-               "lifetime": 20
+               "lifetime": 15
 			   },
  "refund": {
 	         "rate": 50,

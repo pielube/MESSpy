@@ -107,17 +107,21 @@ class REC:
         
         balances = {}
         LOC = {}
+        ageing = {}
         balances['REC'] = self.energy_balance
         
         for location_name in self.locations:
             balances[location_name] = self.locations[location_name].energy_balance
             
             LOC[location_name] = {}
+            ageing[location_name] = {}
             
             tech_name = 'battery'
             if tech_name in self.locations[location_name].technologies:
                 LOC[location_name][tech_name] = self.locations[location_name].technologies[tech_name].LOC
-        
+                if self.locations[location_name].technologies[tech_name].ageing:
+                    ageing[location_name][tech_name] = [self.locations[location_name].technologies[tech_name].replacements,self.locations[location_name].technologies[tech_name].ageing_history]
+                
             tech_name = 'H tank'
             if tech_name in self.locations[location_name].technologies:
                 LOC[location_name][tech_name] = self.locations[location_name].technologies[tech_name].LOC_volume()
@@ -131,6 +135,10 @@ class REC:
             
         with open('results/LOC_'+simulation_name+".pkl", 'wb') as f:
             pickle.dump(LOC, f) 
+            
+        with open('results/ageing_'+simulation_name+".pkl", 'wb') as f:
+            pickle.dump(ageing, f) 
+            
             
             
     def reset(self):

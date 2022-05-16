@@ -59,13 +59,25 @@ def NPV(structure,structure0,study_case,reference_case,economic_data,simulation_
         for tech_name in system: # considering each techonlogies in the location
             if tech_name in economic_data: # to not consider 'electricity demand' as a technology and avoid bugs
                 
-                # Calculate I0, OeM and replacements
+                # Calculate I0 and OeM 
                 I0 += system[tech_name][size[tech_name]]*economic_data[tech_name]['total installation cost'] # add technology total installation cost to location I0
                 OeM += system[tech_name][size[tech_name]]*economic_data[tech_name]['OeM'] # add technology OeM to location OeM
                
-                if economic_data[tech_name]['lifetime'] < economic_data['investment years']: # if tech_name replacement happens before the end of the simulation
-                    CF[economic_data[tech_name]['lifetime']] += - system[tech_name][size[tech_name]]*economic_data[tech_name]['total installation cost'] # subtract technology replacement to location Cash Flow
-                    
+                # replacements 
+                if economic_data[tech_name]['lifetime'] == "ageing": # if replacement time is calculated according to ageing
+                    with open('Results/ageing_'+study_case+'.pkl', 'rb') as f:
+                        age = pickle.load(f)     
+                        age = age[location_name][tech_name][0]
+                        for a in age:
+                            rep_time = int(a/8760)
+                            CF[rep_time] += - system[tech_name][size[tech_name]]*economic_data[tech_name]['total installation cost'] # subtract technology replacement to location Cash Flow
+                else: # if replacement time is given
+                    rep_time = economic_data[tech_name]['lifetime']
+                    while rep_time < economic_data['investment years']: # if tech_name replacement happens before the end of the simulation
+                        CF[rep_time] += - system[tech_name][size[tech_name]]*economic_data[tech_name]['total installation cost'] # subtract technology replacement to location Cash Flow
+                        rep_time += rep_time
+                # NB no refund considered for replacements
+                        
         # refund
         if economic_data['refund']['time'] == 0:
             I0 += - I0*economic_data['refund']['rate']/100

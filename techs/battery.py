@@ -34,8 +34,8 @@ class battery:
         self.ageing_day = 7 # How often ageing has to bee calculated? [days]
         self.completed_cycles = 0 # float initialise completed_cycles, this parameter is usefull to calculate replacements
         self.replacements = [] # list initialise: h at which replecaments occur
+        self.ageing_history = [[0],[self.max_capacity]] # list initialise ageing history. [completed_cycles],[max_capacity]
     
-
         self.LOC = np.zeros(simulation_hours+1) # array battery level of Charge 
         self.used_capacity = 0 # battery used capacity <= max_capacity [kWh]
       
@@ -92,13 +92,15 @@ class battery:
         cycles = self.rainflow(h) # number of equivalent cycles completed
         self.max_capacity += - (cycles / self.LC) * self.deg      
         self.completed_cycles += cycles
+        self.ageing_history[0].append(self.completed_cycles)
+        self.ageing_history[1].append(self.max_capacity)
+
         
         if self.completed_cycles > self.LC: # replacement
             self.replacements.append(h)
             self.completed_cycles = 0
             self.max_capacity = self.nom_capacity
 
-        # corrosion?    
         # calendar?  
         
     def rainflow(self,h):

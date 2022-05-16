@@ -81,6 +81,7 @@ print('Eonomic analysis performend in {:.2f} seconds'.format(time4-time3))
 
 #%% post process
 import postprocess_test as pp
+#import postprocess_dev as pp
 
 """
 some post-process are alredy avaiable as examples in postprocess_test
@@ -98,13 +99,13 @@ time4 = time.time()
 
 pp.NPV_plot(study_case)
 
-#pp.hourly_balances(study_case,'p1', 2, 3)
-#pp.hourly_balances(study_case,'p2', 2, 3)
-#pp.hourly_balances(study_case,'c1', 2, 3)
+pp.hourly_balances(study_case,'p1', 2, 3)
+pp.hourly_balances(study_case,'p2', 2, 3)
+pp.hourly_balances(study_case,'c1', 2, 3)
 
 #pp.csc_allocation_sum(study_case)
 
-#pp.Flows(study_case) # if it doesn't work try to open the file.html directrly from the results/ folder
+pp.Flows(study_case) # if it doesn't work try to open the file.html directrly from the results/ folder
 
 time5 = time.time()  
 print('Post process performend in {:.2f} seconds'.format(time5-time4))
