@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from techs import boiler_el,boiler_ng,PV,battery,H_tank,fuel_cell,electrolyzer
+from techs import heatpump,boiler_el,boiler_ng,PV,battery,H_tank,fuel_cell,electrolyzer
 
 
 class location:
@@ -46,6 +46,11 @@ class location:
 
             if carrier in system['demand']:            
                 self.energy_balance[carrier]['demand'] = - np.tile(pd.read_csv(path+'/loads/'+system['demand'][carrier])['0'].to_numpy(),int(self.simulation_hours/8760)) # hourly energy carrier needed for the entire simulation
+
+        if 'heatpump' in system:
+            self.technologies['heatpump'] = heatpump(system['heatpump']) # heatpump object created and add to 'technologies' dictionary
+            self.energy_balance['electricity']['heatpump'] = np.zeros(self.simulation_hours) # array heatpump electricity balance
+            self.energy_balance['heat']['heatpump'] = np.zeros(self.simulation_hours) # array heatpump heat balance
 
         if 'boiler_el' in system:
             self.technologies['boiler_el'] = boiler_el(system['boiler_el']) # boiler_el object created and add to 'technologies' dictionary
@@ -95,6 +100,11 @@ class location:
         for carrier in EB: # for each energy carrier
             if 'demand' in self.energy_balance[carrier]:                
                 EB[carrier] += self.energy_balance[carrier]['demand'][h] # energy balance update: energy demand(-)
+                
+        if 'heatpump' in self.technologies: 
+            self.energy_balance['electricity']['heatpump'][h], self.energy_balance['heat']['heatpump'][h], self.energy_balance['cool']['heatpump'][h] = self.technologies['heatpump'].use(EB['heat'],EB['cool'],h,1) # el consumed and heat and cool produced from heatpump
+            EB['electricity'] += self.energy_balance['electricity']['heatpump'][h] # elecricity balance update: - electricity consumed by heatpump
+            EB['heat'] += self.energy_balance['heat']['heatpump'][h] # heat balance update: + heat produced by heatpump        
                 
         if 'boiler_el' in self.technologies: 
             self.energy_balance['electricity']['boiler_el'][h], self.energy_balance['heat']['boiler_el'][h] = self.technologies['boiler_el'].use(EB['heat'],1) # el consumed and heat produced from boiler_el
