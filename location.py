@@ -1,10 +1,7 @@
 import numpy as np
 import pandas as pd
-from techs import PV,battery,H_tank,fuel_cell,electrolyzer
-# from battery import battery
-# from hydrogentank import H_tank
-# from fuelcell import fuel_cell
-# from electrolyzer import electrolyzer
+from techs import boiler_el,boiler_ng,PV,battery,H_tank,fuel_cell,electrolyzer
+
 
 class location:
     
@@ -50,6 +47,16 @@ class location:
             if carrier in system['demand']:            
                 self.energy_balance[carrier]['demand'] = - np.tile(pd.read_csv(path+'/loads/'+system['demand'][carrier])['0'].to_numpy(),int(self.simulation_hours/8760)) # hourly energy carrier needed for the entire simulation
 
+        if 'boiler_el' in system:
+            self.technologies['boiler_el'] = boiler_el(system['boiler_el']) # boiler_el object created and add to 'technologies' dictionary
+            self.energy_balance['electricity']['boiler_el'] = np.zeros(self.simulation_hours) # array boiler_el electricity balance
+            self.energy_balance['heat']['boiler_el'] = np.zeros(self.simulation_hours) # array boiler_el heat balance
+            
+        if 'boiler_ng' in system:
+            self.technologies['boiler_ng'] = boiler_ng(system['boiler_ng']) # boiler_ng object created and add to 'technologies' dictionary
+            self.energy_balance['gas']['boiler_ng'] = np.zeros(self.simulation_hours) # array boiler_ng gas balance
+            self.energy_balance['heat']['boiler_ng'] = np.zeros(self.simulation_hours) # array boiler_ng heat balance 
+
         if 'PV' in system:
             self.technologies['PV'] = PV(system['PV'],general,self.simulation_hours,self.name) # PV object created and add to 'technologies' dictionary
             self.energy_balance['electricity']['PV'] = np.zeros(self.simulation_hours) # array PV electricity balance
@@ -88,7 +95,17 @@ class location:
         for carrier in EB: # for each energy carrier
             if 'demand' in self.energy_balance[carrier]:                
                 EB[carrier] += self.energy_balance[carrier]['demand'][h] # energy balance update: energy demand(-)
-        
+                
+        if 'boiler_el' in self.technologies: 
+            self.energy_balance['electricity']['boiler_el'][h], self.energy_balance['heat']['boiler_el'][h] = self.technologies['boiler_el'].use(EB['heat'],1) # el consumed and heat produced from boiler_el
+            EB['electricity'] += self.energy_balance['electricity']['boiler_el'][h] # elecricity balance update: - electricity consumed by boiler_el
+            EB['heat'] += self.energy_balance['heat']['boiler_el'][h] # heat balance update: + heat produced by boiler_el
+
+        if 'boiler_ng' in self.technologies: 
+            self.energy_balance['gas']['boiler_ng'][h], self.energy_balance['heat']['boiler_ng'][h] = self.technologies['boiler_ng'].use(EB['heat'],1) # ng consumed and heat produced from boiler_ng
+            EB['gas'] += self.energy_balance['electricity']['boiler_ng'][h] # gas balance update: - gas consumed by boiler_ng
+            EB['heat'] += self.energy_balance['heat']['boiler_ng'][h] # heat balance update: + heat produced by boiler_ng
+
         if 'PV' in self.technologies: 
             self.energy_balance['electricity']['PV'][h] = self.technologies['PV'].use(h) # electricity produced from PV
             EB['electricity'] += self.energy_balance['electricity']['PV'][h] # elecricity balance update: + electricity produced from PV
