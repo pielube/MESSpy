@@ -131,7 +131,7 @@ if __name__ == "__main__":
                 'reference year':2016,
                 'TMY': False}
     
-    pv1 = PV(inp_test,2,1)
+    pv1 = PV(inp_test,2,1,'test')
     
     for h in range(8760):
         print(pv1.use(h))
