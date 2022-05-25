@@ -48,6 +48,8 @@ def NPV(structure,structure0,study_case,reference_case,economic_data,simulation_
         results[location_name] = {} # dictionary initialise economic results
         system = structure[location_name] # location system (see Location.py)
         system0 = structure0[location_name] # same for reference case
+        
+        results[location_name]['Annual cash flow'] = {} # dictionary initialise annual cash flow
                 
         CF = np.zeros(economic_data['investment years']) # array initialize Casch Flow
         I0 = 0 # initialise initial investment     
@@ -98,8 +100,12 @@ def NPV(structure,structure0,study_case,reference_case,economic_data,simulation_
                         CF[economic_data[tech_name]['lifetime']] += + system[tech_name][size[tech_name]]*economic_data[tech_name]['total installation cost'] # add technology replacement to location Cash Flow
 
         CF[:] += - OeM # OeM every year
+        results[location_name]['Annual cash flow']['OeM'] = -OeM # OeM every year
         
         # energy sold and purchased in study case 
+        results[location_name]['Annual cash flow']['Into grid'] = 0 #initialise
+        results[location_name]['Annual cash flow']['SC'] = 0 #initialise
+            
         for carrier in rec[location_name]: # for each carrier (electricity, hydrogen, gas, heat, cool)
             if 'grid' in rec[location_name][carrier]:          
                 
@@ -112,6 +118,7 @@ def NPV(structure,structure0,study_case,reference_case,economic_data,simulation_
                 sold = np.tile(sold,years_factor)
                 sold = np.reshape(sold,(-1,8760))
                 CF = CF - sold.sum(axis=1,where=sold<0)
+                results[location_name]['Annual cash flow']['Into grid'] += - sold.sum(axis=1,where=sold<0)
           
                 if type(economic_data[carrier]['purchase']) == str: # if there is the price serie
                     purchase_serie = np.tile(pd.read_csv(path+'/energy_price/'+economic_data[carrier]['purchase'])['0'].to_numpy(),int(simulation_years))  
@@ -122,6 +129,8 @@ def NPV(structure,structure0,study_case,reference_case,economic_data,simulation_
                 purchase = np.tile(purchase,years_factor)
                 purchase = np.reshape(purchase,(-1,8760))
                 CF = CF - purchase.sum(axis=1,where=purchase>0)
+                results[location_name]['Annual cash flow']['SC'] += - purchase.sum(axis=1,where=purchase>0)
+            
                 
         # energy sold and purchased in reference case 
         for carrier in rec0[location_name]: # for each carrier (electricity, hydrogen, gas, heat)
@@ -135,6 +144,7 @@ def NPV(structure,structure0,study_case,reference_case,economic_data,simulation_
                 sold = np.tile(sold,years_factor)
                 sold = np.reshape(sold,(-1,8760))
                 CF = CF + sold.sum(axis=1,where=sold<0)
+                results[location_name]['Annual cash flow']['Into grid'] += sold.sum(axis=1,where=sold<0)
 
                 if type(economic_data[carrier]['purchase']) == str: # if there is the price serie
                     purchase = rec0[location_name][carrier]['grid'] * purchase_serie
@@ -144,19 +154,23 @@ def NPV(structure,structure0,study_case,reference_case,economic_data,simulation_
                 purchase = np.tile(purchase,years_factor)
                 purchase = np.reshape(purchase,(-1,8760))
                 CF = CF + purchase.sum(axis=1,where=purchase>0)
+                results[location_name]['Annual cash flow']['SC'] += purchase.sum(axis=1,where=purchase>0)
                       
                 
         # REC incentives redistribution
+        results[location_name]['Annual cash flow']['CSC'] = 0 # initialise
         csc = rec[location_name]['electricity']['collective self consumption']
         inc_pro = - csc * economic_data['REC']['incentives redistribution']['producers']/100 * economic_data['REC']['collective self consumption incentives']
         inc_pro = np.tile(inc_pro,years_factor)
         inc_pro = np.reshape(inc_pro,(-1,8760))
         CF = CF + inc_pro.sum(axis=1,where=inc_pro>0)       
+        results[location_name]['Annual cash flow']['CSC'] += inc_pro.sum(axis=1,where=inc_pro>0) 
+        
         inc_con = csc * economic_data['REC']['incentives redistribution']['consumers']/100 * economic_data['REC']['collective self consumption incentives']
         inc_con= np.tile(inc_con,years_factor)
         inc_con = np.reshape(inc_con,(-1,8760))
         CF = CF + inc_con.sum(axis=1,where=inc_con>0)   
-        
+        results[location_name]['Annual cash flow']['CSC'] += inc_con.sum(axis=1,where=inc_con>0)   
         
         # calculate NPV
         results[location_name]['NPV'] = np.zeros(economic_data['investment years']+1) # array initialise Net Present Value
