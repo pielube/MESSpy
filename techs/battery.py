@@ -56,14 +56,21 @@ class battery:
             self.calculate_ageing(h)
             
         if e >= 0: # charge battery
+        
+            if e > self.max_capacity*self.max_E_rate:
+                e = self.max_capacity*self.max_E_rate
+                              
+            if e*self.eta < (self.max_capacity-self.LOC[h]): # if battery can't be full charged
+                self.LOC[h+1] = self.LOC[h]+e*self.eta # charge 
             
-            charge = min(e,self.max_capacity-self.LOC[h],self.max_capacity*self.max_E_rate) # how much electricity can battery absorb?
-            self.LOC[h+1] = self.LOC[h]+charge*self.eta # charge battery
+            else: # if batter can be full charged
+                self.LOC[h+1] = self.max_capacity
+                e = (self.max_capacity-self.LOC[h]) / self.eta
             
             if self.LOC[h+1] > self.used_capacity: # update used capacity
                 self.used_capacity = self.LOC[h+1] 
                    
-            return(-charge) # return electricity absorbed
+            return(-e) # return electricity absorbed
         
             
         else: # discharge battery (this logic allows to back-calculate the LOC[0], it's useful for long term storage systems)
@@ -71,7 +78,6 @@ class battery:
             e = e/self.eta # how much energy is really required
             if(self.used_capacity==self.max_capacity):  # the max_capacity has been reached, so LOC[h+1] can't become negative 
                    
-                e = e/self.eta
                 discharge = min(-e,self.LOC[h],self.max_capacity*self.max_E_rate) # how much electricity can battery supply?
                 
                 self.LOC[h+1] = self.LOC[h]-discharge # discharge battery
