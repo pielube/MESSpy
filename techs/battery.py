@@ -76,7 +76,7 @@ class battery:
         else: # discharge battery (this logic allows to back-calculate the LOC[0], it's useful for long term storage systems)
             
             e = e/self.eta # how much energy is really required
-            if(self.used_capacity==self.max_capacity):  # the max_capacity has been reached, so LOC[h+1] can't become negative 
+            if(self.used_capacity==self.nom_capacity):  # the nom_capacity has been reached, so LOC[h+1] can't become negative 
                    
                 discharge = min(-e,self.LOC[h],self.max_capacity*self.max_E_rate) # how much electricity can battery supply?
                 
