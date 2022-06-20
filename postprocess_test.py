@@ -76,8 +76,30 @@ def LOC_plot(simulation_name):
             plt.xlabel('Time [hours]')
             plt.title(location_name+' '+tech)
             plt.show()
+            
+def storage_control(simulation_name,e_cost=0.30,H_cost=0.05):
+    with open('Results/LOC_'+simulation_name+'.pkl', 'rb') as f:
+        LOC = pickle.load(f)
         
-
+    for location_name in LOC:
+        if "battery" in LOC[location_name]:
+            
+            print(location_name)
+            print('battery initial LOC = '+str(LOC[location_name]['battery'][0])+' kWh')
+            print('battery final LOC = '+str(LOC[location_name]['battery'][-1])+' kWh')
+            
+            print('cost of electricity = '+str(round((LOC[location_name]['battery'][0]-LOC[location_name]['battery'][-1])*e_cost,2))+ ' €')
+            print("\n")
+            
+        if "H tank" in LOC[location_name]:
+            
+            print(location_name)
+            print('H tank initial LOC = '+str(round(LOC[location_name]['H tank'][0],2))+ ' kg')
+            print('H tank final LOC = '+str(round(LOC[location_name]['H tank'][-1],2))+' kg')
+            print('cost of hydrogen = '+str(round((LOC[location_name]['H tank'][0]-LOC[location_name]['H tank'][-1])*H_cost,2))+ ' €')
+            print("\n")
+            
+    
 def Flows(simulation_name,carrier='electricity'):
 
     pio.renderers.default='browser'
@@ -354,5 +376,5 @@ def csc_allocation_sum(simulation_name):
         print(f"{location_name} {int(from_csc)}  {int(to_csc)}")
    
     
-        
+   
         

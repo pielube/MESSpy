@@ -96,6 +96,7 @@ time4 = time.time()
 #pp.total_balances(study_case,'c1')
 
 pp.LOC_plot(study_case)
+pp.storage_control(study_case)
 
 pp.NPV_plot(study_case)
 
