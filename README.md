@@ -25,7 +25,7 @@ The model is developed in Python 3.9, and requires the following libraries:
 - pandas
 - os
 - pickle (results are saved in .pickle)
-- json (input files are .json)
+- json (input files are .json)\
 The following libraries are useful but not necessary, so you can not use them by giving up some functionality:
 - time (used only to check code speed)
 - pvlib (used to download PV production series based on typical meteorological year)
@@ -43,7 +43,7 @@ You can modofy them from a python interface or simply from notepad. Input_test/ 
 - economics.json defines economic parameters. More details can be found following comments in economics.py
 
 ### How to continue
-- We suggest to create your own run_dev.py, input_dev/ and post_process_dev.py and work on them instead of modify the existing file using as initial test. 
+We suggest to create your own run_dev.py, input_dev/ and post_process_dev.py and work on them instead of modify the existing file using as initial test. 
 
 ### Citing
 Please cite the original Journal publication if you use MESSpy in your research: 
