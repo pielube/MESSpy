@@ -37,7 +37,7 @@ The following libraries are useful but not necessary, so you can not use them by
 To get started, download the repository and simply run the "run_test.py" script
 
 ### Input files
-You can modofy them from a python interface or simply from notepad. Input_test/ contains contains a demonstration case study. 
+You can modify them from a python interface or simply from notepad. Input_test/ contains contains a demonstration case study. 
 - general.json defines the general input. More details can be found in rec.py following the early comments
 - structure.json defines the structure of the case study. Here you can define all the locations to consider, each technologie inside the locations and technology's parameters. More detalis can be found following comments in rec.py and location.py.
 - refcase.json This file has the same structure of structure.json and defines the "buiseness as usual" case, which is used as a reference case to calculate cash flows of the study case and make economis assesment.
