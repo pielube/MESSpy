@@ -6,33 +6,46 @@
 **Carlo Carcasci** Università degli Studi di Firenze, Italy
 
 ### Overview
+Multi-Energy System Simulator born to make techno-economic assesment of Renewable Energy Communities (REC), but not only.
+It simulate hour after hour the energy flows between technologies of each location inside the REC and calculate the Net Present Value of each considering relationship with the national grid and incentives. 
+It's an objected oriented program structured on three levels: REC, location and technologies.
+Models of different technologies are aviable and still under developing to include new feture and more realistic detalis. At the moment the following technologies can be included in the simulations:
+- Photovoltaic field
+- Battery
+- Electrolyzer
+- Fuel Cells
+- Hydrogen Tank
+- Heat Pumps
 
 ### Requirements
 The model is developed in Python 3.9, and requires the following libraries:
 - numpy
 - pandas
 - os
-- time
-- pickle
-- json
-- pvlib
-- matplotlib
-- plotly
+- pickle (results are saved in .pickle)
+- json (input files are .json)
+The following libraries are useful but not necessary, so you can not use them by giving up some functionality:
+- time (used only to check code speed)
+- pvlib (used to download PV production series based on typical meteorological year)
+- matplotlib (used in post_process)
+- plotly (used in post_process.flow())
 
 ### Quick start
 To get started, download the repository and simply run the "run_test.py" script
 
 ### Input files
-- general
-- structure
-- refcase
-- economics
+You can modofy them from a python interface or simply from notepad. Input_test/ contains contains a demonstration case study. 
+- general.json defines the general input. More details can be found in rec.py following the early comments
+- structure.json defines the structure of the case study. Here you can define all the locations to consider, each technologie inside the locations and technology's parameters. More detalis can be found following comments in rec.py and location.py.
+- refcase.json This file has the same structure of structure.json and defines the "buiseness as usual" case, which is used as a reference case to calculate cash flows of the study case and make economis assesment.
+- economics.json defines economic parameters. More details can be found following comments in economics.py
 
 ### How to continue
-- Create your own run_dev and input_dev
+- We suggest to create your own run_dev.py, input_dev/ and post_process_dev.py and work on them instead of modify the existing file using as initial test. 
 
 ### Citing
-Please cite the original Journal publication if you use MESSpy in your research: ..
+Please cite the original Journal publication if you use MESSpy in your research: 
+work in progress ...
 
 ### Related works
 - Renewable Energy Communities: a techno-economic assesment focusing on smart battery management
@@ -48,7 +61,7 @@ To contribute changes:
 - Commit your changes to the feature branch
 - Push the branch to GitHub
 - On GitHub, create a new pull request from the feature branch
-- When committing new changes, please also take care of checking code stability
+- When committing new changes, please also take care of checking code stability running run_test 
 - Your name will be added to the authors list
 
 ### License
