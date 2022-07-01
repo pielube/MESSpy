@@ -6,8 +6,8 @@
 **Carlo Carcasci** Università degli Studi di Firenze, Italy
 
 ### Overview
-Multi-Energy System Simulator born to make techno-economic assesment of Renewable Energy Communities (REC), but not only.
-It simulate hour after hour the energy flows between technologies of each location inside the REC and calculate the Net Present Value of each considering relationship with the national grid and incentives. 
+Multi-Energy System Simulator born to make techno-economic assesment of Renewable Energy Communities (REC), but can also be used to study a single building.
+It simulate hour after hour the energy flows between technologies of each location (building) inside the REC and calculate the Net Present Value of each considering relationship with the national grid and incentives. The program has been developed to be as generalizable as possible so it can be used to simulate even very different case studies and easily change their configuration or characteristics, technical and economic.
 It's an objected oriented program structured on three levels: REC, location and technologies.
 Models of different technologies are aviable and still under developing to include new feture and more realistic detalis. At the moment the following technologies can be included in the simulations:
 - Photovoltaic field
