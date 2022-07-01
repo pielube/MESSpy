@@ -25,7 +25,8 @@ The model is developed in Python 3.9, and requires the following libraries:
 - pandas
 - os
 - pickle (results are saved in .pickle)
-- json (input files are .json)\
+- json (input files are .json)
+
 The following libraries are useful but not necessary, so you can not use them by giving up some functionality:
 - time (used only to check code speed)
 - pvlib (used to download PV production series based on typical meteorological year)
