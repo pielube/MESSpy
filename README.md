@@ -52,16 +52,16 @@ You can modify them from a python interface or simply from notepad. Input_test/ 
 We suggest to create your own run_dev.py, input_dev/ and post_process_dev.py and work on them instead of modify the existing file using as initial test. 
 
 ## Published related works
-- Optimal sizing of a distributed energy system with thermal load electrification
-- The potential of simulating energy systems: The multi energy systems simulator model
-- Considerations on the impact of battery ageing estimation in the optimal sizing of solar home battery systems\
+- "Optimal sizing of a distributed energy system with thermal load electrification"
+- "The potential of simulating energy systems: The multi energy systems simulator model"
+- "Considerations on the impact of battery ageing estimation in the optimal sizing of solar home battery systems"
 
 Under review:
-- Assessment of hydrogen based long term electrical energy storage in residential energy systems
-- Renewable Energy Communities: a techno-economic assesment focusing on smart battery management
+- "Assessment of hydrogen based long term electrical energy storage in residential energy systems"
+- "Renewable Energy Communities: a techno-economic assesment focusing on smart battery management"
 
 ## Citing
-Please cite the original Journal publication if you use MESSpy in your research: 
+Please cite this work if you use MESSpy in your research: "Renewable Energy Communities: a techno-economic assesment focusing on smart battery management"
 
 ## Contribute
 This project is open-source. Interested users are therefore invited to test, comment or contribute to the tool. Submitting issues is the best way to get in touch with the development team, which will address your comment, question, or development request in the best possible way. We are also looking for contributors to the main code, willing to contibute to its capabilities, computational-efficiency, formulation, etc.
