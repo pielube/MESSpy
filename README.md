@@ -1,8 +1,8 @@
 # MESSpy - Multi-Energy System Simulator - Python version
 
 ![Picture1](https://user-images.githubusercontent.com/83342584/177151443-5f114dea-bbcc-4b9e-a92c-e6df4811e1d6.png)
-![image](https://user-images.githubusercontent.com/83342584/177153147-6522b18d-6ee3-4313-ae61-b56436e1f13b.png)
 ![image](https://user-images.githubusercontent.com/83342584/177151553-352c8149-e8eb-4e61-b877-ec1f10bda53b.png)
+![image](https://user-images.githubusercontent.com/83342584/177153147-6522b18d-6ee3-4313-ae61-b56436e1f13b.png)
 
 ### Authors
 **Pietro Lubello** Università degli Studi di Firenze, Italy\
