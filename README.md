@@ -61,8 +61,7 @@ Under review:
 - "Renewable Energy Communities: a techno-economic assesment focusing on smart battery management"
 
 ## Citing
-Please cite this work if you use MESSpy in your research:\
-"Renewable Energy Communities: a techno-economic assesment focusing on smart battery management"
+Please cite one of the previous work if you use MESSpy in your research
 
 ## Contribute
 This project is open-source. Interested users are therefore invited to test, comment or contribute to the tool. Submitting issues is the best way to get in touch with the development team, which will address your comment, question, or development request in the best possible way. We are also looking for contributors to the main code, willing to contibute to its capabilities, computational-efficiency, formulation, etc.
