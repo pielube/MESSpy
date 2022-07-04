@@ -38,6 +38,9 @@ The following libraries are useful but not necessary, so you can not use them by
 - matplotlib (used in post_process)
 - plotly (used in post_process.flow())
 
+A less up-to-date but fully functional and documented fortran version is also available:
+https://github.com/pielube/MESS-Fortran
+
 ## Quick start
 To get started, download the repository and simply run the "run_test.py" script
 
