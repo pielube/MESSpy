@@ -55,9 +55,11 @@ You can modify them from a python interface or simply from notepad. Input_test/ 
 We suggest to create your own run_dev.py, input_dev/ and post_process_dev.py and work on them instead of modify the existing file using as initial test. 
 
 ## Related works
-- "Optimal sizing of a distributed energy system with thermal load electrification"\ https://www.e3s-conferences.org/articles/e3sconf/abs/2020/57/e3sconf_ati2020_01006/e3sconf_ati2020_01006.html
-- "The potential of simulating energy systems: The multi energy systems simulator model"\ https://www.mdpi.com/1996-1073/14/18/5724
-- "Considerations on the impact of battery ageing estimation in the optimal sizing of solar home battery systems"\ https://www.sciencedirect.com/science/article/pii/S0959652621039299
+- "Optimal sizing of a distributed energy system with thermal load electrification"
+https://www.e3s-conferences.org/articles/e3sconf/abs/2020/57/e3sconf_ati2020_01006/e3sconf_ati2020_01006.html
+- "The potential of simulating energy systems: The multi energy systems simulator model"
+https://www.mdpi.com/1996-1073/14/18/5724
+- "Considerations on the impact of battery ageing estimation in the optimal sizing of solar home battery systems" https://www.sciencedirect.com/science/article/pii/S0959652621039299
 
 Under review:
 - "Assessment of hydrogen based long term electrical energy storage in residential energy systems"
