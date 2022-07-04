@@ -20,7 +20,7 @@ Models of different technologies are aviable and still under developing to inclu
 - Heat Pumps
 - Boiler
 
-## MESS needs the hourly load curves of the locations as input as a .csv file
+# MESS needs the hourly load curves of the locations as input as a .csv file
 These data is in some cases made available by one's electricity/gas supplier, in others it must be requested, and in others it cannot be obtained. In the latter case, programmes are needed to simulate the curves, which output .csv files to be entered later as MESS inputs.
 
 ### Requirements
