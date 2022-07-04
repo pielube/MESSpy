@@ -4,7 +4,7 @@
 
 ### Authors
 **Pietro Lubello**, **Mattia Pasqui**, **Alessandro Mati** and **Carlo Carcasci**\
-Università degli Studi di Firenze, Italy
+Department of Industrial Engineering (DIEF), University of Florence (UNIFI), Italy
 
 ## Overview
 Multi-Energy System Simulator born to make techno-economic assesment of Renewable Energy Communities (REC), but can also be used to study a single building.
