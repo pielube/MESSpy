@@ -1,5 +1,4 @@
 import numpy as np
-from CoolProp.CoolProp import PropsSI
 
 class H_tank:    
     
@@ -63,14 +62,3 @@ class H_tank:
                     
             return(discharge) # return hydrogen supplied
         
-    def LOC_volume(self):
-        """
-        [kg] --> [m3]
-        function of H tank pressure
-      
-        output : LOC [m3]
-        """
-        
-        LOC = self.LOC / PropsSI('D', 'T', 298.15, 'P', self.pressure*1e5, 'H2')  # H tank LOC [m3]    
-        
-        return(LOC)

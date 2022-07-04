@@ -124,7 +124,7 @@ class REC:
                 
             tech_name = 'H tank'
             if tech_name in self.locations[location_name].technologies:
-                LOC[location_name][tech_name] = self.locations[location_name].technologies[tech_name].LOC_volume()
+                LOC[location_name][tech_name] = self.locations[location_name].technologies[tech_name].LOC
         
         directory = './results'
         if not os.path.exists(directory):
