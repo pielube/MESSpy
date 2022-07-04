@@ -5,14 +5,13 @@
 **Alessandro Mati** Università degli Studi di Firenze, Italy\
 **Carlo Carcasci** Università degli Studi di Firenze, Italy
 
+![Picture1](https://user-images.githubusercontent.com/83342584/177151443-5f114dea-bbcc-4b9e-a92c-e6df4811e1d6.png)
+![image](https://user-images.githubusercontent.com/83342584/177151553-352c8149-e8eb-4e61-b877-ec1f10bda53b.png)
+
 ## Overview
 Multi-Energy System Simulator born to make techno-economic assesment of Renewable Energy Communities (REC), but can also be used to study a single building.
 It simulate hour after hour the energy flows between technologies of each location (building) inside the REC and calculate the Net Present Value of each considering relationship with the national grid and incentives. The program has been developed to be as generalizable as possible so it can be used to simulate even very different case studies and easily change their configuration or characteristics, technical and economic.
 The program is fully commented and can be easly used as black box by modifing input/ and working on results/ or also modifyng the code.
-
-![Picture1](https://user-images.githubusercontent.com/83342584/177151443-5f114dea-bbcc-4b9e-a92c-e6df4811e1d6.png)![image](https://user-images.githubusercontent.com/83342584/177151553-352c8149-e8eb-4e61-b877-ec1f10bda53b.png)
-
-
 
 It's an objected oriented program structured on three levels: REC, location and technologies.
 Models of different technologies are aviable and still under developing to include new feture and more realistic detalis. At the moment the following technologies can be included in the simulations:
