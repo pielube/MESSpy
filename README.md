@@ -20,7 +20,7 @@ Models of different technologies are aviable and still under developing to inclu
 - Heat Pumps
 - Boiler
 
-### MESS needs the hourly load curves of the locations as input as a .csv file
+### MESS needs the hourly load curves as input as a .csv file
 These data is in some cases made available by one's electricity/gas supplier, in others it must be requested, and in others it cannot be obtained. In the latter case, programmes are needed to simulate the curves, which output .csv files to be entered later as MESS inputs.
 
 ### Requirements
@@ -50,15 +50,15 @@ You can modify them from a python interface or simply from notepad. Input_test/ 
 ### How to continue
 We suggest to create your own run_dev.py, input_dev/ and post_process_dev.py and work on them instead of modify the existing file using as initial test. 
 
-### Citing
+## Citing
 Please cite the original Journal publication if you use MESSpy in your research: 
 work in progress ...
 
-### Related works
+## Related works
 - Renewable Energy Communities: a techno-economic assesment focusing on smart battery management
 - Work in progres ..
 
-### Contribute
+## Contribute
 This project is open-source. Interested users are therefore invited to test, comment or contribute to the tool. Submitting issues is the best way to get in touch with the development team, which will address your comment, question, or development request in the best possible way. We are also looking for contributors to the main code, willing to contibute to its capabilities, computational-efficiency, formulation, etc.
 
 To contribute changes:
