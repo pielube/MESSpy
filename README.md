@@ -3,10 +3,8 @@
 ![image](https://user-images.githubusercontent.com/83342584/177154238-c0e6b9fa-69b4-40c8-9b45-9d16919e079b.png)
 
 ### Authors
-**Pietro Lubello** Università degli Studi di Firenze, Italy\
-**Mattia Pasqui** Università degli Studi di Firenze, Italy\
-**Alessandro Mati** Università degli Studi di Firenze, Italy\
-**Carlo Carcasci** Università degli Studi di Firenze, Italy
+**Pietro Lubello** **Mattia Pasqui** **Alessandro Mati** **Carlo Carcasci**\
+Università degli Studi di Firenze, Italy
 
 ## Overview
 Multi-Energy System Simulator born to make techno-economic assesment of Renewable Energy Communities (REC), but can also be used to study a single building.
