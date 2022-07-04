@@ -51,7 +51,7 @@ You can modify them from a python interface or simply from notepad. Input_test/ 
 ### How to continue
 We suggest to create your own run_dev.py, input_dev/ and post_process_dev.py and work on them instead of modify the existing file using as initial test. 
 
-## Published related works
+## Related works
 - "Optimal sizing of a distributed energy system with thermal load electrification"
 - "The potential of simulating energy systems: The multi energy systems simulator model"
 - "Considerations on the impact of battery ageing estimation in the optimal sizing of solar home battery systems"
