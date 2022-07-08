@@ -22,7 +22,9 @@ Models of different technologies are aviable and still under developing to inclu
 - Boiler
 
 ### MESS needs the hourly load curves as input as a .csv file
-These data is in some cases made available by one's electricity/gas supplier, in others it must be requested, and in others it cannot be obtained. In the latter case, programmes are needed to simulate the curves, which output .csv files to be entered later as MESS inputs.
+Depending on the type of meeter installed, these data is in some cases made available by electricity/gas supplier, in others it must be requested, and in others it cannot be obtained. In the latter case, programmes are needed to simulate the curves, which output .csv files to be entered later as MESS inputs. Lot of programs are available, authors recommend:
+bottom-up model: https://github.com/RAMP-project/RAMP
+top-down model: https://github.com/PasquinoFI/LoBi/blob/main/README.md
 
 ### Requirements
 The model is developed in Python 3.9, and requires the following libraries:
