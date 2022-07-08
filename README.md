@@ -1,5 +1,5 @@
 # MESSpy - Multi-Energy System Simulator
-An open-source model for simulating Renewable Energy Communities and much more
+An open-source model for simulating Renewable Energy Communities and much more ...
 
 ![image](https://user-images.githubusercontent.com/83342584/177154238-c0e6b9fa-69b4-40c8-9b45-9d16919e079b.png)
 
