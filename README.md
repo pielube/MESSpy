@@ -66,7 +66,7 @@ https://www.mdpi.com/1996-1073/14/18/5724
 
 Under review:
 - "Assessment of hydrogen based long term electrical energy storage in residential energy systems"
-- "Renewable Energy Communities: a techno-economic assesment focusing on smart battery management"
+- "Renewable Energy Communities: a techno-economic assessment focusing on smart battery management"
 
 ## Citing
 Please cite previous works if you use MESSpy in your research
