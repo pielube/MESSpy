@@ -20,7 +20,10 @@ class REC:
         general : dictionary
             'simulation years': number of years to be simulated
             'latitude': float
-            'longitude': float        
+            'longitude': float     
+            'weather': if "TMY" weather database based on typical meteorological year is used
+                if "filename.csv" a different database can be used (upload it in input/weather)
+                in this case 'latitude' and 'longitude' are ignored
                         
         output : REC object able to:
             simulate the energy flows of each present locations .REC_simulation

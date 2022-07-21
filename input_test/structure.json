@@ -18,7 +18,8 @@
         "tilt": 30,
         "azimuth": 0,
         "losses": 0.1,
-        "peakP": 3
+        "peakP": 3,
+        "serie": "TMY"
 		},
 	"battery":
 	         {
@@ -50,7 +51,8 @@
         "tilt": 30,
         "azimuth": 0,
         "losses": 0.1,
-        "peakP": 1.5
+        "peakP": 1.5,
+        "serie": "TMY"
 		},
     "electrolyzer":
 	              {
