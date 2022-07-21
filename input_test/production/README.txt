@@ -1,0 +1,2 @@
+series name_PV_TMY.csv are automatically generated based on typical metereological year from PVgis
+is you want to use different production series you have to add them in this folder and to recall them in structure.json (see pv.py _init_)

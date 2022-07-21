@@ -27,7 +27,7 @@ class REC:
             record REC energy balances .energy_balance (electricity, heat, cool, gas and hydrogen) 
         """
         
-        self.weather = self.weather_generation(general) # check if metereological data have to been downloaded from PVgis or has already been done in a previous simulation
+        self.weather = self.weather_generation(general,path) # check if metereological data have to been downloaded from PVgis or has already been done in a previous simulation
 
         self.locations = {} # initialise REC locations dictionary
         self.energy_balance = {'electricity': {}, 'heat': {}, 'cool': {}, 'hydrogen': {}, 'gas': {}} # initialise energy balances dictionaries of each energy carrier
@@ -156,7 +156,7 @@ class REC:
                     self.locations[location_name].technologies[tech_name].LOC = np.zeros(self.simulation_hours+1) # array level of Charge 
                     self.locations[location_name].technologies[tech_name].used_capacity = 0 # used capacity <= max_capacity   
     
-    def weather_generation(self,general):
+    def weather_generation(self,general,path):
         """
         
         If the meteorological data have not already been downloaded and saved in a previous simulation, 
@@ -188,8 +188,8 @@ class REC:
         else:
             check = False
                                 
-        if check and os.path.exists('previous_simulation/weather.csv'): # if the prevoius weather series can be used
-            weather = pd.read_csv('previous_simulation/weather.csv')
+        if check and os.path.exists(path+'/weather/weather_TMY.csv'): # if the prevoius weather series can be used
+            weather = pd.read_csv(path+'/weather/weather_TMY.csv')
         
         else: # if new weather data must be downoladed from PV gis
             print('downolading typical metereological year from PVgis')   
@@ -202,7 +202,7 @@ class REC:
             longitude = general['longitude']
 
             weather = pvlib.iotools.get_pvgis_tmy(latitude, longitude, map_variables=True)[0]
-            weather.to_csv('previous_simulation/weather.csv')
+            weather.to_csv(path+'/weather/weather_TMY.csv')
 
         return(weather)
    

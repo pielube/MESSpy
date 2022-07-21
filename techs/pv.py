@@ -6,7 +6,7 @@ import pickle
 
 class PV:    
     
-    def __init__(self,parameters,general,simulation_hours,location_name):
+    def __init__(self,parameters,general,simulation_hours,location_name,path):
         """
         Create a PV object based on PV production taken from PVGIS data 
     
@@ -52,9 +52,9 @@ class PV:
         else:
             check = False
                                 
-        name_serie = location_name + 'PV.csv'
-        if check and os.path.exists('previous_simulation/'+name_serie): # if the prevoius pv serie can be used
-            pv = pd.read_csv('previous_simulation/'+name_serie)['P'].to_numpy()
+        name_serie = location_name + '_PV_TMY.csv'
+        if check and os.path.exists(path+'/production/'+name_serie): # if the prevoius pv serie can be used
+            pv = pd.read_csv(path+'/production/'+name_serie)['P'].to_numpy()
         
         else: # if a new pv serie must be downoladed from PV gis
             print('downolading a new PV serie from PVgis for '+location_name)   
@@ -86,7 +86,7 @@ class PV:
             pv = pv[refindex]
         
             series_frame = pd.DataFrame(pv)
-            series_frame.to_csv('previous_simulation/'+name_serie)
+            series_frame.to_csv(path+'/production/'+name_serie)
         
         peakP = parameters['peakP']
         pv = pv * peakP/1000        

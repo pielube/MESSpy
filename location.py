@@ -63,7 +63,7 @@ class location:
             self.energy_balance['heat']['boiler_ng'] = np.zeros(self.simulation_hours) # array boiler_ng heat balance 
 
         if 'PV' in system:
-            self.technologies['PV'] = PV(system['PV'],general,self.simulation_hours,self.name) # PV object created and add to 'technologies' dictionary
+            self.technologies['PV'] = PV(system['PV'],general,self.simulation_hours,self.name,path) # PV object created and add to 'technologies' dictionary
             self.energy_balance['electricity']['PV'] = np.zeros(self.simulation_hours) # array PV electricity balance
             
         if 'battery' in system:
