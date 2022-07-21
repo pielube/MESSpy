@@ -1,6 +1,7 @@
 import numpy as np
 import pickle
 import os
+import pvlib #https://github.com/pvlib
 from location import location
 
 class REC:
@@ -34,7 +35,7 @@ class REC:
         for location_name in structure: # location_name are the keys of 'structure' dictionary and will be used as keys of REC 'locations' dictionary too
             self.locations[location_name] = location(structure[location_name],general,location_name,path) # create location object and add it to REC 'locations' dictionary                
             
-                  
+            
     def REC_energy_simulation(self):
         """
         Simulate the REC every hour
@@ -153,5 +154,53 @@ class REC:
                     self.locations[location_name].technologies[tech_name].LOC = np.zeros(self.simulation_hours+1) # array level of Charge 
                     self.locations[location_name].technologies[tech_name].used_capacity = 0 # used capacity <= max_capacity   
     
+# =============================================================================
+#     def weather(general):
+#         """
+#         
+#         If the meteorological data have not already been downloaded and saved in a previous simulation, 
+#         then they are downloaded from PVgis considering the typical meteorological year.
+# 
+#         Parameters
+#         ----------
+#         general : see REC __init___
+# 
+#         Returns
+#         -------
+#         previous_simulation/files.csv
+# 
+#         """
+#         
+#         check = True # True if no PV parameters are changed from the old simulation
+#         
+#         if os.path.exists('previous_simulation/general_'+location_name+'.pkl'):
+#             with open('previous_simulation/general_'+location_name+'.pkl', 'rb') as f:
+#                 ps_general = pickle.load(f) # previous simulation general
+#             par_to_check = ['latitude','longitude']
+#             for par in par_to_check:
+#                 if ps_general[par] != general[par]:
+#                     check = False  
+#         else:
+#             check = False
+#                                 
+#             
+#             
+#         name_serie = location_name + 'PV.csv'
+#         
+#         if check and os.path.exists('previous_simulation/'+name_serie): # if the prevoius pv serie can be used
+#             pv = pd.read_csv('previous_simulation/'+name_serie)['P'].to_numpy()
+#         
+#         else: # if a new pv serie must be downoladed from PV gis
+#             print('downolading a new PV serie from PVgis for '+location_name)   
+#             
+# 
+#                 
+#             with open('previous_simulation/general_'+location_name+'.pkl', 'wb') as f:
+#                 pickle.dump(general, f)               
+#                 
+#             latitude = general['latitude']
+#             longitude = general['longitude']
+# =============================================================================
+
         
    

@@ -42,8 +42,8 @@ class PV:
         else:
             check = False
       
-        if os.path.exists('previous_simulation/general_'+location_name+'.pkl'):
-            with open('previous_simulation/general_'+location_name+'.pkl', 'rb') as f:
+        if os.path.exists('previous_simulation/general.pkl'):
+            with open('previous_simulation/general.pkl', 'rb') as f:
                 ps_general = pickle.load(f) # previous simulation general
             par_to_check = ['latitude','longitude']
             for par in par_to_check:
@@ -63,7 +63,7 @@ class PV:
             with open('previous_simulation/parameters_'+location_name+'.pkl', 'wb') as f:
                 pickle.dump(parameters, f) 
                 
-            with open('previous_simulation/general_'+location_name+'.pkl', 'wb') as f:
+            with open('previous_simulation/general.pkl', 'wb') as f:
                 pickle.dump(general, f)               
                 
             latitude = general['latitude']
