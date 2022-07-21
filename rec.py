@@ -1,6 +1,7 @@
 import numpy as np
 import pickle
 import os
+import pandas as pd
 import pvlib #https://github.com/pvlib
 from location import location
 
@@ -25,6 +26,8 @@ class REC:
             simulate the energy flows of each present locations .REC_simulation
             record REC energy balances .energy_balance (electricity, heat, cool, gas and hydrogen) 
         """
+        
+        self.weather = self.weather_generation(general) # check if metereological data have to been downloaded from PVgis or has already been done in a previous simulation
 
         self.locations = {} # initialise REC locations dictionary
         self.energy_balance = {'electricity': {}, 'heat': {}, 'cool': {}, 'hydrogen': {}, 'gas': {}} # initialise energy balances dictionaries of each energy carrier
@@ -34,8 +37,7 @@ class REC:
         ### create location objects and add them to the REC locations dictionary
         for location_name in structure: # location_name are the keys of 'structure' dictionary and will be used as keys of REC 'locations' dictionary too
             self.locations[location_name] = location(structure[location_name],general,location_name,path) # create location object and add it to REC 'locations' dictionary                
-            
-            
+                        
     def REC_energy_simulation(self):
         """
         Simulate the REC every hour
@@ -154,53 +156,53 @@ class REC:
                     self.locations[location_name].technologies[tech_name].LOC = np.zeros(self.simulation_hours+1) # array level of Charge 
                     self.locations[location_name].technologies[tech_name].used_capacity = 0 # used capacity <= max_capacity   
     
-# =============================================================================
-#     def weather(general):
-#         """
-#         
-#         If the meteorological data have not already been downloaded and saved in a previous simulation, 
-#         then they are downloaded from PVgis considering the typical meteorological year.
-# 
-#         Parameters
-#         ----------
-#         general : see REC __init___
-# 
-#         Returns
-#         -------
-#         previous_simulation/files.csv
-# 
-#         """
-#         
-#         check = True # True if no PV parameters are changed from the old simulation
-#         
-#         if os.path.exists('previous_simulation/general_'+location_name+'.pkl'):
-#             with open('previous_simulation/general_'+location_name+'.pkl', 'rb') as f:
-#                 ps_general = pickle.load(f) # previous simulation general
-#             par_to_check = ['latitude','longitude']
-#             for par in par_to_check:
-#                 if ps_general[par] != general[par]:
-#                     check = False  
-#         else:
-#             check = False
-#                                 
-#             
-#             
-#         name_serie = location_name + 'PV.csv'
-#         
-#         if check and os.path.exists('previous_simulation/'+name_serie): # if the prevoius pv serie can be used
-#             pv = pd.read_csv('previous_simulation/'+name_serie)['P'].to_numpy()
-#         
-#         else: # if a new pv serie must be downoladed from PV gis
-#             print('downolading a new PV serie from PVgis for '+location_name)   
-#             
-# 
-#                 
-#             with open('previous_simulation/general_'+location_name+'.pkl', 'wb') as f:
-#                 pickle.dump(general, f)               
-#                 
-#             latitude = general['latitude']
-#             longitude = general['longitude']
-# =============================================================================
-
+    def weather_generation(self,general):
+        """
         
+        If the meteorological data have not already been downloaded and saved in a previous simulation, 
+        then they are downloaded from PVgis considering the typical meteorological year.
+
+        Parameters
+        ----------
+        general : see REC __init___
+
+        Returns
+        -------
+        previous_simulation/files.csv
+
+        """
+        
+        check = True # True if no PV parameters are changed from the old simulation
+        
+        directory = './previous_simulation'
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+       
+        if os.path.exists('previous_simulation/general.pkl'):
+            with open('previous_simulation/general.pkl', 'rb') as f:
+                ps_general = pickle.load(f) # previous simulation general
+            par_to_check = ['latitude','longitude']
+            for par in par_to_check:
+                if ps_general[par] != general[par]:
+                    check = False  
+        else:
+            check = False
+                                
+        if check and os.path.exists('previous_simulation/weather.csv'): # if the prevoius weather series can be used
+            weather = pd.read_csv('previous_simulation/weather.csv')
+        
+        else: # if new weather data must be downoladed from PV gis
+            print('downolading typical metereological year from PVgis')   
+            
+            # save new parameters in previous_simulation            
+            with open('previous_simulation/general.pkl', 'wb') as f:
+                pickle.dump(general, f)               
+                
+            latitude = general['latitude']
+            longitude = general['longitude']
+
+            weather = pvlib.iotools.get_pvgis_tmy(latitude, longitude, map_variables=True)[0]
+            weather.to_csv('previous_simulation/weather.csv')
+
+        return(weather)
    
