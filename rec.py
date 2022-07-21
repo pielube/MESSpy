@@ -18,9 +18,7 @@ class REC:
         general : dictionary
             'simulation years': number of years to be simulated
             'latitude': float
-            'longitude': float
-            'reference year': int year [2005 - 2015] used for output data and to get data from PVGIS if TMY = False
-            'TMY': bool true if data of TMY is to be used              
+            'longitude': float        
                         
         output : REC object able to:
             simulate the energy flows of each present locations .REC_simulation
