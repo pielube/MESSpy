@@ -6,6 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import plotly.io as pio
 import plotly.graph_objects as go
+import pandas as pd
 
 
 def total_balances(simulation_name,loc):
@@ -57,6 +58,35 @@ def NPV_plot(study_case):
     #plt.ylim(-15000,15000)
     plt.show()
     
+    
+def REC_electricity_balance(simulation_name):
+    
+    with open('Results/balances_'+simulation_name+'.pkl', 'rb') as f:
+        balances = pickle.load(f)
+        
+    df = pd.DataFrame(0.00,columns=["Value [kWh]","Value / production [%]","Value / demand [%]"],
+                      index=["SC","CSC","Into MV grid","From MV grid","Production","Demand"])
+    
+    df.loc['CSC']['Value [kWh]'] = sum(balances['REC']['electricity']['collective self consumption'])
+    df.loc['Into MV grid']['Value [kWh]'] = -sum(balances['REC']['electricity']['into grid'])  -df.loc['CSC']['Value [kWh]']
+    df.loc['From MV grid']['Value [kWh]'] = sum(balances['REC']['electricity']['from grid']) -df.loc['CSC']['Value [kWh]']
+    
+    for loc in balances:
+        if loc != 'REC':   
+            balance = balances[loc]['electricity']
+            df.loc['Demand']['Value [kWh]'] += -sum(balance['demand'])
+            if 'PV' in balance:
+                df.loc['Production']['Value [kWh]'] += sum(balance['PV'])
+                
+    df.loc['SC']['Value [kWh]'] = df.loc['Demand']['Value [kWh]'] - df.loc['From MV grid']['Value [kWh]'] - df.loc['CSC']['Value [kWh]']
+    
+    for b in df.index:
+        df.loc[b]['Value / production [%]'] = df.loc[b]['Value [kWh]'] / df.loc['Production']['Value [kWh]'] *100
+        df.loc[b]['Value / demand [%]'] = df.loc[b]['Value [kWh]'] / df.loc['Demand']['Value [kWh]'] *100
+        
+    print('\n REC electricity balances: '+simulation_name+'\n') 
+    print(df.round(decimals=2))
+    return(df.round(decimals=2))
     
 def LOC_plot(simulation_name):
       

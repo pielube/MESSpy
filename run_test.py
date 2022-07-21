@@ -94,9 +94,10 @@ time4 = time.time()
 #pp.total_balances(study_case, 'p1')
 #pp.total_balances(study_case,'p2')
 #pp.total_balances(study_case,'c1')
+pp.REC_electricity_balance(study_case)
 
 pp.LOC_plot(study_case)
-pp.storage_control(study_case)
+#pp.storage_control(study_case)
 
 pp.NPV_plot(study_case)
 
@@ -107,10 +108,9 @@ pp.hourly_balances(study_case,'c1', 2, 3)
 pp.csc_allocation_sum(study_case)
 
 pp.Flows(study_case) # if it doesn't work try to open the file.html directrly from the results/ folder
-pp.Flows(study_case) # if it doesn't work try to open the file.html directrly from the results/ folder
 
 time5 = time.time()  
-print('Post process performend in {:.2f} seconds'.format(time5-time4))
+print('\nPost process performend in {:.2f} seconds'.format(time5-time4))
 
 
 
