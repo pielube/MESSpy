@@ -34,12 +34,9 @@ The model is developed in Python 3.9, and requires the following libraries:
 - os
 - pickle (results are saved in .pickle)
 - json (input files are .json)
-
-The following libraries are useful but not necessary, so you can not use them by giving up some functionality:
 - time (used only to check code speed)
-- pvlib (used to download PV production series based on typical meteorological year)
+- pvlib (used to download PV production series and weather data based on typical meteorological year)
 - matplotlib (used in post_process)
-- plotly (used in post_process.flow())
 
 A less up-to-date but fully functional and documented fortran version is also available:
 https://github.com/pielube/MESS-Fortran
