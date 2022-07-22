@@ -4,10 +4,7 @@ Post processing
 import pickle
 import numpy as np
 import matplotlib.pyplot as plt
-import plotly.io as pio
-import plotly.graph_objects as go
 import pandas as pd
-
 
 def total_balances(simulation_name,loc):
 
@@ -130,164 +127,6 @@ def storage_control(simulation_name,e_cost=0.30,H_cost=0.05):
             print("\n")
             
     
-def Flows(simulation_name,carrier='electricity'):
-
-    pio.renderers.default='browser'
-    with open('Results/balances_'+simulation_name+'.pkl', 'rb') as f:
-        balances = pickle.load(f)
-    
-    ### data prepearing
-    node_label = ["","","from grid","to grid"]
-    node_color = ['silver','silver','gray','gray']
-    source = []
-    target = []
-    value = []
-    link_color = []
-    link_label = []
-        
-    ### add from grid
-    node_number = 4
-    for loc in balances:
-        if loc != 'REC':
-            
-            node_color.append('brown')
-            node_label.append('load '+loc)
-            
-            source.append(0)
-            target.append(node_number)
-            value.append(np.sum(balances[loc][carrier]['grid'], where = balances[loc][carrier]['grid'] > 0))
-            link_color.append('tomato')
-            link_label.append('from grid')
-            node_number += 1
-    value.append(sum(value)-sum(balances['REC'][carrier]['collective self consumption']))
-    source.append(2)
-    target.append(0)
-    link_color.append('tomato')
-    link_label.append('from grid')
-    
-    ### add to grid and self consumption
-    node_number2 = 4
-    for loc in balances:
-        if loc != 'REC':
-            if 'PV' in balances[loc][carrier]:
-            
-                node_color.append('skyblue')
-                node_label.append('PV '+loc)
-                
-                # into grid
-                source.append(node_number)
-                target.append(1)
-                value.append(- (np.sum(balances[loc][carrier]['grid'], where = balances[loc][carrier]['grid'] < 0)))
-                link_color.append('cornflowerblue')
-                link_label.append('to grid')
-                
-                # self consumption
-                source.append(node_number)
-                target.append(node_number2)
-                
-                if 'battery' in balances[loc][carrier]:
-                    value.append(-np.sum(balances[loc][carrier]['demand']) - np.sum(balances[loc][carrier]['grid'], where = balances[loc][carrier]['grid'] > 0) -np.sum(balances[loc][carrier]['battery'], where = balances[loc][carrier]['battery'] > 0))
-                    link_color.append('yellowgreen')
-                    link_label.append('self consumption (directly from PV)')
-                    node_number += 1
-                    
-                    node_color.append('plum')
-                    node_label.append('battery '+loc)
-                    
-                    source.append(node_number)
-                    target.append(node_number2)
-                    value.append(np.sum(balances[loc][carrier]['battery'], where = balances[loc][carrier]['battery'] > 0))
-                    link_color.append('purple')
-                    link_label.append('self consumption (from battery)')
-                    
-                    source.append(node_number-1)
-                    target.append(node_number)
-                    value.append(-np.sum(balances[loc][carrier]['battery'], where = balances[loc][carrier]['battery'] < 0))
-                    link_color.append('violet')
-                    link_label.append('to battery')   
-                    
-                    node_number += 1
-                    
-                elif 'electrolyzer' in balances[loc][carrier] and 'fuel cell' in balances[loc][carrier]:
-                    value.append(-np.sum(balances[loc][carrier]['demand']) - np.sum(balances[loc][carrier]['grid'], where = balances[loc][carrier]['grid'] > 0) -np.sum(balances[loc][carrier]['fuel cell']))
-                    link_color.append('yellowgreen')
-                    link_label.append('self consumption (directly from PV)')
-                    node_number += 1
-                    
-                    node_color.append('sandybrown')
-                    node_label.append('hydrogen '+loc)
-                    
-                    source.append(node_number)
-                    target.append(node_number2)
-                    value.append(np.sum(balances[loc][carrier]['fuel cell']))
-                    link_color.append('peru')
-                    link_label.append('self consumption (from fuel cell)')
-                    
-                    source.append(node_number-1)
-                    target.append(node_number)
-                    value.append(-np.sum(balances[loc][carrier]['electrolyzer']))
-                    link_color.append('chocolate')
-                    link_label.append('to electrolyzer')   
-                    
-                    node_number += 1
-                                        
-                else:
-                    value.append(-np.sum(balances[loc][carrier]['demand']) - np.sum(balances[loc][carrier]['grid'], where = balances[loc][carrier]['grid'] > 0))
-                
-                    link_color.append('yellowgreen')
-                    link_label.append('self consumption')
-                    node_number += 1
-                    
-                    
-                    
-                node_number2 += 1 # load
-                
-    ### LV to MV
-    source.append(1)
-    source.append(1)
-    target.append(0)
-    target.append(3)
-    value.append(sum(balances['REC'][carrier]['collective self consumption'])) 
-    value.append(- np.sum(balances['REC'][carrier]['into grid'])-sum(balances['REC'][carrier]['collective self consumption']))   
-    
-    link_color.append('gold')
-    link_label.append('collective self consumption')
-    
-    link_color.append('orange')
-    link_label.append('to grid')
-                
-    fig = go.Figure(data=[go.Sankey(
-        valueformat = ".1f",
-        valuesuffix = " kWh",
-        arrangement = "snap",
-        node = {
-                'thickness': 30,
-                #'line': dict(color = "black", width = 0.5),
-                'label': node_label,
-                'color': node_color,
-                #["x": [0.7,0.3,1,0],
-                #"y": [0.1,0.1,0.1,0.1], # stranamente è ribaltata rispetto ad annotations
-                'pad': 100
-                },
-        link = {
-                'source': source, # indices correspond to labels, eg A1, A2, A1, B1, ...
-                'target': target,
-                'value': value,
-                'color': link_color,
-                'label': link_label
-                })])
-    
-    fig.update_layout(title_text="Energy flows", font_size=25,
-                      annotations=[dict(
-                          x=0.,
-                          y=0.,
-                          text='',
-                          showarrow=False
-                          )] )
-    fig.write_html(f"Results/energy_flows_{simulation_name}.html")
-    fig.show()
-
- 
 def hourly_balances(simulation_name,location_name,first_day,last_day,carrier='electricity',width=0.9,collective=0):
     
         with open('Results/balances_'+simulation_name+'.pkl', 'rb') as f:
@@ -383,8 +222,7 @@ def hourly_balances(simulation_name,location_name,first_day,last_day,carrier='el
             ax.bar(x, np.array(from_csc), width, label='collective self consumption',  color='gold')
            # plt.ylim(0,3.3)
         
-        #plt.title(location_name+' '+str(first_day))
-        plt.annotate("PBSm",(20,-1.5))
+        plt.title(location_name+' days '+str(first_day)+'-'+str(last_day))
         plt.plot(x,load,'k',label='load')     
         plt.legend(ncol=2, bbox_to_anchor=(1.2, 0))
         plt.ylabel("Hourly energy [kWh/h] ")

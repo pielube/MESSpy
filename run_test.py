@@ -1,10 +1,3 @@
-from rec import REC
-import time
-import os
-import json
-
-#%%
-
 """
 MESSpy - Run_test
 
@@ -12,15 +5,23 @@ doon't work on this script:
     you should create your own run_dev.py and input_dev/ 
 """
 
-path = r'./input_test' # change the put with r'./input_dev' if you are working on your own run_dev
+#%% ###########################################################################
+"""
+PRE PROCESSING
+==============
+"""
+
+from rec import REC
+import time
+import os
+import json
+
+path = r'./input_test' # change the path with r'./input_dev' if you are working on your own run_dev
 
 study_case = 'REC_test' # str name for results file.pkl
 reference_case = 'buiseness as usual' # str name for results file.pkl
 
-
-"""
-Input files
-"""
+# input files:
 
 file = 'structure.json'
 filepath = os.path.join(path,file)
@@ -42,6 +43,11 @@ time2 = time.time()
 print('Structure created in {:.2f} seconds'.format(time2-time1))
 
 #%% ###########################################################################
+"""
+SOLVER
+======
+"""
+
 print('Running the model..')
 time2 = time.time()
 
@@ -54,6 +60,11 @@ time3 = time.time()
 print('Model runned in {:.2f} seconds'.format(time3-time2))
   
 #%% ###########################################################################
+"""
+POST PROCESS - ECONOMIC ANALYSIS
+================================
+"""
+
 from economics import NPV
 print('Economic analysis..') 
 time3 = time.time()
@@ -79,7 +90,12 @@ NPV(structure,structure0,study_case,reference_case,economic_data,general['simula
 time4 = time.time()  
 print('Eonomic analysis performend in {:.2f} seconds'.format(time4-time3))
 
-#%% post process
+#%% ###########################################################################
+"""
+POST PROCESS - PLOTTING
+================================
+"""
+
 import postprocess_test as pp
 #import postprocess_dev as pp
 
@@ -105,9 +121,7 @@ pp.hourly_balances(study_case,'p1', 2, 3)
 pp.hourly_balances(study_case,'p2', 2, 3)
 pp.hourly_balances(study_case,'c1', 2, 3)
 
-pp.csc_allocation_sum(study_case)
-
-pp.Flows(study_case) # if it doesn't work try to open the file.html directrly from the results/ folder
+#pp.csc_allocation_sum(study_case)
 
 time5 = time.time()  
 print('\nPost process performend in {:.2f} seconds'.format(time5-time4))
