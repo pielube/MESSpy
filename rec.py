@@ -58,7 +58,7 @@ class REC:
         
         for h in range(self.simulation_hours): # h: hour to simulate from 0 to simulation_hours 
             for location_name in self.locations: # each locations 
-                self.locations[location_name].loc_energy_simulation(h) # simulate a single location updating its energy balances
+                self.locations[location_name].loc_energy_simulation(h,self.weather) # simulate a single location updating its energy balances
                 
             ### solve electricity grid 
                 if self.locations[location_name].energy_balance['electricity']['grid'][h] < 0:
