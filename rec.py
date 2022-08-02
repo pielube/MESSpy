@@ -27,13 +27,13 @@ class REC:
                         
         output : REC object able to:
             simulate the energy flows of each present locations .REC_simulation
-            record REC energy balances .energy_balance (electricity, heat, cool, gas and hydrogen) 
+            record REC energy balances .energy_balance (electricity, heat, gas and hydrogen) 
         """
         
         self.weather = self.weather_generation(general,path) # check if metereological data have to been downloaded from PVgis or has already been done in a previous simulation
 
         self.locations = {} # initialise REC locations dictionary
-        self.energy_balance = {'electricity': {}, 'heat': {}, 'cool': {}, 'hydrogen': {}, 'gas': {}} # initialise energy balances dictionaries of each energy carrier
+        self.energy_balance = {'electricity': {}, 'heat': {}, 'hydrogen': {}, 'gas': {}} # initialise energy balances dictionaries of each energy carrier
         
         self.simulation_hours = int(general['simulation years']*8760) # hourly timestep  
         

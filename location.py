@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from techs import heatpump,inertialtank,boiler_el,boiler_ng,PV,battery,H_tank,fuel_cell,electrolyzer
+from techs import heatpump,boiler_el,boiler_ng,PV,battery,H_tank,fuel_cell,electrolyzer
 
 
 class location:
@@ -33,7 +33,7 @@ class location:
         
         self.name = location_name
         self.technologies = {} # initialise technologies dictionary
-        self.energy_balance = {'electricity': {}, 'heat': {}, 'cool': {}, 'hydrogen': {}, 'gas': {}} # initialise energy balances dictionaries
+        self.energy_balance = {'electricity': {}, 'heat': {}, 'hydrogen': {}, 'gas': {}} # initialise energy balances dictionaries
        
         self.simulation_hours = int(general['simulation years']*8760) # hourly timestep     
         
@@ -48,15 +48,10 @@ class location:
                 self.energy_balance[carrier]['demand'] = - np.tile(pd.read_csv(path+'/loads/'+system['demand'][carrier])['0'].to_numpy(),int(self.simulation_hours/8760)) # hourly energy carrier needed for the entire simulation
 
         if 'heatpump' in system:
-            self.technologies['heatpump'] = heatpump(system['heatpump'],self.simulation_hours) # heatpump object created and add to 'technologies' dictionary
+            self.technologies['heatpump'] = heatpump(system['heatpump']) # heatpump object created and add to 'technologies' dictionary
             self.energy_balance['electricity']['heatpump'] = np.zeros(self.simulation_hours) # array heatpump electricity balance
             self.energy_balance['heat']['heatpump'] = np.zeros(self.simulation_hours) # array heatpump heat balance
-            self.energy_balance['cool']['heatpump'] = np.zeros(self.simulation_hours) # array heatpump cool balance
-            
-        if 'inertial tank' in system:
-            self.technologies['inertial tank'] = inertialtank(system['inertial tank']) # inertial tank object created and add to 'technologies' dictionary
             self.energy_balance['heat']['inertial tank'] = np.zeros(self.simulation_hours) # array inertial tank heat balance
-            self.energy_balance['cool']['inertial tank'] = np.zeros(self.simulation_hours) # array inertial tank cool balance
             
         if 'boiler_el' in system:
             self.technologies['boiler_el'] = boiler_el(system['boiler_el']) # boiler_el object created and add to 'technologies' dictionary
@@ -101,29 +96,17 @@ class location:
         output : updating of location energy balances
         """
         
-        EB = {'electricity': 0, 'heat': 0, 'hydrogen': 0, 'gas': 0, 'cool': 0} # initialise Energy Balances     
+        EB = {'electricity': 0, 'heat': 0, 'hydrogen': 0, 'gas': 0} # initialise Energy Balances     
         
         for carrier in EB: # for each energy carrier
             if 'demand' in self.energy_balance[carrier]:                
                 EB[carrier] += self.energy_balance[carrier]['demand'][h] # energy balance update: energy demand(-) # n.b cooling demand (+)
                         
-        if 'inertial tank' in self.technologies: 
-            # checking intertial tank mode
-            self.technologies['intertial tank'].mode = self.technologies['heatpump'].mode # shift intertial tank mode to "heat" or "cool"
-            # use inertial tank to satisfy cool or heat demand (depending on heatpump.mode = "heat" or "cool")
-            self.energy_balance[self.technologies['inertial_tank'].mode]['inertial tank'][h] = self.technologies['inertial tank'].use(EB[self.technologies['intertialtank'].mode]) # heat (+) or cool (-) supplied by the inertial tank
-            EB[self.technologies['inertial tank'].mode] += self.energy_balance[self.technologies['inertial tank'].mode]['inertial tank'][h] # heat or cool balance update: + heat or - cool supplied by the inertial tank
-            
         if 'heatpump' in self.technologies:         
-            # checking heatpump mode
-            if EB['heat'] < 0: # if heat is required 
-                self.technologies['heatpump'].mode = "heat" # shift heatpump mode to "heat"
-            if EB['cool'] > 0: # if cool is required 
-                self.technologies['heatpump'].mode = "cool" # shift heatpump mode to "cool"
-            # use heatpump to satisfy cool or heat demand (depending on heatpump.mode = "heat" or "cool") 
-            self.energy_balance['electricity']['heatpump'][h], self.energy_balance[self.technologies['heatpump'].mode]['heatpump'][h] = self.technologies['heatpump'].use(self.technologies['inertial tank'].t, weather['temp_air'][h],'requested',EB[self.technologies['heatpump'].mode]) 
-            EB[self.technologies['heatpump'].mode] += self.energy_balance[self.technologies['heatpump'].mode]['heatpump'][h] # heat or cool balance update: + heat or - cool supplied by heatpump
-            EB['electricity'] += self.energy_balance['electricity']['heatpump'][h] # electricity balance update: - electricity consumed by heatpump
+            self.energy_balance['electricity']['heatpump'][h], self.energy_balance['heat']['inertialtank'][h], self.energy_balance['heat']['heatpump'][h] = self.technologies['heatpump'].use(weather['temp_air'][h],EB['heat']) 
+            EB['electricity'] += self.energy_balance['electricity']['heatpump'][h] # electricity absorbed by heatpump
+            EB['heat'] += self.energy_balance['heat']['inertialtank'][h] # heat or cool supplied by inertialtank
+            EB['heat'] += self.energy_balance['heat']['heatpump'][h]  # heat or cool supplied by heatpump
             
         if 'boiler_el' in self.technologies: 
             self.energy_balance['electricity']['boiler_el'][h], self.energy_balance['heat']['boiler_el'][h] = self.technologies['boiler_el'].use(EB['heat'],1) # el consumed and heat produced from boiler_el
@@ -140,12 +123,9 @@ class location:
             EB['electricity'] += self.energy_balance['electricity']['PV'][h] # elecricity balance update: + electricity produced from PV
             
         if 'heatpump' in self.technologies:
-            if EB['electricity'] > 0: 
-                # user electricity surplus to heat or cool the inertial tank using the heatpump (depending on heatpump.mode = "heat" or "cool")
-                self.energy_balance['electricity']['heatpump'][h], self.energy_balance[self.technologies['heatpump'].mode]['heatpump'][h] = self.technologies['heatpump'].use(self.technologies['inertial tank'].t, weather['temp_air'][h],'surplus',EB['electricity']) 
-                self.energy_balance[self.technologies['heatpump'].mode]['inertial tank'][h] = self.technologies['inertial tank'].use(self.energy_balance[self.technologies['heatpump'].mode]['heatpump'][h]) # heat absorbed (-) by the inertial tank
-                EB['electricity'] += self.energy_balance['electricity']['heatpump'][h] # electricity balance update: - electricity consumed by heatpump
-                
+            self.energy_balance['electricity']['heatpump'][h], self.energy_balance['heat']['inertialtank'][h], self.energy_balance['heat']['heatpump'][h] = self.technologies['heatpump'].use(weather['temp_air'][h],EB['heat']) 
+            EB['electricity'] += self.energy_balance['electricity']['heatpump'][h] # electricity absorbed by heatpump
+
         if 'battery' in self.technologies:
             if self.technologies['battery'].collective == 0: 
                 self.energy_balance['electricity']['battery'][h] = self.technologies['battery'].use(h,EB['electricity']) # electricity absorbed(-) or supplied(+) by battery
