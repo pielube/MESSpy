@@ -11,36 +11,29 @@ PRE PROCESSING
 ==============
 """
 
+# Import modules
 from rec import REC
-import time
 import os
 import json
 
-path = r'./input_test' # change the path with r'./input_dev' if you are working on your own run_dev
-
+# Selecting simulation names
 study_case = 'REC_test' # str name for results file.pkl
 reference_case = 'buiseness as usual' # str name for results file.pkl
 
-# input files:
+# Selecting input files:
+path = r'./input_test' # change the path with r'./input_dev' if you are working on your own run_dev
+#path = 'r./input_dev'
 
-file = 'structure.json'
-filepath = os.path.join(path,file)
-with open(filepath,'r') as f:
-    structure = json.load(f)
+file_structure = 'structure.json'
+file_general = 'general.json'
+file_eco = 'economics.json'
+file_refcase = 'refcase.json'
 
-file = 'general.json'
-filepath = os.path.join(path,file)
-with open(filepath,'r') as f:
-    general = json.load(f)
-
-time1 = time.time()
-print('Creating structure..')
-
-# Creating initial structure
-rec = REC(structure,general,path) # create REC structure
-
-time2 = time.time()
-print('Structure created in {:.2f} seconds'.format(time2-time1))
+# Opening input files:
+with open(os.path.join(path,file_structure),'r') as f: structure = json.load(f)
+with open(os.path.join(path,file_general),'r') as f: general = json.load(f)
+with open(os.path.join(path,file_eco),'r') as f: economic_data = json.load(f)
+with open(os.path.join(path,file_refcase),'r') as f: structure0 = json.load(f)
 
 #%% ###########################################################################
 """
@@ -48,16 +41,9 @@ SOLVER
 ======
 """
 
-print('Running the model..')
-time2 = time.time()
-
-# Running the model
-#rec.reset() # reset REC energy balances
-rec.REC_energy_simulation() # simulate REC structure
+rec = REC(structure,general,path) # create REC structure
+rec.REC_energy_simulation() # simulate REC enegy balances
 rec.save(study_case) # save results in 'study_case.pkl'
-
-time3 = time.time()
-print('Model runned in {:.2f} seconds'.format(time3-time2))
   
 #%% ###########################################################################
 """
@@ -66,29 +52,15 @@ POST PROCESS - ECONOMIC ANALYSIS
 """
 
 from economics import NPV
-print('Economic analysis..') 
-time3 = time.time()
-
-file = 'economics.json'
-filepath = os.path.join(path,file)
-with open(filepath,'r') as f:
-    economic_data = json.load(f)
-
-file = 'refcase.json'
-filepath = os.path.join(path,file)
-with open(filepath,'r') as f:
-    structure0 = json.load(f)
     
 # Reference case simulation (run only if changed)
 rec0 = REC(structure0,general,path) # create REC
 rec0.REC_energy_simulation() # simulate REC 
 rec0.save(reference_case) # save results in 'reference_case.pkl'
 
-# Actual economic analysis (It has no sense if simulation_years = 1)
+#%% Actual economic analysis
 NPV(structure,structure0,study_case,reference_case,economic_data,general['simulation years'],path) 
 
-time4 = time.time()  
-print('Eonomic analysis performend in {:.2f} seconds'.format(time4-time3))
 
 #%% ###########################################################################
 """
@@ -103,9 +75,6 @@ import postprocess_test as pp
 some post-process are alredy avaiable as examples in postprocess_test
 you should create your own postprocess_dev.py
 """
-
-print('Post processing..')
-time4 = time.time()
 
 #pp.total_balances(study_case, 'p1')
 #pp.total_balances(study_case,'p2')
@@ -123,8 +92,6 @@ pp.hourly_balances(study_case,'c1', 2, 3)
 
 #pp.csc_allocation_sum(study_case)
 
-time5 = time.time()  
-print('\nPost process performend in {:.2f} seconds'.format(time5-time4))
 
 
 
