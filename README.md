@@ -34,7 +34,6 @@ The model is developed in Python 3.9, and requires the following libraries:
 - os
 - pickle (results are saved in .pickle)
 - json (input files are .json)
-- time (used only to check code speed)
 - pvlib (used to download PV production series and weather data based on typical meteorological year)
 - hplib (used to model heat pumps)
 - matplotlib (used in post_process)
