@@ -8,12 +8,12 @@ An open-source model for simulating multy-energy systems such as Renewable Energ
 Department of Industrial Engineering (DIEF), University of Florence (UNIFI), Italy
 
 ## Overview
-Multi-Energy System Simulator was developed to make techno-economic assesment of Renewable Energy Communities (REC), but can also be used to study a single building.
-It simulate hour after hour the energy flows between technologies of each location (building) inside the REC and calculate the Net Present Value of each considering relationship with the national grid and incentives. The program has been developed to be as generalizable as possible so it can be used to simulate even very different case studies and easily change their configuration or characteristics, technical and economic.
-The program is fully commented and can be easly used as black box by modifing input/ and working on results/ or also modifyng the code.
+The Multi-Energy System Simulator has been developed to perform techno-economic assesment of Renewable Energy Communities (REC), but can also be used to study single-standing buildings and hydrogen-integrated energy systems.
+It can simulate hourly balances of the energy flows between technologies of each location (building) inside the REC and calculate the Net Present Value of each considering the interaction with the national grid given different incentive schemes. The program has been developed to be as general as possible so it can be used to simulate even very different case studies and easily change their configuration or characteristics, technical and economic.
+The code is extensively commented and can be easly used as black box by modifing input/ and working on results/ or also modifyng the code.
 
-It's an objected oriented program structured on three levels: REC, location and technologies.
-Models of different technologies are aviable and still under developing to include new feture and more realistic detalis. At the moment the following technologies can be included in the simulations:
+It's an object oriented program structured on three levels: REC, location and technologies.
+Models of different technologies are aviable and still under development to include new fetures and more realistic detalis. At the moment the following technologies can be included in the simulations:
 - Photovoltaic field
 - Battery
 - Electrolyzer
@@ -48,7 +48,7 @@ To get started, download the repository and simply run the "run_test.py" script
 You can modify them from a python interface or simply from notepad. Input_test/ contains a demonstration case study. 
 - general.json defines the general input. More details can be found in rec.py following the early comments
 - structure.json defines the structure of the case study. Here you can define all the locations to consider, each technology inside the locations and technology's parameters. More detalis can be found following comments in rec.py and location.py.
-- refcase.json This file has the same structure of structure.json and defines the "buiseness as usual" case, which is used as a reference case to calculate cash flows of the study case and make economis assesment.
+- refcase.json This file has the same structure of structure.json and defines the "buiseness as usual" case, which is used as a reference case to calculate cash flows of the study case and make economis assessment.
 - economics.json defines economic parameters. More details can be found following comments in economics.py
 
 ### How to continue
