@@ -52,7 +52,7 @@ You can modify them from a python interface or simply from notepad. Teh "Input_t
 - economics.json defines economic parameters. More details can be found in the comments of economics.py
 
 ### How to continue
-We suggest to create your own run_dev.py, input_dev/ and post_process_dev.py and to work on them instead of modifying the existing file used as initial test. 
+We suggest you to create your own run_dev.py, input_dev/ and post_process_dev.py and to work on them instead of modifying the existing file used as initial test. 
 
 ## Related works
 - "Optimal sizing of a distributed energy system with thermal load electrification"\
