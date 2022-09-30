@@ -9,11 +9,11 @@ Department of Industrial Engineering (DIEF), University of Florence (UNIFI), Ita
 
 ## Overview
 The Multi-Energy System Simulator has been developed to perform techno-economic assesment of Renewable Energy Communities (REC), but can also be used to study single-standing buildings and hydrogen-integrated energy systems.
-It can simulate hourly balances of the energy flows between technologies of each location (building) inside the REC and calculate the Net Present Value of each considering the interaction with the national grid given different incentive schemes. The program has been developed to be as general as possible so it can be used to simulate even very different case studies and easily change their configuration or characteristics, technical and economic.
-The code is extensively commented and can be easly used as black box by modifing input/ and working on results/ or also modifyng the code.
+It can simulate hourly balances of the energy flows between technologies of each location (building) inside the REC and calculate the Net Present Value of each considering the interaction with the national grid given different incentive schemes. The program has been developed to be as general as possible so it can be used to simulate a wide range of different case studies while easily changing their configuration or parameters,both technical and economic.
+The code is extensively commented and can be easily used either as a black box by simply modifying the inputs and working on results or by directly modifying the code.
 
 It's an object oriented program structured on three levels: REC, location and technologies.
-Models of different technologies are aviable and still under development to include new fetures and more realistic detalis. At the moment the following technologies can be included in the simulations:
+Models of different technologies are avialable and still under development to include new fetures and more realistic detalis. At the current stage the following technologies can be included in the simulations:
 - Photovoltaic field
 - Battery
 - Electrolyzer
@@ -23,7 +23,7 @@ Models of different technologies are aviable and still under development to incl
 - Boiler
 
 ### MESS needs the hourly load profiles as input as a .csv file
-Depending on the type of meeter installed, these data is in some cases made available by electricity/gas supplier, in others it must be requested, and in others it cannot be obtained. In the latter case, programmes are needed to simulate the curves, which output .csv files to be entered later as MESS inputs. Lot of programs are available, authors recommend:\
+Depending on the type of meter installed, these data is in some cases made available by the electricity/gas supplier, in others it must be requested, while sometimes it cannot be obtained. In the latter case, specific programmes are required to generate such profiles in the specific .csv format needed as one of the program inputs. There are many programmes available online, the authors recommend the following:\
 bottom-up model: https://github.com/RAMP-project/RAMP \
 top-down model: https://github.com/PasquinoFI/LoBi
 
@@ -45,14 +45,14 @@ https://github.com/pielube/MESS-Fortran
 To get started, download the repository and simply run the "run_test.py" script
 
 ### Input files
-You can modify them from a python interface or simply from notepad. Input_test/ contains a demonstration case study. 
-- general.json defines the general input. More details can be found in rec.py following the early comments
-- structure.json defines the structure of the case study. Here you can define all the locations to consider, each technology inside the locations and technology's parameters. More detalis can be found following comments in rec.py and location.py.
-- refcase.json This file has the same structure of structure.json and defines the "buiseness as usual" case, which is used as a reference case to calculate cash flows of the study case and to carry out the economic assessment.
-- economics.json defines economic parameters. More details can be found following comments in economics.py
+You can modify them from a python interface or simply from notepad. Teh "Input_test" folder contains a demonstration case study. 
+- general.json defines the general input. More details can be found in rec.py prologue comments.
+- structure.json defines the structure of the case study. Here you can define all the locations to consider, each technology inside the locations and technology's parameters. More detalis can be found in rec.py and location.py comments to the code.
+- refcase.json This file has the same structure of structure.json and defines the "buiseness as usual" case, which is used as a reference case for calculating the cash flows of the study case and performing the economic assessment.
+- economics.json defines economic parameters. More details can be found in the comments of economics.py
 
 ### How to continue
-We suggest to create your own run_dev.py, input_dev/ and post_process_dev.py and work on them instead of modify the existing file using as initial test. 
+We suggest to create your own run_dev.py, input_dev/ and post_process_dev.py and to work on them instead of modifying the existing file used as initial test. 
 
 ## Related works
 - "Optimal sizing of a distributed energy system with thermal load electrification"\
