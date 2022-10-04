@@ -56,7 +56,7 @@ def NPV(structure,structure0,study_case,reference_case,economic_data,simulation_
         OeM = 0 # initialise OeM        
         
         # each tech has a different sizing parameter:
-        size = {'PV': 'peakP', 'battery': 'nominal capacity', 'electrolyzer': 'Npower', 'fuel cell': 'Npower', 'H tank': 'max capacity'} 
+        size = {'PV': 'peakP', 'battery': 'nominal capacity', 'electrolyzer': 'Npower', 'fuel cell': 'Npower', 'H tank': 'max capacity', 'heatpump': 'nom Pth'} 
         
         for tech_name in system: # considering each techonlogies in the location
             if tech_name in economic_data: # to not consider 'electricity demand' as a technology and avoid bugs
@@ -103,11 +103,14 @@ def NPV(structure,structure0,study_case,reference_case,economic_data,simulation_
         results[location_name]['Annual cash flow']['OeM'] = -OeM # OeM every year
         
         # energy sold and purchased in study case 
-        results[location_name]['Annual cash flow']['Into grid'] = 0 #initialise
-        results[location_name]['Annual cash flow']['SC'] = 0 #initialise
+        results[location_name]['Annual cash flow']['Sale'] = {} #initialise
+        results[location_name]['Annual cash flow']['Purchase'] = {} #initialise
             
-        for carrier in rec[location_name]: # for each carrier (electricity, hydrogen, gas, heat, cool)
-            if 'grid' in rec[location_name][carrier]:          
+        for carrier in rec[location_name]: # for each carrier (electricity, hydrogen, gas, heat)
+            if 'grid' in rec[location_name][carrier]:  
+                
+                results[location_name]['Annual cash flow']['Sale'][carrier] = 0 #initialise
+                results[location_name]['Annual cash flow']['Purchase'][carrier] = 0 #initialise                
                 
                 if type(economic_data[carrier]['sale']) == str: # if there is the price serie
                     sale_serie = np.tile(pd.read_csv(path+'/energy_price/'+economic_data[carrier]['sale'])['0'].to_numpy(),int(simulation_years))  
@@ -118,7 +121,7 @@ def NPV(structure,structure0,study_case,reference_case,economic_data,simulation_
                 sold = np.tile(sold,years_factor)
                 sold = np.reshape(sold,(-1,8760))
                 CF = CF - sold.sum(axis=1,where=sold<0)
-                results[location_name]['Annual cash flow']['Into grid'] += - sold.sum(axis=1,where=sold<0)
+                results[location_name]['Annual cash flow']['Sale'][carrier] += - sold.sum(axis=1,where=sold<0)
           
                 if type(economic_data[carrier]['purchase']) == str: # if there is the price serie
                     purchase_serie = np.tile(pd.read_csv(path+'/energy_price/'+economic_data[carrier]['purchase'])['0'].to_numpy(),int(simulation_years))  
@@ -129,12 +132,16 @@ def NPV(structure,structure0,study_case,reference_case,economic_data,simulation_
                 purchase = np.tile(purchase,years_factor)
                 purchase = np.reshape(purchase,(-1,8760))
                 CF = CF - purchase.sum(axis=1,where=purchase>0)
-                results[location_name]['Annual cash flow']['SC'] += - purchase.sum(axis=1,where=purchase>0)
+                results[location_name]['Annual cash flow']['Purchase'][carrier] += - purchase.sum(axis=1,where=purchase>0)
             
                 
         # energy sold and purchased in reference case 
         for carrier in rec0[location_name]: # for each carrier (electricity, hydrogen, gas, heat)
             if 'grid' in rec0[location_name][carrier]: 
+                
+                if not carrier in results[location_name]['Annual cash flow']['Sale']:
+                    results[location_name]['Annual cash flow']['Sale'][carrier] = 0 #initialise
+                    results[location_name]['Annual cash flow']['Purchase'][carrier] = 0 #initialise 
                
                 if type(economic_data[carrier]['sale']) == str: # if there is the price serie
                     sold = rec0[location_name][carrier]['grid'] * sale_serie
@@ -144,7 +151,7 @@ def NPV(structure,structure0,study_case,reference_case,economic_data,simulation_
                 sold = np.tile(sold,years_factor)
                 sold = np.reshape(sold,(-1,8760))
                 CF = CF + sold.sum(axis=1,where=sold<0)
-                results[location_name]['Annual cash flow']['Into grid'] += sold.sum(axis=1,where=sold<0)
+                results[location_name]['Annual cash flow']['Sale'][carrier] += sold.sum(axis=1,where=sold<0)
 
                 if type(economic_data[carrier]['purchase']) == str: # if there is the price serie
                     purchase = rec0[location_name][carrier]['grid'] * purchase_serie
@@ -154,7 +161,7 @@ def NPV(structure,structure0,study_case,reference_case,economic_data,simulation_
                 purchase = np.tile(purchase,years_factor)
                 purchase = np.reshape(purchase,(-1,8760))
                 CF = CF + purchase.sum(axis=1,where=purchase>0)
-                results[location_name]['Annual cash flow']['SC'] += purchase.sum(axis=1,where=purchase>0)
+                results[location_name]['Annual cash flow']['Purchase'][carrier] += purchase.sum(axis=1,where=purchase>0)
                       
                 
         # REC incentives redistribution
@@ -178,9 +185,10 @@ def NPV(structure,structure0,study_case,reference_case,economic_data,simulation_
         i = economic_data['interest rate'] # interest rate [%]
         for y in range(1,economic_data['investment years']+1): # for each year
             results[location_name]['NPV'][y] = results[location_name]['NPV'][y-1] + CF[y-1]/(1+i)**y # calculate NPV 
-                         
-    
+                             
             
+        results[location_name]['CF_tot'] = CF
+    
     # save results in Results/economic_assesment.pkl
     with open(f"Results/economic_assessment_{study_case}.pkl", 'wb') as f:
         pickle.dump(results,f) 

@@ -1,5 +1,6 @@
 import numpy as np
 import pickle
+import random
 import os
 import pandas as pd
 import pvlib #https://github.com/pvlib
@@ -33,7 +34,7 @@ class REC:
         self.weather = self.weather_generation(general,path) # check if metereological data have to been downloaded from PVgis or has already been done in a previous simulation
 
         self.locations = {} # initialise REC locations dictionary
-        self.energy_balance = {'electricity': {}, 'heat': {}, 'hydrogen': {}, 'gas': {}} # initialise energy balances dictionaries of each energy carrier
+        self.energy_balance = {'electricity': {}, 'heat': {}, 'cool': {}, 'dhw':{}, 'hydrogen': {}, 'gas': {}} # initialise energy balances dictionaries
         
         self.simulation_hours = int(general['simulation years']*8760) # hourly timestep  
         
@@ -54,8 +55,7 @@ class REC:
         self.energy_balance['electricity']['from grid'] = np.zeros(self.simulation_hours) # array of electricity withdrawn from the grid from the whole rec
         self.energy_balance['electricity']['into grid'] = np.zeros(self.simulation_hours) # array of electricity withdrawn from the grid
         self.energy_balance['electricity']['collective self consumption'] = np.zeros(self.simulation_hours) # array of collective self consumed electricity from the whole rec
-        
-        
+        self.count = []
         for h in range(self.simulation_hours): # h: hour to simulate from 0 to simulation_hours 
             for location_name in self.locations: # each locations 
                 self.locations[location_name].loc_energy_simulation(h,self.weather) # simulate a single location updating its energy balances
@@ -67,6 +67,47 @@ class REC:
                     self.energy_balance['electricity']['from grid'][h] += self.locations[location_name].energy_balance['electricity']['grid'][h] # electricity withdrawn from the grid the whole rec at hour h
                 
                 
+            ### solve smart heatpumps (relation with batteries?)
+            locations_on = {} # locations on to which the set point could be raised , initialise
+            
+            if - self.energy_balance['electricity']['into grid'][h] - self.energy_balance['electricity']['from grid'][h] > 0: # if there is surplus
+            
+                # find the locations_on to which the set point could be raised 
+                for location_name in self.locations:
+                    if 'heatpump' in self.locations[location_name].technologies:
+                            if self.locations[location_name].technologies['heatpump'].PV_surplus != False:
+                                if self.locations[location_name].technologies['heatpump'].hp_story[-61] > 0: # if the hp was on at h-1           
+                                    if self.locations[location_name].technologies['heatpump'].switch == 'stand by': # and has been switched in stand by before h (because reached the set point)
+                                        locations_on[location_name] = self.locations[location_name].technologies['heatpump'].tank_story[-2]
+                
+                # order locations according to tank temperature 
+                locations_on = sorted(locations_on.items(), key=lambda x: x[1])              
+             
+            while - self.energy_balance['electricity']['into grid'][h] - self.energy_balance['electricity']['from grid'][h] > 0: # while there is surplus
+
+                location_to_switch = 'no one'
+                # select the one with the lower tank_temperature
+                for a in locations_on:
+                    location_to_switch = a[0]
+                    locations_on.remove(a)
+                    break
+                if location_to_switch == 'no one':  
+                    break
+                else:         
+                    # clean balance
+                    self.locations[location_to_switch].energy_balance['electricity']['demand'][h] += - self.locations[location_to_switch].energy_balance['electricity']['heatpump'][h]
+                    self.locations[location_to_switch].energy_balance['electricity']['grid'][h] += self.locations[location_to_switch].energy_balance['electricity']['heatpump'][h]
+                    self.energy_balance['electricity']['from grid'][h] += self.locations[location_to_switch].energy_balance['electricity']['heatpump'][h] # electricity fed into the grid from the whole rec at hour h
+
+                    # resimulate (cleaning hystory)
+                    self.locations[location_to_switch].energy_balance['electricity']['heatpump'][h], self.locations[location_to_switch].energy_balance['heat']['heatpump'][h], self.locations[location_to_switch].energy_balance['heat']['inertialtank'][h] = self.locations[location_to_switch].technologies['heatpump'].use_surplus(self.weather['temp_air'][h],self.locations[location_to_switch].energy_balance['heat']['demand'][h],h)
+                    
+                    # updata balance
+                    self.locations[location_to_switch].energy_balance['electricity']['demand'][h] += self.locations[location_to_switch].energy_balance['electricity']['heatpump'][h]
+                    self.locations[location_to_switch].energy_balance['electricity']['grid'][h] += - self.locations[location_to_switch].energy_balance['electricity']['heatpump'][h]
+                    self.energy_balance['electricity']['from grid'][h] += - self.locations[location_to_switch].energy_balance['electricity']['heatpump'][h] # electricity fed into the grid from the whole rec at hour h
+                
+                
             ### calculate collective self consumption and who contributed to it
             self.energy_balance['electricity']['collective self consumption'][h] = min(-self.energy_balance['electricity']['into grid'][h],self.energy_balance['electricity']['from grid'][h]) # calculate REC collective self consumption how regulation establishes      
             
@@ -76,7 +117,6 @@ class REC:
                         self.locations[location_name].energy_balance['electricity']['collective self consumption'][h] = - self.energy_balance['electricity']['collective self consumption'][h] * self.locations[location_name].energy_balance['electricity']['grid'][h] / self.energy_balance['electricity']['into grid'][h]
                     else: # contribution as consumer
                         self.locations[location_name].energy_balance['electricity']['collective self consumption'][h] = self.energy_balance['electricity']['collective self consumption'][h] * self.locations[location_name].energy_balance['electricity']['grid'][h] / self.energy_balance['electricity']['from grid'][h]
-
 
             ### solve smart batteries
             for location_name in self.locations:
@@ -96,7 +136,6 @@ class REC:
                         self.energy_balance['electricity']['into grid'][h] += - self.locations[location_name].energy_balance['electricity']['battery'][h] # update grid balance (rec)
                     else:
                         self.energy_balance['electricity']['from grid'][h] += - self.locations[location_name].energy_balance['electricity']['battery'][h] # update grid balance (rec)
-
 
     def save(self,simulation_name):
         """
@@ -129,6 +168,10 @@ class REC:
             tech_name = 'H tank'
             if tech_name in self.locations[location_name].technologies:
                 LOC[location_name][tech_name] = self.locations[location_name].technologies[tech_name].LOC
+                
+            tech_name = 'heatpump'
+            if tech_name in self.locations[location_name].technologies:
+                LOC[location_name]['inertial tank'] = self.locations[location_name].technologies[tech_name].tank_story
         
         directory = './results'
         if not os.path.exists(directory):

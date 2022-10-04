@@ -35,13 +35,21 @@ with open(os.path.join(path,file_general),'r') as f: general = json.load(f)
 with open(os.path.join(path,file_eco),'r') as f: economic_data = json.load(f)
 with open(os.path.join(path,file_refcase),'r') as f: structure0 = json.load(f)
 
+# Edit input files:
+import preprocess_test as pre
+#import preprocess_dev as pre
+# Instead of modify the original input files.json we suggest to modify the dictionary variables 
+# structure, structure0, general and economic_data using specific functions that you can define in preprocess_dev. 
+# here an example:
+structure = pre.change_peakP(structure, 'p1', 5) 
+
 #%% ###########################################################################
 """
 SOLVER
 ======
 """
 
-rec = REC(structure,general,path) # create REC structure
+rec = REC(structure,general,path) # create REC object
 rec.REC_energy_simulation() # simulate REC enegy balances
 rec.save(study_case) # save results in 'study_case.pkl'
   
@@ -91,6 +99,22 @@ pp.hourly_balances(study_case,'p2', 2, 3)
 pp.hourly_balances(study_case,'c1', 2, 3)
 
 #pp.csc_allocation_sum(study_case)
+
+
+#%% ##########################################################################
+"Parametric analysis - workflow example"
+
+# for parameter in list of values:
+    # open input files
+    # edit input files using parameter and function you can define in preprocess_test 
+    # create and simulate rec
+    # if you need it, run the economic analysis (remember that you need to create and simulate rec0 just ones)
+    # save the results
+# use results to make what you want 
+
+# enjoy ;)
+
+
 
 
 
