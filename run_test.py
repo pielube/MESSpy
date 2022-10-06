@@ -22,7 +22,7 @@ reference_case = 'buiseness as usual' # str name for results file.pkl
 
 # Selecting input files:
 path = r'./input_test' # change the path with r'./input_dev' if you are working on your own run_dev
-#path = 'r./input_dev'
+# path = 'r./input_dev'
 
 file_structure = 'structure.json'
 file_general = 'general.json'
@@ -76,8 +76,8 @@ POST PROCESS - PLOTTING
 ================================
 """
 
-import postprocess_test as pp
-#import postprocess_dev as pp
+# import postprocess_test as pp
+import postprocess_dev as pp
 
 """
 some post-process are alredy avaiable as examples in postprocess_test
@@ -100,6 +100,7 @@ pp.hourly_balances(study_case,'c1', 2, 3)
 
 #pp.csc_allocation_sum(study_case)
 
+#pp.ele_param(study_case)
 
 #%% ##########################################################################
 "Parametric analysis - workflow example"
