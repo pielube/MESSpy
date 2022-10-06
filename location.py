@@ -33,7 +33,7 @@ class location:
         
         self.name = location_name
         self.technologies = {} # initialise technologies dictionary
-        self.energy_balance = {'electricity': {}, 'heat': {}, 'hydrogen': {}, 'gas': {}} # initialise energy balances dictionaries
+        self.energy_balance = {'electricity': {}, 'heat': {}, 'cool': {}, 'dhw':{}, 'hydrogen': {}, 'gas': {}} # initialise energy balances dictionaries
        
         self.simulation_hours = int(general['simulation years']*8760) # hourly timestep     
         
@@ -41,49 +41,63 @@ class location:
         # initialise energy balance and add them to the energy_balance dictionary
         
         for carrier in self.energy_balance:
-            if system['grid'][carrier]:
+            if carrier in system['grid'] and system['grid'][carrier]:
                 self.energy_balance[carrier]['grid'] = np.zeros(self.simulation_hours) # array energy carrier bought from the grid (-) or feed into the grid (+)
 
             if carrier in system['demand']:            
-                self.energy_balance[carrier]['demand'] = - np.tile(pd.read_csv(path+'/loads/'+system['demand'][carrier])['0'].to_numpy(),int(self.simulation_hours/8760)) # hourly energy carrier needed for the entire simulation
+                self.energy_balance[carrier]['demand'] = - np.tile(pd.read_csv(path+'/loads/'+system['demand'][carrier])['kWh'].to_numpy(),int(self.simulation_hours/8760)) # hourly energy carrier needed for the entire simulation
 
         if 'heatpump' in system:
-            self.technologies['heatpump'] = heatpump(system['heatpump'])                      # heatpump object created and add to 'technologies' dictionary
-            self.energy_balance['electricity']['heatpump'] = np.zeros(self.simulation_hours)  # array heatpump electricity balance
-            self.energy_balance['heat']['heatpump'] = np.zeros(self.simulation_hours)         # array heatpump heat balance
-            self.energy_balance['heat']['inertial tank'] = np.zeros(self.simulation_hours)    # array inertial tank heat balance
+            self.technologies['heatpump'] = heatpump(system['heatpump']) # heatpump object created and add to 'technologies' dictionary
+            self.energy_balance['electricity']['heatpump'] = np.zeros(self.simulation_hours) # array heatpump electricity balance
+            self.energy_balance['heat']['heatpump'] = np.zeros(self.simulation_hours) # array heatpump heat balance
+            self.energy_balance['heat']['inertialtank'] = np.zeros(self.simulation_hours) # array inertial tank heat balance
+          
+            # add cooiling or dhw load to heating load  
+            if self.technologies['heatpump'].usage == 1: # heat and cool
+                self.energy_balance['heat']['demand'] += self.energy_balance['cool']['demand']
+            if self.technologies['heatpump'].usage == 2: # heat and dhw
+                self.energy_balance['heat']['demand'] += self.energy_balance['dhw']['demand']            
+            
+        if 'boiler_hp' in system:
+            self.technologies['boiler_hp'] = heatpump(system['heatpump']) # boiler_hp object created and add to 'technologies' dictionary
+            self.energy_balance['electricity']['boiler_hp'] = np.zeros(self.simulation_hours) # array boiler_hp electricity balance
+            self.energy_balance['dhw']['boiler_hp'] = np.zeros(self.simulation_hours) # array boiler_hp dhw balance
+            self.energy_balance['dhw']['boiler_tank'] = np.zeros(self.simulation_hours) # array boiler_tank dhw balance
             
         if 'boiler_el' in system:
-            self.technologies['boiler_el'] = boiler_el(system['boiler_el'])                   # boiler_el object created and add to 'technologies' dictionary
+            self.technologies['boiler_el'] = boiler_el(system['boiler_el']) # boiler_el object created and add to 'technologies' dictionary
             self.energy_balance['electricity']['boiler_el'] = np.zeros(self.simulation_hours) # array boiler_el electricity balance
-            self.energy_balance['heat']['boiler_el'] = np.zeros(self.simulation_hours)        # array boiler_el heat balance
-            
+            self.energy_balance['heat']['boiler_el'] = np.zeros(self.simulation_hours) # array boiler_el heat balance
+            self.energy_balance['heat']['demand'] += self.energy_balance['dhw']['demand']
+                
         if 'boiler_ng' in system:
-            self.technologies['boiler_ng'] = boiler_ng(system['boiler_ng'])                   # boiler_ng object created and add to 'technologies' dictionary
-            self.energy_balance['gas']['boiler_ng'] = np.zeros(self.simulation_hours)         # array boiler_ng gas balance
-            self.energy_balance['heat']['boiler_ng'] = np.zeros(self.simulation_hours)        # array boiler_ng heat balance 
+            self.technologies['boiler_ng'] = boiler_ng(system['boiler_ng']) # boiler_ng object created and add to 'technologies' dictionary
+            self.energy_balance['gas']['boiler_ng'] = np.zeros(self.simulation_hours) # array boiler_ng gas balance
+            self.energy_balance['heat']['boiler_ng'] = np.zeros(self.simulation_hours) # array boiler_ng heat balance 
+            self.energy_balance['heat']['demand'] += self.energy_balance['dhw']['demand']
 
         if 'PV' in system:
-            self.technologies['PV'] = PV(system['PV'],general,self.simulation_hours,self.name,path)  # PV object created and add to 'technologies' dictionary
-            self.energy_balance['electricity']['PV'] = np.zeros(self.simulation_hours)               # array PV electricity balance
+            self.technologies['PV'] = PV(system['PV'],general,self.simulation_hours,self.name,path) # PV object created and add to 'technologies' dictionary
+            self.energy_balance['electricity']['PV'] = np.zeros(self.simulation_hours) # array PV electricity balance
             
-        if 'battery' in system:                                                             
-            self.technologies['battery'] = battery(system['battery'],self.simulation_hours)   # battery object created and to 'technologies' dictionary
-            self.energy_balance['electricity']['battery'] = np.zeros(self.simulation_hours)   # array battery electricity balance
+        if 'battery' in system:
+            self.technologies['battery'] = battery(system['battery'],self.simulation_hours) # battery object created and to 'technologies' dictionary
+            self.energy_balance['electricity']['battery'] = np.zeros(self.simulation_hours) # array battery electricity balance
                            
         if 'electrolyzer' in system:
             self.technologies['electrolyzer'] = electrolyzer(system['electrolyzer'],self.simulation_hours) # electrolyzer object created and to 'technologies' dictionary
-            self.energy_balance['electricity']['electrolyzer'] = np.zeros(self.simulation_hours)           # array electrolyzer electricity balance
-            self.energy_balance['hydrogen']['electrolyzer'] = np.zeros(self.simulation_hours)              # array electrolyzer hydrogen balance
+            self.energy_balance['electricity']['electrolyzer'] = np.zeros(self.simulation_hours) # array electrolyzer electricity balance
+            self.energy_balance['hydrogen']['electrolyzer'] = np.zeros(self.simulation_hours) # array electrolyzer hydrogen balance
             
         if 'fuel cell' in system:
-            self.technologies['fuel cell'] = fuel_cell(system['fuel cell'],self.simulation_hours)  # Fuel cell object created and to 'technologies' dictionary
-            self.energy_balance['electricity']['fuel cell'] = np.zeros(self.simulation_hours)      # array fuel cell electricity balance
-            self.energy_balance['hydrogen']['fuel cell'] = np.zeros(self.simulation_hours)         # array fuel cell hydrogen balance
+            self.technologies['fuel cell'] = fuel_cell(system['fuel cell'],self.simulation_hours) # Fuel cell object created and to 'technologies' dictionary
+            self.energy_balance['electricity']['fuel cell'] = np.zeros(self.simulation_hours) # array fuel cell electricity balance
+            self.energy_balance['hydrogen']['fuel cell'] = np.zeros(self.simulation_hours) # array fuel cell hydrogen balance
             
         if 'H tank' in system:
-            self.technologies['H tank'] = H_tank(system['H tank'],self.simulation_hours)      # H tank object created and to 'technologies' dictionary
-            self.energy_balance['hydrogen']['H tank'] = np.zeros(self.simulation_hours)       # array H tank hydrogen balance
+            self.technologies['H tank'] = H_tank(system['H tank'],self.simulation_hours) # H tank object created and to 'technologies' dictionary
+            self.energy_balance['hydrogen']['H tank'] = np.zeros(self.simulation_hours) # array H tank hydrogen balance
 
         self.energy_balance['electricity']['collective self consumption'] = np.zeros(self.simulation_hours) # array contribution to collective-self-consumption as producer (-) or as consumer (+)
 
@@ -96,38 +110,38 @@ class location:
         output : updating of location energy balances
         """
         
-        EB = {'electricity': 0, 'heat': 0, 'hydrogen': 0, 'gas': 0}     # initialise Energy Balances             
-        # Efficiencies = {'electrolyzer': []}                              # initialise Efficiencies - to be further 
-        
+        EB = {'electricity': 0, 'heat': 0, 'dhw':0, 'hydrogen': 0, 'gas': 0} # initialise Energy Balances     
         
         for carrier in EB: # for each energy carrier
             if 'demand' in self.energy_balance[carrier]:                
                 EB[carrier] += self.energy_balance[carrier]['demand'][h] # energy balance update: energy demand(-) # n.b cooling demand (+)
                         
-        if 'heatpump' in self.technologies:         
-            self.energy_balance['electricity']['heatpump'][h], self.energy_balance['heat']['inertialtank'][h], self.energy_balance['heat']['heatpump'][h] = self.technologies['heatpump'].use(weather['temp_air'][h],EB['heat']) 
-            EB['electricity'] += self.energy_balance['electricity']['heatpump'][h]  # electricity absorbed by heatpump
-            EB['heat'] += self.energy_balance['heat']['inertialtank'][h]            # heat or cool supplied by inertialtank
-            EB['heat'] += self.energy_balance['heat']['heatpump'][h]                # heat or cool supplied by heatpump
-            
+        if 'heatpump' in self.technologies:     
+            self.energy_balance['electricity']['heatpump'][h], self.energy_balance['heat']['heatpump'][h], self.energy_balance['heat']['inertialtank'][h] = self.technologies['heatpump'].use(weather['temp_air'][h],EB['heat'],h) 
+            EB['electricity'] += self.energy_balance['electricity']['heatpump'][h] # electricity absorbed by heatpump
+            self.energy_balance['electricity']['demand'][h] += self.energy_balance['electricity']['heatpump'][h] # add heatpump demand to 'electricity demand'
+            EB['heat'] += self.energy_balance['heat']['inertialtank'][h] # heat or cool supplied by inertialtank
+
+        if 'boiler_hp' in self.technologies:
+            self.energy_balance['electricity']['boiler_hp'][h], self.energy_balance['dhw']['boiler_hp'][h], self.energy_balance['dhw']['boiler_tank'][h] = self.technologies['boiler_hp'].use(weather['temp_air'][h],EB['dhw']) 
+            EB['electricity'] += self.energy_balance['electricity']['boiler_hp'][h] # electricity absorbed by boiler_hp
+            self.energy_balance['electricity']['demand'][h] += self.energy_balance['electricity']['boiler_hp'][h] # add boiler_hp demand to 'electricity demand'
+            EB['dhw'] += self.energy_balance['dhw']['boiler_hp'][h] # heat or cool supplied by inertialtank
+
         if 'boiler_el' in self.technologies: 
             self.energy_balance['electricity']['boiler_el'][h], self.energy_balance['heat']['boiler_el'][h] = self.technologies['boiler_el'].use(EB['heat'],1) # el consumed and heat produced from boiler_el
-            EB['electricity'] += self.energy_balance['electricity']['boiler_el'][h]   # elecricity balance update: - electricity consumed by boiler_el
-            EB['heat'] += self.energy_balance['heat']['boiler_el'][h]                 # heat balance update: + heat produced by boiler_el
+            EB['electricity'] += self.energy_balance['electricity']['boiler_el'][h] # elecricity balance update: - electricity consumed by boiler_el
+            EB['heat'] += self.energy_balance['heat']['boiler_el'][h] # heat balance update: + heat produced by boiler_el
 
         if 'boiler_ng' in self.technologies: 
             self.energy_balance['gas']['boiler_ng'][h], self.energy_balance['heat']['boiler_ng'][h] = self.technologies['boiler_ng'].use(EB['heat'],1) # ng consumed and heat produced from boiler_ng
-            EB['gas'] += self.energy_balance['electricity']['boiler_ng'][h]         # gas balance update: - gas consumed by boiler_ng
-            EB['heat'] += self.energy_balance['heat']['boiler_ng'][h]               # heat balance update: + heat produced by boiler_ng
+            EB['gas'] += self.energy_balance['gas']['boiler_ng'][h] # gas balance update: - gas consumed by boiler_ng
+            EB['heat'] += self.energy_balance['heat']['boiler_ng'][h] # heat balance update: + heat produced by boiler_ng
 
         if 'PV' in self.technologies: 
-            self.energy_balance['electricity']['PV'][h] = self.technologies['PV'].use(h)  # electricity produced from PV
-            EB['electricity'] += self.energy_balance['electricity']['PV'][h]              # elecricity balance update: + electricity produced from PV
-            
-        if 'heatpump' in self.technologies:
-            self.energy_balance['electricity']['heatpump'][h], self.energy_balance['heat']['inertialtank'][h], self.energy_balance['heat']['heatpump'][h] = self.technologies['heatpump'].use(weather['temp_air'][h],EB['heat']) 
-            EB['electricity'] += self.energy_balance['electricity']['heatpump'][h]  # electricity absorbed by heatpump
-
+            self.energy_balance['electricity']['PV'][h] = self.technologies['PV'].use(h) # electricity produced from PV
+            EB['electricity'] += self.energy_balance['electricity']['PV'][h] # elecricity balance update: + electricity produced from PV
+    
         if 'battery' in self.technologies:
             if self.technologies['battery'].collective == 0: 
                 self.energy_balance['electricity']['battery'][h] = self.technologies['battery'].use(h,EB['electricity']) # electricity absorbed(-) or supplied(+) by battery
@@ -135,17 +149,15 @@ class location:
                 
         if 'electrolyzer' in self.technologies:
             if EB['electricity'] > 0:
-                if 'H tank' in self.technologies:   # if hydrogen is stored in a tank
+                if 'H tank' in self.technologies: # if hydrogen is stored in a tank
                     storable_hydrogen = self.technologies['H tank'].max_capacity-self.technologies['H tank'].LOC[h] # the tank can't be full
-                else:                               # if hydrogen is sold to the grid 
+                else: # if hydrogen is sold to the grid 
                     storable_hydrogen = 99999999999 # there are no limits, f.i an hydrogen producer
                     
-                self.energy_balance['hydrogen']['electrolyzer'][h] =  self.technologies['electrolyzer'].use(h,EB['electricity'],storable_hydrogen)[0] # hydrogen supplied by electrolyzer(+) and electricity absorbed(-) 
-                self.energy_balance['electricity']['electrolyzer'][h] = self.technologies['electrolyzer'].use(h,EB['electricity'],storable_hydrogen)[1] 
+                self.energy_balance['hydrogen']['electrolyzer'][h], self.energy_balance['electricity']['electrolyzer'][h] = self.technologies['electrolyzer'].use(h,EB['electricity'],storable_hydrogen) # hydrogen supplied by electrolyzer(+) and electricity absorbed(-) 
                 EB['hydrogen'] += self.energy_balance['hydrogen']['electrolyzer'][h]
                 EB['electricity'] += self.energy_balance['electricity']['electrolyzer'][h]
-                # Efficiencies['electrolyzer'].append(self.technologies['electrolyzer'].use(h,EB['electricity'],storable_hydrogen)[2])
-       
+                
         if 'fuel cell' in self.technologies:
             if EB['electricity'] < 0:      
                 if 'H tank' in self.technologies: # if hydrogen is stored in a tank

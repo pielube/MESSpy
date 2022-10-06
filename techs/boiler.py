@@ -68,20 +68,24 @@ class boiler_ng:
         Compute consumption and heat produced
         
         inputs :
-            demand float energy demand in timestep [kWh]
-            timestep float timestep in hours [h]
+            demand float energy demand in timestep [kWh] (-)
+            timestep float timestep in hours [h] 
             
         outputs : 
             consumption float energy consumption [kWh]
             heatprod float heat produced [kWh] 
         """
         
-        heatprod = min(demand,self.Ppeak*timestep)
-        consumption = - heatprod/self.efficiency #
+        if demand < 0: # heat required
         
-        return(consumption,heatprod)
-
-
+            heatprod = min(-demand,self.Ppeak*timestep)
+            consumption = - heatprod/self.efficiency 
+            
+            return(consumption,heatprod)
+        
+        else:
+            return(0,0)       
+        
 ###########################################################################################################################################################
 
 if __name__ == "__main__":
