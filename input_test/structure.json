@@ -56,8 +56,8 @@
 		},
     "electrolyzer":
 	              {
-				  "Npower": 1,
-                  "stack model": "Enapter 2.1"
+				  "Npower": false,
+                  "stack model": "PEM General"
 				  },
     "fuel cell":
 	           {

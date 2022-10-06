@@ -1,11 +1,7 @@
 import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
-from scipy.interpolate import pchip_interpolate
-from scipy.interpolate import PchipInterpolator
-from CoolProp.CoolProp import PropsSI
+# from CoolProp.CoolProp import PropsSI
 import numpy as np
-import math
-from sklearn.metrics import r2_score
 from sklearn.linear_model import LinearRegression
 from numpy import log as ln
 
@@ -26,7 +22,6 @@ class electrolyzer:
         
         if parameters['Npower']:
             self.Npower = parameters['Npower'] # float nominal power of electrolyzers installed capacity for the location [kW]
-            print('PROVAS')
         
         H_N_density = 0.08988237638480538  # PropsSI('D', 'T', 273.15, 'P', 101325, 'H2') # hydrogen density under normal condition
 
@@ -55,14 +50,9 @@ class electrolyzer:
             self.rhoNrh2      = 0.088707      # [kg/Nm3]    H2  density @ T = 0°C p = 101325 Pa  PropsSI('D', 'T', 273.15, 'P', 1*1e5, 'H2')
             self.rhoStdh2o    = 999.06        # [kg/m3]     H2O density @ T = 15°C p = 101325 Pa
             Runiv             = 8.3144621     # [J/(mol*K)] Molar ideal gas constant
-            Rh2               = 4124.2        # [J/(kg*K)]  Hydrogen gas constant
             self.FaradayConst = 96485         # [C/mol]     Faraday constant
-            deltaG0           = -237.17       # [kJ/mol]    Gibbs free energy @ T = 25°C p = 101325 Pa
-            GammaPerfectGas   = 1.4           # [-]         Gamma = cp/cv   
             self.LHVh2        = 119.96        # [MJ/kg]     H2 LHV
-            HHVh2             = 141.88        # [MJ/kg]     H2 HHV
             self.HHVh2Mol     = 285.83        # [kJ/mol]    H2 HHV molar
-            cpH2O             = 4.186         # [kJ/(kg*K)] Water specific heat
             self.h2oMolMass   = 0.01801528    # [kg/mol]    Water molar mass
             self.H2MolMass    = 2.01588e-3    # [kg/mol]    Hydrogen molar mass
 
