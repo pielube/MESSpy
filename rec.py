@@ -30,7 +30,8 @@ class REC:
             record REC energy balances .energy_balance (electricity, heat, gas and hydrogen) 
         """
         
-        self.weather = self.weather_generation(general,path) # check if metereological data have to been downloaded from PVgis or has already been done in a previous simulation
+        self.weather = self.weather_generation(general,path)                             # check if metereological data have to been downloaded from  
+                                                                                         # PVgis or it has already been done in a previous simulation
 
         self.locations = {} # initialise REC locations dictionary
         self.energy_balance = {'electricity': {}, 'heat': {}, 'hydrogen': {}, 'gas': {}} # initialise energy balances dictionaries of each energy carrier
@@ -38,7 +39,8 @@ class REC:
         self.simulation_hours = int(general['simulation years']*8760) # hourly timestep  
         
         ### create location objects and add them to the REC locations dictionary
-        for location_name in structure: # location_name are the keys of 'structure' dictionary and will be used as keys of REC 'locations' dictionary too
+        for location_name in structure:                                                  # location_name are the keys of 'structure' dictionary and will 
+                                                                                         # be used as keys of REC 'locations' dictionary too
             self.locations[location_name] = location(structure[location_name],general,location_name,path) # create location object and add it to REC 'locations' dictionary                
                         
     def REC_energy_simulation(self):
@@ -82,11 +84,11 @@ class REC:
             for location_name in self.locations:
                 
                 # battery.collective = 1: 
-                # REC tels to location how mutch electricity can be absorbed or supplied by battery every hour, without decreasing the collective-self-consumption
+                # REC tells to location how mutch electricity can be absorbed or supplied by battery every hour, without decreasing the collective-self-consumption
                 
                 if 'battery' in self.locations[location_name].technologies and self.locations[location_name].technologies['battery'].collective == 1:
                     
-                    # how much energy can be absorbed or supplied by the batteries cause it's not usefull for collective-self-consumption
+                    # how much energy can be absorbed or supplied by the batteries cause it's not useful for collective-self-consumption
                     E = - self.locations[location_name].energy_balance['electricity']['grid'][h] + self.locations[location_name].energy_balance['electricity']['collective self consumption'][h]
                       
                     self.locations[location_name].energy_balance['electricity']['battery'][h] = self.locations[location_name].technologies['battery'].use(h,E) # electricity absorbed(-) by battery
@@ -109,16 +111,17 @@ class REC:
             LOC/simulation_name.pkl
         """
         
-        balances = {}
-        LOC = {}
-        ageing = {}
+        balances =     {}
+        LOC =          {}
+        ageing =       {}
+        electrolyzer = {}
         balances['REC'] = self.energy_balance
         
         for location_name in self.locations:
             balances[location_name] = self.locations[location_name].energy_balance
-            
             LOC[location_name] = {}
             ageing[location_name] = {}
+            electrolyzer[location_name] = {}
             
             tech_name = 'battery'
             if tech_name in self.locations[location_name].technologies:
@@ -129,6 +132,15 @@ class REC:
             tech_name = 'H tank'
             if tech_name in self.locations[location_name].technologies:
                 LOC[location_name][tech_name] = self.locations[location_name].technologies[tech_name].LOC
+                # print(type(LOC[location_name][tech_name]))
+                # print(len(LOC[location_name][tech_name]))
+     
+            tech_name = 'electrolyzer'
+            if tech_name in self.locations[location_name].technologies:
+                electrolyzer[location_name][tech_name] = self.locations[location_name].technologies[tech_name].EFF
+                print(len(electrolyzer[location_name][tech_name]))
+     
+     
         
         directory = './results'
         if not os.path.exists(directory):
@@ -143,7 +155,8 @@ class REC:
         with open('results/ageing_'+simulation_name+".pkl", 'wb') as f:
             pickle.dump(ageing, f) 
             
-            
+        with open('results/electrolyzer_'+simulation_name+".pkl", 'wb') as f:
+            pickle.dump(electrolyzer, f) 
             
     def reset(self):
         """
