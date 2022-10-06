@@ -5,12 +5,12 @@ class H_tank:
     def __init__(self,parameters,simulation_hours):
         
         """
-        Create an H tank object
+        Create a H_tank object
     
         parameters : dictionary
             'max capacity': float [kg]
             'pressure': float [bar]
-            'self dischare': ?
+            'self discharge': ?
                       
         output : H tank object able to:
             supply or abrosrb hydrogen .use(h,hyd)
@@ -55,10 +55,10 @@ class H_tank:
             else: # the max_capacity has not yet been reached, so LOC[h+1] may become negative and then the past LOC may be translated   
                                                   
                 discharge = min(-hyd,self.LOC[h]+self.max_capacity-self.used_capacity) # how much hydrogen can H tank supply?
-                self.LOC[h+1] = self.LOC[h]-discharge # discharge H tank
-                if self.LOC[h+1] < 0: # if the level of charge has become negative
-                    self.used_capacity += - self.LOC[h+1] # incrase the used capacity
-                    self.LOC[:h+2] += - self.LOC[h+1]  # traslate the past LOC array
+                self.LOC[h+1] = self.LOC[h]-discharge                                  # discharge H tank
+                if self.LOC[h+1] < 0:                                                  # if the level of charge has become negative
+                    self.used_capacity += - self.LOC[h+1]                              # incrase the used capacity
+                    self.LOC[:h+2] += - self.LOC[h+1]                                  # traslate the past LOC array
                     
             return(discharge) # return hydrogen supplied
         
