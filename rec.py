@@ -151,6 +151,7 @@ class REC:
         balances = {}
         LOC = {}
         ageing = {}
+        electrolyzer = {}                 
         balances['REC'] = self.energy_balance
         
         for location_name in self.locations:
@@ -158,6 +159,7 @@ class REC:
             
             LOC[location_name] = {}
             ageing[location_name] = {}
+            electrolyzer[location_name] = {}                                
             
             tech_name = 'battery'
             if tech_name in self.locations[location_name].technologies:
@@ -172,6 +174,10 @@ class REC:
             tech_name = 'heatpump'
             if tech_name in self.locations[location_name].technologies:
                 LOC[location_name]['inertial tank'] = self.locations[location_name].technologies[tech_name].tank_story
+            
+            tech_name = 'electrolyzer'
+            if tech_name in self.locations[location_name].technologies:
+                electrolyzer[location_name][tech_name] = self.locations[location_name].technologies[tech_name].EFF
         
         directory = './results'
         if not os.path.exists(directory):
@@ -186,7 +192,8 @@ class REC:
         with open('results/ageing_'+simulation_name+".pkl", 'wb') as f:
             pickle.dump(ageing, f) 
             
-            
+        with open('results/electrolyzer_'+simulation_name+".pkl", 'wb') as f:
+            pickle.dump(electrolyzer, f)    
             
     def reset(self):
         """
