@@ -2,6 +2,7 @@
 ### Authors
 **Pietro Lubello** Università degli Studi di Firenze, Italy\
 **Mattia Pasqui** Università degli Studi di Firenze, Italy\
+**Alessandro Mati** Università degli Studi di Firenze, Italy\
 **Carlo Carcasci** Università degli Studi di Firenze, Italy
 
 ### License
