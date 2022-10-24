@@ -316,14 +316,12 @@ class electrolyzer:
               
                 HydroProdMol  = (etaFaraday*self.nc*Current*3600)/(2*self.FaradayConst)      # [mol/h] (Guilbert 2020)  
                 HydroMol      = HydroProdMol*self.timestep                                   # [mol] necessary for implementing compressor model, to check if its fundamental or can be removed
-                hyd_vol       = HydroMol*self.H2MolMass/self.rhoNrh2                         # [Nm^3] hydrogen produced in the considered timestep          
                 hyd           = HydroMol*self.H2MolMass                                      # [kg] hydrogen produced in the considered timestep
+                hyd_vol       = HydroMol*self.H2MolMass/self.rhoNrh2                         # [Nm^3] hydrogen produced in the considered timestep          
                 deltaHydrogen = hyd_vol*self.LHVh2*self.rhoNrh2*(1000/3600)                  # [kWh] Energy produced, in the form of hydrogen 
                
                 'Water consumption' 
-                # assolutamente ricontrollare qui le unità di misura per la variabile WatCons
-                WatCons = hyd_vol*self.rhoNrh2*self.h2oMolMass/self.H2MolMass/etaElectr/self.rhoStdh2o      # [m^3] water used by the electrolyzer
-            
+                WatCons = hyd_vol*self.rhoNrh2*self.h2oMolMass/self.H2MolMass/etaElectr/self.rhoStdh2o      # [m^3] water used by the electrolyzer - volume calculated @ 15°C & Pamb           
             if hyd > storable_hydrogen:  # if the is not enough space in the H tank to store the hydrogen (H tank is nearly full)
                 hyd = 0 
                 e_absorbed = 0

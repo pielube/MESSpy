@@ -22,7 +22,7 @@ reference_case = 'buiseness as usual' # str name for results file.pkl
 
 # Selecting input files:
 path = r'./input_test' # change the path with r'./input_dev' if you are working on your own run_dev
-# path = 'r./input_dev'
+# path = r'./input_dev'
 
 file_structure = 'structure.json'
 file_general = 'general.json'
