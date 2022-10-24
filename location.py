@@ -164,7 +164,8 @@ class location:
                     available_hyd = self.technologies['H tank'].LOC[h] + self.technologies['H tank'].max_capacity - self.technologies['H tank'].used_capacity
                 else: # if hydrogen is purchased
                     available_hyd = 99999999999 # there are no limits
-                self.energy_balance['hydrogen']['fuel cell'][h], self.energy_balance['electricity']['fuel cell'][h] =self.technologies['fuel cell'].use(h,EB['electricity'],available_hyd) # hydrogen absorbeed by fuel cell(-) and electricity supplied(+) 
+                self.energy_balance['hydrogen']['fuel cell'][h] =self.technologies['fuel cell'].use(h,EB['electricity'],available_hyd)[0]
+                self.energy_balance['electricity']['fuel cell'][h] =self.technologies['fuel cell'].use(h,EB['electricity'],available_hyd)[1] # hydrogen absorbeed by fuel cell(-) and electricity supplied(+) 
                 EB['hydrogen'] += self.energy_balance['hydrogen']['fuel cell'][h]
                 EB['electricity'] += self.energy_balance['electricity']['fuel cell'][h]
                 
