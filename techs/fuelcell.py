@@ -4,6 +4,7 @@ import numpy as np
 import math
 from numpy import log as ln
 from sklearn.linear_model import LinearRegression
+import costants
 
 class fuel_cell:
     
@@ -66,7 +67,7 @@ class fuel_cell:
             self.rhoStdh2o = 999.102621467  # [kg/m3]     PropsSI('D', 'T', 288.15, 'P', 101325, 'H2O') H2O density @ T = 15°C p = 101325 Pa
             self.Runiv     = 8.3144621      # [J/(mol*K)]
             self.Rh2       = 4124.2         # [J/(kg*K)] 
-            self.FaradayConst    = 96485    # [C/mol]     Faraday constant-----Perchè con il self. se è una costante ???
+            self.FaradayConst    = costants.Faraday    # [C/mol]     Faraday constant-----Perchè con il self. se è una costante ???
             self.deltaG0         = -237.17  # [kJ/mol]    Gibbs free energy @ T = 25°C p = 101325 Pa
             self.GammaPerfectGas = 1.4      # [-]         Gamma = cp/cv  
             self.LHVh2      = 119.96        # [MJ/kg]     H2 LHV
