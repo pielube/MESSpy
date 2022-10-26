@@ -53,11 +53,14 @@ class location:
             self.energy_balance['heat']['heatpump'] = np.zeros(self.simulation_hours) # array heatpump heat balance
             self.energy_balance['heat']['inertialtank'] = np.zeros(self.simulation_hours) # array inertial tank heat balance
           
-            # add cooiling or dhw load to heating load  
-            if self.technologies['heatpump'].usage == 1: # heat and cool
-                self.energy_balance['heat']['demand'] += self.energy_balance['cool']['demand']
-            if self.technologies['heatpump'].usage == 2: # heat and dhw
+            # add cooiling and/or dhw load to heating load depending on heatpump.usage
+            if self.technologies['heatpump'].usage in [2,5]:
                 self.energy_balance['heat']['demand'] += self.energy_balance['dhw']['demand']            
+            if self.technologies['heatpump'].usage in [3,5]:
+                self.energy_balance['heat']['demand'] += self.energy_balance['cool']['demand']
+            if self.technologies['heatpump'].usage in [4]:
+                self.energy_balance['heat']['demand'] = self.energy_balance['dhw']['demand']
+            # if usage == 1 only heating          
             
         if 'boiler_hp' in system:
             self.technologies['boiler_hp'] = heatpump(system['heatpump']) # boiler_hp object created and add to 'technologies' dictionary

@@ -15,16 +15,17 @@ class heatpump:
             
                 "type": 1 = air-water (other types not yet implemented...)
                 
-                "usage": 1 = heat and cool, 2 = heat and dhw, 3 = dhw 
-                    n.b "cool" and "dhw" can't be supplied by the same hp
-                    if usage = 2 an 'heatpump_boiler' (usage=3) can be used to supply dhw 
-                        
+                "usage": 1 = heat
+                         2 = heat and dhw
+                         3 = heat and cool
+                         4 = dhw NB you can also create both heatpump (usage=1,3) and boiler_hp (usage=4)
+                         5 = heat, coll and dhw (still under development)
+                         
                 "nom Pth": float [kW]
                 "nom Tamb": float [C°]
                 "nom Tout" float [C°]
                 
                 "t max hp": float [C°]
-                "t max res": float [C°]
                 "t min hp": float [C°]
                 
                 "t min rad heat": float [C°]
@@ -33,8 +34,10 @@ class heatpump:
                 "tank volume": float [lt]
                 "tank dispersion": float [W/m2K]
                 
-                "regulation": bool 
-                "variable set point": false or 24h list
+                "set point": float [C°] 
+                
+                "regulation": bool (developing...)
+                "PV surplus": False or float [C°] set point when there is REC PV surplus that could be used to raise collecetive-self-consumption
                 
             Returns
             -------
