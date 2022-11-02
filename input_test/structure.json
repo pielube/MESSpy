@@ -17,7 +17,7 @@
         {
         "tilt": 30,
         "azimuth": 0,
-        "losses": 0.1,
+        "losses": 20,
         "peakP": 3,
         "serie": "TMY"
 		},
@@ -50,7 +50,7 @@
 	    {
         "tilt": 30,
         "azimuth": 0,
-        "losses": 0.1,
+        "losses": 10,
         "peakP": 1.5,
         "serie": "TMY"
 		},
