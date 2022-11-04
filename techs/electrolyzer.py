@@ -1,10 +1,9 @@
 import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
-# from CoolProp.CoolProp import PropsSI
 import numpy as np
 from sklearn.linear_model import LinearRegression
 from numpy import log as ln
-
+import costants as c
 
 class electrolyzer:
     
@@ -20,25 +19,25 @@ class electrolyzer:
             abrosrb electricity and produce hydrogen .use(e)
         """
         
+        self.rhoNrh2 = c.h2Ndensity     # [kg/m^3] hydrogen density under normal condition
+        
         if parameters['Npower']:
             self.Npower = parameters['Npower'] # float nominal power of electrolyzers installed capacity for the location [kW]
-        
-        H_N_density = 0.08988237638480538  # PropsSI('D', 'T', 273.15, 'P', 101325, 'H2') # hydrogen density under normal condition
+    
 
         if parameters['stack model'] == 'Enapter 2.1': # https://www.enapter.com/it/newsroom/enapter-reveals-new-electrolyser-el-2-1
             self.model= parameters['stack model'] 
             stack_operative_power_consumption = 2.4    # [kW] Single module nominal power
             stack_production_rate_L = 500              # [NL/h]
-            stack_production_rate = stack_production_rate_L / 1000 * H_N_density # [kg/h]
+            stack_production_rate = stack_production_rate_L / 1000 * self.rhoNrh2 # [kg/h]
             self.production_rate = stack_production_rate * (self.Npower / stack_operative_power_consumption) # [kg/h] actual production defined in a simplified way 
-                                                                                                             # by dividing the selected electorlyzer size in the location  
-                                                                                                             # for the single unit nominal power      
+                                                                                                             # by dividing the selected electorlyzer size in the location                                                                                         # for the single unit nominal power      
 
         if parameters['stack model'] == 'McLyzer 800': # https://mcphy.com/it/apparecchiature-e-servizi/elettrolizzatori/large/
             self.model= parameters['stack model']      
             stack_operative_power_consumption = 4000   # [kW] Single module nominal power
             stack_production_rate_m3 = 800             # [Nm3/hr]
-            stack_production_rate = stack_production_rate_m3 * H_N_density   # [kg/hr]
+            stack_production_rate = stack_production_rate_m3 * self.rhoNrh2   # [kg/hr]
             self.production_rate = stack_production_rate * (self.Npower / stack_operative_power_consumption) # [kg/h] actual production defined in a simplified way 
                                                                                                              # by dividing the selected electorlyzer size in the location                                                                                                     # for the single unit nominal power      
     
@@ -47,21 +46,19 @@ class electrolyzer:
             self.EFF = np.zeros(simulation_hours)   # so far - easiest way of keeping track of the elecrolyzer efficiency over the simulation
             
             self.model= parameters['stack model']
-            self.rhoNrh2      = 0.088707      # [kg/Nm3]    H2  density @ T = 0°C p = 101325 Pa  PropsSI('D', 'T', 273.15, 'P', 1*1e5, 'H2')
-            self.rhoStdh2o    = 999.06        # [kg/m3]     H2O density @ T = 15°C p = 101325 Pa
-            Runiv             = 8.3144621     # [J/(mol*K)] Molar ideal gas constant
-            self.FaradayConst = 96485         # [C/mol]     Faraday constant
-            self.LHVh2        = 119.96        # [MJ/kg]     H2 LHV
-            self.HHVh2Mol     = 285.83        # [kJ/mol]    H2 HHV molar
-            self.h2oMolMass   = 0.01801528    # [kg/mol]    Water molar mass
-            self.H2MolMass    = 2.01588e-3    # [kg/mol]    Hydrogen molar mass
+            self.rhoStdh2o    = c.h2oSdensity    # [kg/m3]     H2O density @ T = 15°C p = 101325 Pa
+            Runiv             = c.R_universal    # [J/(mol*K)] Molar ideal gas constant
+            self.FaradayConst = c.Faraday        # [C/mol]     Faraday constant
+            self.LHVh2        = c.LHVh2          # [MJ/kg]     H2 LHV
+            self.HHVh2Mol     = c.HHVh2Mol       # [kJ/mol]    H2 HHV molar
+            self.h2oMolMass   = c.h2oMolMass     # [kg/mol]    Water molar mass
+            self.H2MolMass    = c.h2MolMass      # [kg/mol]    Hydrogen molar mass
 
             # Math costants
-            self.eNepero    = 2.71828182845904523536
-
+            self.eNepero      = c.Nepero         # [-]         Euler's number
             # Ambient conditions 
-            self.AmbTemp = 288             # [K] temperature ofthe surrounding environment
-
+            self.AmbTemp      = c.AmbTemp        # [K]         Standard ambient temperature - 15 °C
+           
             # At current development stage it is taken for granted we are working with hourly balances 
             self.timestep = 1              # [h]
 

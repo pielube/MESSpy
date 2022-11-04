@@ -38,7 +38,7 @@ with open(os.path.join(path,file_refcase),'r') as f: structure0 = json.load(f)
 # Edit input files:
 import preprocess_test as pre
 #import preprocess_dev as pre
-# Instead of modify the original input files.json we suggest to modify the dictionary variables 
+# Instead of modifying the original input files.json we suggest to modify the dictionary variables 
 # structure, structure0, general and economic_data using specific functions that you can define in preprocess_dev. 
 # here an example:
 structure = pre.change_peakP(structure, 'p1', 5) 
