@@ -60,11 +60,11 @@ https://www.e3s-conferences.org/articles/e3sconf/abs/2020/57/e3sconf_ati2020_010
 - "The potential of simulating energy systems: The multi energy systems simulator model"\
 https://www.mdpi.com/1996-1073/14/18/5724
 - "Considerations on the impact of battery ageing estimation in the optimal sizing of solar home battery systems" https://www.sciencedirect.com/science/article/pii/S0959652621039299
-
-Under review:
-- "Assessment of hydrogen based long term electrical energy storage in residential energy systems"
-- "Renewable Energy Communities: a techno-economic assessment focusing on smart battery management"
-- "Heat pump management to increase collective self consumption in Renewable Energy Communities"
+- "Assessment of hydrogen-based long term electrical energy storage in residential energy systems"
+https://www.sciencedirect.com/science/article/pii/S2666955222000260
+- "A New Smart Batteries Management for Renewable Energy Communities"
+https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4268979
+- "Decentralised heat pumps management in Renewable Energy Communities"
 
 ## Citing
 Please cite previous works if you use MESSpy in your research
