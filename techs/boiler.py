@@ -6,6 +6,9 @@ Created on Fri Apr  1 15:46:34 2022
 """
 
 import numpy as np
+import sys 
+sys.path.append('..')
+import constants as c
 
 class boiler_el:    
     

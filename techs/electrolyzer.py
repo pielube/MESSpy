@@ -3,7 +3,9 @@ from scipy.interpolate import interp1d
 import numpy as np
 from sklearn.linear_model import LinearRegression
 from numpy import log as ln
-import costants as c
+import sys 
+sys.path.append('..')
+import constants as c
 
 class electrolyzer:
     
@@ -19,7 +21,7 @@ class electrolyzer:
             abrosrb electricity and produce hydrogen .use(e)
         """
         
-        self.rhoNrh2 = c.h2Ndensity     # [kg/m^3] hydrogen density under normal condition
+        self.rhoNrh2 = c.H2NDENSITY     # [kg/m^3] hydrogen density under normal condition
         
         if parameters['Npower']:
             self.Npower = parameters['Npower'] # float nominal power of electrolyzers installed capacity for the location [kW]
@@ -46,18 +48,18 @@ class electrolyzer:
             self.EFF = np.zeros(simulation_hours)   # so far - easiest way of keeping track of the elecrolyzer efficiency over the simulation
             
             self.model= parameters['stack model']
-            self.rhoStdh2o    = c.h2oSdensity    # [kg/m3]     H2O density @ T = 15°C p = 101325 Pa
-            Runiv             = c.R_universal    # [J/(mol*K)] Molar ideal gas constant
-            self.FaradayConst = c.Faraday        # [C/mol]     Faraday constant
-            self.LHVh2        = c.LHVh2          # [MJ/kg]     H2 LHV
-            self.HHVh2Mol     = c.HHVh2Mol       # [kJ/mol]    H2 HHV molar
-            self.h2oMolMass   = c.h2oMolMass     # [kg/mol]    Water molar mass
-            self.H2MolMass    = c.h2MolMass      # [kg/mol]    Hydrogen molar mass
+            self.rhoStdh2o    = c.H2OSDENSITY    # [kg/m3]     H2O density @ T = 15°C p = 101325 Pa
+            Runiv             = c.R_UNIVERSAL    # [J/(mol*K)] Molar ideal gas constant
+            self.FaradayConst = c.FARADAY        # [C/mol]     Faraday constant
+            self.LHVh2        = c.LHVH2          # [MJ/kg]     H2 LHV
+            self.HHVh2Mol     = c.HHVH2MOL       # [kJ/mol]    H2 HHV molar
+            self.h2oMolMass   = c.H2OMOLMASS     # [kg/mol]    Water molar mass
+            self.H2MolMass    = c.H2MOLMASS      # [kg/mol]    Hydrogen molar mass
 
             # Math costants
-            self.eNepero      = c.Nepero         # [-]         Euler's number
+            self.eNepero      = c.NEPERO         # [-]         Euler's number
             # Ambient conditions 
-            self.AmbTemp      = c.AmbTemp        # [K]         Standard ambient temperature - 15 °C
+            self.AmbTemp      = c.AMBTEMP        # [K]         Standard ambient temperature - 15 °C
            
             # At current development stage it is taken for granted we are working with hourly balances 
             self.timestep = 1              # [h]

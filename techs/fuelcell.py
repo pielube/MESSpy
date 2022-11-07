@@ -4,7 +4,9 @@ import numpy as np
 import math
 from numpy import log as ln
 from sklearn.linear_model import LinearRegression
-import costants as c
+import sys 
+sys.path.append('..')
+import constants as c
 
 class fuel_cell:
     
@@ -61,25 +63,25 @@ class fuel_cell:
             
             self.model=parameters['stack model']
             
-            self.rhoStdh2        = c.h2Sdensity     # [kg/Sm3]    PropsSI('D', 'T', 288.15, 'P', 101325, 'H2') H2  density @ T = 15°C p = 101325 Pa
-            self.rhoStdh2o       = c.h2oSdensity    # [kg/m3]     H2O density @ T = 15°C p = 101325 Pa
-            self.Runiv           = c.R_universal    # [J/(mol*K)]
-            self.Rh2             = c.R_h2           # [J/(kg*K)] 
-            self.FaradayConst    = c.Faraday        # [C/mol]     Faraday constant
-            self.deltaG0         = c.Gibbs          # [kJ/mol]    Gibbs free energy @ T = 25°C p = 101325 Pa
-            self.GammaPerfectGas = c.Gamma          # [-]         Gamma = cp/cv  
-            self.LHVh2           = c.LHVh2          # [MJ/kg]     H2 LHV
-            self.HHVh2           = c.HHVh2          # [MJ/kg]     H2 HHV
-            self.HHVh2Mol        = c.HHVh2Mol       # [kJ/mol]    H2 HHV molar
-            self.cpH2O           = c.cp_water       # [kJ/(kgK)]  Water specific heat
-            self.h2oMolMass      = c.h2oMolMass     # [kg/mol]    Water molar mass
-            self.H2MolMass       = c.h2MolMass      # [kg/mol]    Hydrogen molar mass
+            self.rhoStdh2        = c.H2SDENSITY     # [kg/Sm3]    PropsSI('D', 'T', 288.15, 'P', 101325, 'H2') H2  density @ T = 15°C p = 101325 Pa
+            self.rhoStdh2o       = c.H2OSDENSITY    # [kg/m3]     H2O density @ T = 15°C p = 101325 Pa
+            self.Runiv           = c.R_UNIVERSAL    # [J/(mol*K)]
+            self.Rh2             = c.R_H2           # [J/(kg*K)] 
+            self.FaradayConst    = c.FARADAY        # [C/mol]     Faraday constant
+            self.deltaG0         = c.GIBBS          # [kJ/mol]    Gibbs free energy @ T = 25°C p = 101325 Pa
+            self.GammaPerfectGas = c.GAMMA          # [-]         Gamma = cp/cv  
+            self.LHVh2           = c.LHVH2          # [MJ/kg]     H2 LHV
+            self.HHVh2           = c.HHVH2          # [MJ/kg]     H2 HHV
+            self.HHVh2Mol        = c.HHVH2MOL       # [kJ/mol]    H2 HHV molar
+            self.cpH2O           = c.CP_WATER       # [kJ/(kgK)]  Water specific heat
+            self.h2oMolMass      = c.H2OMOLMASS     # [kg/mol]    Water molar mass
+            self.H2MolMass       = c.H2MOLMASS      # [kg/mol]    Hydrogen molar mass
 
             # Math costants
-            self.eNepero      = c.Nepero         # [-]         Euler's number
+            self.eNepero      = c.NEPERO         # [-]         Euler's number
 
             # Ambient conditions 
-            self.AmbTemp      = c.AmbTemp        # [K]         Standard ambient temperature - 15 °C
+            self.AmbTemp      = c.AMBTEMP        # [K]         Standard ambient temperature - 15 °C
 
             # At current development stage it is taken for granted we are working with hourly balances 
 
