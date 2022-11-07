@@ -62,7 +62,7 @@ https://www.mdpi.com/1996-1073/14/18/5724
 - "Considerations on the impact of battery ageing estimation in the optimal sizing of solar home battery systems" https://www.sciencedirect.com/science/article/pii/S0959652621039299
 - "Assessment of hydrogen-based long term electrical energy storage in residential energy systems"
 https://www.sciencedirect.com/science/article/pii/S2666955222000260
-- "A New Smart Batteries Management for Renewable Energy Communities"
+- "A New Smart Batteries Management for Renewable Energy Communities"                                                   
 https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4268979
 - "Decentralised heat pumps management in Renewable Energy Communities"
 
