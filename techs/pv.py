@@ -3,6 +3,9 @@ import pandas as pd
 import numpy as np
 import os
 import pickle
+import sys 
+sys.path.append('..')
+import constants as c
 
 class PV:    
     

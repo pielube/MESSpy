@@ -1,7 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from hplib import hplib as hpl # https://github.com/RE-Lab-Projects/hplib
-import costants
+import sys 
+sys.path.append('..')
+import constants as c
 
 class heatpump:
     
@@ -88,7 +90,7 @@ class heatpump:
             self.tank_dispersion = parameters['tank dispersion']
             self.tank_mass = self.tank_volume # lt -> kg
             self.tank_surface = 6 * (self.tank_volume/1000)**(2/3) # cube surface [m2]
-            self.cp = costants.cp_water # J/kgK                    
+            self.cp = c.CP_WATER # J/kgK                    
             self.tank_t = self.t_min_rad_h # initial temperature C°
                       
             self.hp_story = [] # P_th
