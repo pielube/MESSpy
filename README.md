@@ -45,7 +45,7 @@ https://github.com/pielube/MESS-Fortran
 To get started, download the repository and simply run the "run_test.py" script
 
 ### Input files
-You can modify them from a python interface or simply from notepad. Teh "Input_test" folder contains a demonstration case study. 
+You can modify them from a python interface or simply from notepad. The "Input_test" folder contains a demonstration case study. 
 - general.json defines the general input. More details can be found in rec.py prologue comments.
 - structure.json defines the structure of the case study. Here you can define all the locations to consider, each technology inside the locations and technology's parameters. More detalis can be found in rec.py and location.py comments to the code.
 - refcase.json This file has the same structure of structure.json and defines the "buiseness as usual" case, which is used as a reference case for calculating the cash flows of the study case and performing the economic assessment.
