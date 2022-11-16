@@ -139,6 +139,9 @@ def hourly_balances(simulation_name,location_name,first_day,last_day,carrier='el
         
         if 'PV' in balances:
             pv = balances['PV'][first_day*24:last_day*24+24]
+        
+        if 'wind' in balances:
+            wind = balances['wind'][first_day*24:last_day*24+24]
             
         if 'grid' in balances:                
             into_grid = np.zeros(24*(last_day-first_day+1))
@@ -216,7 +219,39 @@ def hourly_balances(simulation_name,location_name,first_day,last_day,carrier='el
                 ax.bar(x, np.array(to_csc), width, bottom=ele, label='collective self consumption',  color='gold')
             
            # plt.ylim(-4,4)
+           
+        elif 'wind' in balances:
+            ax.bar(x, np.minimum(load,wind), width,  label='wind self consumption', color='yellowgreen')
+            ax.bar(x, np.maximum(wind-load,np.zeros(len(wind))), width, bottom=load, label='wind surplus', color='cornflowerblue')
             
+            if not 'battery' in balances and not 'electrolyzer' in balances:
+                ax.bar(x, from_grid-from_csc, width ,bottom=wind+from_csc, label='from grid', color='tomato')
+                ax.bar(x, np.array(from_csc), width, bottom=wind,  color='gold')
+            
+                ax.bar(x, np.array(into_grid), width, label='into grid', color='orange')
+                ax.bar(x, np.array(to_csc), width, label='collective self consumption',  color='gold')
+                
+            if 'battery' in balances:
+                ax.bar(x, from_grid-from_csc, width, bottom=wind+discharge_battery+from_csc, label='from grid', color='tomato')
+                ax.bar(x, np.array(from_csc), width, bottom=discharge_battery+wind,  color='gold')
+                ax.bar(x, discharge_battery, width, bottom = wind, label='discharge battery',  color='purple')
+                
+                ax.bar(x, np.array(into_grid), width, bottom=charge_battery , label='into grid', color='orange')
+                if collective == 0:
+                    ax.bar(x, np.array(charge_battery), width,  label='charge battery',  color='violet')
+                    ax.bar(x, np.array(to_csc), width, bottom=charge_battery, label='collective self consumption',  color='gold')
+                else:
+                    ax.bar(x, np.array(charge_battery), width, bottom=np.array(to_csc),  label='charge battery',  color='violet')
+                    ax.bar(x, np.array(to_csc), width, label='collective self consumption',  color='gold')
+                    
+            if 'electrolyzer' in balances and 'fuel cell' in balances:
+                ax.bar(x, from_grid-from_csc, width ,bottom=wind+fc+from_csc, label='from grid', color='tomato')
+                ax.bar(x, np.array(from_csc), width, bottom=wind+fc,  color='y')
+            
+                ax.bar(x, np.array(into_grid), width,bottom=ele , label='into grid', color='orange')
+                ax.bar(x, np.array(ele), width,  label='to electrolyzer',  color='chocolate')
+                ax.bar(x, fc, width, bottom = wind, label='from fuel cell',  color='peru')
+                ax.bar(x, np.array(to_csc), width, bottom=ele, label='collective self consumption',  color='gold')
         else:
             ax.bar(x, from_grid-from_csc, width ,bottom=from_csc, label='from grid', color='tomato')
             ax.bar(x, np.array(from_csc), width, label='collective self consumption',  color='gold')
