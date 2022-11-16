@@ -14,13 +14,14 @@ The code is extensively commented and can be easily used either as a black box b
 
 It's an object oriented program structured on three levels: REC, location and technologies.
 Models of different technologies are avialable and still under development to include new fetures and more realistic detalis. At the current stage the following technologies can be included in the simulations:
-- Photovoltaic field
-- Battery
-- Electrolyzer
+- Photovoltaic panels
+- Wind turbines
+- Batteries
+- Electrolyzers
 - Fuel Cells
-- Hydrogen Tank
-- Heat Pumps
-- Boiler
+- Hydrogen tanks
+- Heat pumps
+- Boilers
 
 ### MESS needs the hourly load profiles as input as a .csv file
 Depending on the type of meter installed, these data is in some cases made available by the electricity/gas supplier, in others it must be requested, while sometimes it cannot be obtained. In the latter case, specific programmes are required to generate such profiles in the specific .csv format needed as one of the program inputs. There are many programmes available online, the authors recommend the following:\
@@ -67,7 +68,7 @@ https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4268979
 - "Decentralised heat pumps management in Renewable Energy Communities"
 
 ## Citing
-Please cite previous works if you use MESSpy in your research
+Please cite previous works if you use MESSpy in your research.
 
 ## Contribute
 This project is open-source. Interested users are therefore invited to test, comment or contribute to the tool. Submitting issues is the best way to get in touch with the development team, which will address your comment, question, or development request in the best possible way. We are also looking for contributors to the main code, willing to contibute to its capabilities, computational-efficiency, formulation, etc.
@@ -83,8 +84,8 @@ To contribute changes:
 - Your name will be added to the authors list
 
 ### License
-Copyright 2022 MESSpy, contributors listed in Authors
+Copyright 2022 MESSpy, contributors listed in Authors.
 
 Licensed under the European Union Public Licence (EUPL), Version 1.2-or-later; you may not use this file except in compliance with the License.
 
-Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License
+Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
