@@ -1,8 +1,8 @@
 """
 MESSpy - Run_test
 
-doon't work on this script:
-    you should create your own run_dev.py and input_dev/ 
+Do not change this script
+Create your own run_dev.py and input_dev/ 
 """
 
 #%% ###########################################################################
@@ -40,7 +40,7 @@ import preprocess_test as pre
 #import preprocess_dev as pre
 # Instead of modifying the original input files.json we suggest to modify the dictionary variables 
 # structure, structure0, general and economic_data using specific functions that you can define in preprocess_dev. 
-# here an example:
+# An example:
 structure = pre.change_peakP(structure, 'p1', 5) 
 
 #%% ###########################################################################

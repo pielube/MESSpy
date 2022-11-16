@@ -245,7 +245,7 @@ class REC:
             weather = pd.read_csv(path+'/weather/weather_TMY.csv')
         
         else: # if new weather data must be downoladed from PV gis
-            print('downolading typical metereological year from PVgis')   
+            print('Downolading typical metereological year data from PVGIS')   
             
             # save new parameters in previous_simulation            
             with open('previous_simulation/general.pkl', 'wb') as f:

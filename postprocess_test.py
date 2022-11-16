@@ -81,7 +81,7 @@ def REC_electricity_balance(simulation_name):
         df.loc[b]['Value / production [%]'] = df.loc[b]['Value [kWh]'] / df.loc['Production']['Value [kWh]'] *100
         df.loc[b]['Value / demand [%]'] = df.loc[b]['Value [kWh]'] / df.loc['Demand']['Value [kWh]'] *100
         
-    print('\n REC electricity balances: '+simulation_name+'\n') 
+    print('\nREC electricity balances: '+simulation_name+'\n') 
     print(df.round(decimals=2))
     return(df.round(decimals=2))
     

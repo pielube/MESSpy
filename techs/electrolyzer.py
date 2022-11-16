@@ -163,7 +163,6 @@ class electrolyzer:
                 Power_inp.append(pot)
             
             self.PowerNominal = max(Power_inp)  # [kW] Max Power Consumption of Electrolyzer - Nominal Power   
-            print('Nominal Power Electorlyzer = {}'.format(round(self.PowerNominal,1)))
             self.IP=interp1d(self.Current,Power_inp,bounds_error=False,fill_value='extrapolate')  
                 
             P = []
