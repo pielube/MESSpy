@@ -1,29 +1,31 @@
-import pandas as pd
 import numpy as np
-import os
-import pickle
 import math
 
 class wind:    
     
-    def __init__(self,params,weather,ts):
+    def __init__(self,params,ts=1):
         """
         Create a wind object based on the specified model
     
         params : dictionary
             'model': str type of model to be used for wind
+                    betz -> simple model based on Betz theory
+                    detailed -> more detailed model based on
+                    Saint-Drenan, Yves-Marie, et al. 
+                    "A parametric model for wind turbine power curves incorporating environmental conditions." 
+                    Renewable Energy 157 (2020): 754-768.
             
             'area': float swept area [m2] e.g. 39.6 m^2 (Aircon 10/10 kW)
             'efficiency': float total efficiency = Betz*efficiency [-] default: 0.45 (ca. 0.593*0.76, i.e. Betz*efficiency)
-            'Prated': float rated power [kW]
+            'Prated': float rated power [kW] # NOTE: useless
             'WSrated': float rated wind speed [m/s] e.g. 11.0 m/s (Aircon 10/10 kW)
             'WScutin': float cut in wind speed [m/s] e.g.  2.5 m/s (Aircon 10/10 kW)
             'WScutoff': float cut off wind speed [m/s] e.g. 32.0 m/s (Aircon 10/10 kW)
             
-            'omega_min': [rpm] e.g. 50  rpm (Aircon 10/10 kW)
-            'omega_max': [rpm] e.g. 130 rpm (Aircon 10/10 kW)
+            'omega_min': [rpm] OPTIONAL default = from eq.
+            'omega_max': [rpm] OPTIONAL default = from eq.
             'beta': [°] e.g. 0°
-            'cp_max': [-] e.g. 0.44 ;values from 0.4 to 0.5
+            'cp_max': [-] OPTIONAL default = 0.44; values from 0.4 to 0.5
             'idx': [-] e.g. 5; values from 0 to 5
             
             'z_i': [m] wind turbine height, (?)
@@ -31,8 +33,7 @@ class wind:
             'alpha': [-] Hellman or shear coefficient, values from 0 to 0.4
             'Vu': [°/m] Veer coefficient, values from 0 to 0.75 °/m
             'Nbands': [-] Number of horizontal bands
-            
-            
+              
         general: dictionary
             see rec.py
 
@@ -40,60 +41,62 @@ class wind:
             produce electricity .use(h)
         """
         
-        if params['model'] == 'availability':
-            print('tobeadded')
-        elif params['model'] == 'betz':
-            
-            ws_turbine = weather['wind'].copy()
-            
-            ws_turbine[ws_turbine<params['WScutin']] = 0.
-            ws_turbine[(ws_turbine>params['WSrated']) & (ws_turbine<params['WScutout'])] = params['WSrated']
-            ws_turbine[ws_turbine>params['WScutout']] = 0.
-            
-            self.energy = 0.5*weather['rho']*params['area']*ws_turbine**3*params['efficiency']/1000.*ts # kWh
-            
-        elif params['model'] == 'detailed':
-            
-            ws_turbine = weather['wind'].copy()
-            ws_turbine[ws_turbine<params['WScutin']] = 0.
-            ws_turbine[(ws_turbine>params['WSrated']) & (ws_turbine<params['WScutout'])] = params['WSrated']
-            ws_turbine[ws_turbine>params['WScutout']] = 0.
-            
-            omega_min = 0.
-            omega_max = 0.
-            cp_max = 0.44
-            
-            if 'omega_min' in params:
-                omega_min = params['omega_min']
-            if 'omega_max' in params:
-                omega_max = params['omega_max']
-            if 'cp_max' in params:
-                cp_max = params['cp_max']
-                
-            powercoeff = self.cpfunc(ws_turbine,params['area'],params['beta'],params['idx'],omega_min=omega_min,omega_max=omega_max,cp_max=cp_max)
-            wseq = self.eqspeed(ws_turbine,params['z_i'],params['z_hub'],params['alpha'],params['area'],params['Vu'],params['Nbands'])
-            
-            self.energy = 0.5*weather['rho']*params['area']*wseq**3*powercoeff/1000.*ts # kWh
-
-        elif params['model'] == 'atlite':
-            print('tobeadded')
-        else:
+        self.params = params
+        self.ts = ts
+        
+        if params['model'] not in ['betz','detailed']:
             print('Error: wrong wind turbine model')
         
 
         
-    def use(self,h):
+    def use(self,h,ws_input,rho=1.225,ts=1):
         """
         Produce electricity
         
         h : int hour to be simulated
+        windspeed: float wind speed [m/s]
+        rho: density [kg/m3]
     
-        output : float electricity produced that hour [kWh]    
+        output : float electricity produced that hour [kWh]
+    
         """
         
-        return(self.energy[h])
-    
-    def cpfunc(self,ws,area,beta,idx,omega_min=0,omega_max=0,cp_max=0.44):
+        ws_turbine=ws_input
+        
+        if self.params['model'] == 'betz':
+                        
+            if ws_turbine<self.params['WScutin']:
+                ws_turbine = 0.
+            elif self.params['WSrated']<ws_turbine<self.params['WScutout']:
+                ws_turbine = self.params['WSrated']
+            elif ws_turbine>self.params['WScutout']:
+               ws_turbine = 0.
+            
+            self.energy = 0.5*rho*self.params['area']*ws_turbine**3*self.params['efficiency']/1000.*ts # kWh
+            
+        elif self.params['model'] == 'detailed':
+            
+            if ws_turbine<self.params['WScutin']:
+                ws_turbine = 0.
+            elif self.params['WSrated']<ws_turbine<self.params['WScutout']:
+                ws_turbine = self.params['WSrated']
+            elif ws_turbine>self.params['WScutout']:
+               ws_turbine = 0.
+            
+            cp_max = 0.44
+            
+            if 'cp_max' in self.params:
+                cp_max = self.params['cp_max']
+                
+            powercoeff = self.cpfunc(ws_turbine,self.params['area'],self.params['beta'],self.params['idx'],cp_max=cp_max)
+            wseq = self.eqspeed(ws_turbine,self.params['z_i'],self.params['z_hub'],self.params['alpha'],self.params['area'],self.params['Vu'],self.params['Nbands'])
+            
+            self.energy = 0.5*rho*self.params['area']*wseq**3*powercoeff/1000.*ts # kWh
+            
+        return(self.energy)
+
+
+    def cpfunc(self,ws,area,beta,idx,cp_max=0.44):
         
         c1 = [0.73, 0.5, 0.5176, 0.77, 0.5,  0.22]
         c2 = [151., 116.,116.,151.,116.,120.]
@@ -116,29 +119,31 @@ class wind:
         lambda_opt_0 = lambdas_0[np.argmax(cps_0)]
                         
         # if omega_min and omega_max are not given as inputs:     
-        if omega_min == 0:
-          omega_min = 188.8*diam**(-0.7081)*2*math.pi/60  # originally: omega_min = 1046.558*diam**(-1.0911)*2*math.pi/60        
-        if omega_max == 0:
-          omega_max = 793.7*diam**(-0.8504)*2*math.pi/60 # originally: omega_max = 705.406*diam**(-0.8349)*2*math.pi/60    
+        if 'omega_min' in self.params:
+            omega_min = self.params['omega_min']
+        else:
+            omega_min = 1046.558*diam**(-1.0911)*2*math.pi/60
+            # omega_min = 188.8*diam**(-0.7081)*2*math.pi/60 # alternative equation proposed by Niccolò Baldi  
+        
+        if 'omega_max' in self.params:
+            omega_max = self.params['omega_max']
+        else:
+            omega_max = 705.406*diam**(-0.8349)*2*math.pi/60
+            # omega_max = 793.7*diam**(-0.8504)*2*math.pi/60 # alternative equation proposed by Niccolò Baldi
 
-        # omega
-        omega_min_arr = np.ones(len(ws))*omega_min
-        omega_max_arr = np.ones(len(ws))*omega_max
-        omega = np.minimum(omega_max_arr, np.maximum(omega_min_arr, lambda_opt_0/(diam/2)*ws)) # Eq. 5, all speeds in [rad/s]
+        omega = np.minimum(omega_max, np.maximum(omega_min, lambda_opt_0/(diam/2)*ws)) # Eq. 5, all speeds in [rad/s]
 
         # cp and lambda for the actual beta
-        lambdas = np.zeros(len(ws))
-        cps = np.zeros(len(ws))
-        lambdas[ws>0] = omega[ws>0]*(diam/2)/ws[ws>0] # Eq. 3
-        cps[ws>0] = c1[idx]*(c2[idx]/(1.0/((lambdas[ws>0]+c9[idx]*beta)**(-1)-c10[idx]*((beta**3)+1.0)**(-1)))-c3[idx]*beta-c4[idx]*(1.0/((lambdas[ws>0]+c9[idx]*beta)**(-1)-c10[idx]*((beta**3)+1.0)**(-1)))*beta-c5[idx]*beta**x[idx]-c6[idx])*np.exp(-c7[idx]/(1.0/((lambdas[ws>0]+c9[idx]*beta)**(-1)-c10[idx]*((beta**3)+1.0)**(-1))))+c8[idx]*lambdas[ws>0] # Eq. 2 (I) + (II)
-      
-        # scaling cps wrt cp_max
-        cps = cp_max/cp_max_0*cps
+        lambdaparam = 0.
+        cp = 0
+        if not(ws == 0.):
+            lambdaparam = omega*(diam/2)/ws # Eq. 3
+            cp = c1[idx]*(c2[idx]/(1.0/((lambdaparam+c9[idx]*beta)**(-1)-c10[idx]*((beta**3)+1.0)**(-1)))-c3[idx]*beta-c4[idx]*(1.0/((lambdaparam+c9[idx]*beta)**(-1)-c10[idx]*((beta**3)+1.0)**(-1)))*beta-c5[idx]*beta**x[idx]-c6[idx])*np.exp(-c7[idx]/(1.0/((lambdaparam+c9[idx]*beta)**(-1)-c10[idx]*((beta**3)+1.0)**(-1))))+c8[idx]*lambdaparam # Eq. 2 (I) + (II)
         
-        # # cp cannot be < 0.
-        # cps[cps<0.] = 0.
+        # scaling cps wrt cp_max
+        cp = cp_max/cp_max_0*cp
 
-        return cps
+        return cp
     
     def hbandareas(self,area,Nbands):
         
@@ -183,7 +188,7 @@ class wind:
         
         diam = (4*area/math.pi)**(1/2)
         h = np.zeros(Nbands)
-        ws_eq = np.zeros(len(ws))
+        ws_eq = 0.
         
         for i in range(Nbands):
             h[i] = z_hub-diam/2+diam/(Nbands*2)+i*diam/Nbands # height of the barycenter of the various h bands at which compute U_i e DeltaPhi_i
@@ -216,10 +221,7 @@ if __name__ == "__main__":
                 'WSrated': 11.0,
                 'WScutin': 2.5,
                 'WScutout': 32.0,
-                'omega_min': 50,
-                'omega_max': 130,
                 'beta': 0.,
-                'cp_max': 0.44,
                 'idx': 5,
                 'z_i': 40.,
                 'z_hub': 30.,
@@ -228,18 +230,11 @@ if __name__ == "__main__":
                 'Nbands': 10
                 }
 
-    rho = np.array([1.2,1.2,1.2,1.2])
-    windsp = np.array([0.5,3.0,12.0,35.0])
-
-    weather = {
-               'rho': rho,
-               'wind': windsp
-              }
+    # windsp = np.array([0.5,3.0,12.0,35.0])
+    windsp = np.array([11.0])    
     
-    ts = 1.
+    wind = wind(params)
     
-    wind = wind(params,weather,ts)
-    
-    for h in range(4):
-        print(wind.use(h))    
+    for h in range(len(windsp)):
+        print(wind.use(h,windsp[h]))    
     

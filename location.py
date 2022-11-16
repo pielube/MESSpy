@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from techs import heatpump,boiler_el,boiler_ng,PV,battery,H_tank,fuel_cell,electrolyzer
+from techs import heatpump,boiler_el,boiler_ng,PV,wind,battery,H_tank,fuel_cell,electrolyzer
 
 
 class location:
@@ -17,6 +17,7 @@ class location:
                 'heat': str 'file_name.csv' hourly time series of heating demand 8760 values [kWh]
                 'cool': str 'file_name.csv' hourly time series of cooling demand 8760 values [kWh]
             'PV': dictionary parameters needed to create PV object (see PV.py)
+            'wind': dictionary parameters needed to create wind object (see wind.py)
             'battery': dictionary parameters needed to create battery object (see Battery.py)
             'hydrogen demand': str 'file_name.csv' hourly time series of hydrogen demand [kg]
             'electrolyzer': dictionary parameters needed to create electrolyzer object (see electrolyzer.py)
@@ -83,7 +84,11 @@ class location:
         if 'PV' in system:
             self.technologies['PV'] = PV(system['PV'],general,self.simulation_hours,self.name,path) # PV object created and add to 'technologies' dictionary
             self.energy_balance['electricity']['PV'] = np.zeros(self.simulation_hours) # array PV electricity balance
-            
+           
+        if 'wind' in system:
+            self.technologies['wind'] = wind(system['wind']) # wind object created and add to 'technologies' dictionary
+            self.energy_balance['electricity']['wind'] = np.zeros(self.simulation_hours) # array wind electricity balance 
+           
         if 'battery' in system:
             self.technologies['battery'] = battery(system['battery'],self.simulation_hours) # battery object created and to 'technologies' dictionary
             self.energy_balance['electricity']['battery'] = np.zeros(self.simulation_hours) # array battery electricity balance
@@ -144,6 +149,10 @@ class location:
         if 'PV' in self.technologies: 
             self.energy_balance['electricity']['PV'][h] = self.technologies['PV'].use(h) # electricity produced from PV
             EB['electricity'] += self.energy_balance['electricity']['PV'][h] # elecricity balance update: + electricity produced from PV
+            
+        if 'wind' in self.technologies: 
+            self.energy_balance['electricity']['wind'][h] = self.technologies['wind'].use(h,weather['wind_speed'][h]) # electricity produced from wind
+            EB['electricity'] += self.energy_balance['electricity']['wind'][h] # elecricity balance update: + electricity produced from wind
     
         if 'battery' in self.technologies:
             if self.technologies['battery'].collective == 0: 

@@ -1,4 +1,5 @@
 from .pv import PV
+from .wind import wind
 from .battery import battery
 from .electrolyzer import electrolyzer
 from .fuelcell import fuel_cell
