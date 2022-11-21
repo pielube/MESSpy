@@ -13,13 +13,12 @@ class location:
             'demand'': dictionary
                 'electricity': str 'file_name.csv' hourly time series of electricity demand 8760 values [kWh]
                 'hydrogen': str 'file_name.csv' hourly time series of hydrogen demand 8760 values [kg/hr]
-                'gas': str 'file_name.csv' hourly time series of gas demand 8760 values [kg/hr]
+                'gas': str 'file_name.csv' hourly time series of gas demand 8760 values [kWh]
                 'heat': str 'file_name.csv' hourly time series of heating demand 8760 values [kWh]
                 'cool': str 'file_name.csv' hourly time series of cooling demand 8760 values [kWh]
             'PV': dictionary parameters needed to create PV object (see PV.py)
             'wind': dictionary parameters needed to create wind object (see wind.py)
             'battery': dictionary parameters needed to create battery object (see Battery.py)
-            'hydrogen demand': str 'file_name.csv' hourly time series of hydrogen demand [kg]
             'electrolyzer': dictionary parameters needed to create electrolyzer object (see electrolyzer.py)
             'H tank': dictionary parameters needed to create H_tank object (see H_tank.py)
             'fuel cell': dictionary parameters needed to create fuel_cell object (see fuel_cell.py)
@@ -45,8 +44,11 @@ class location:
             if carrier in system['grid'] and system['grid'][carrier]:
                 self.energy_balance[carrier]['grid'] = np.zeros(self.simulation_hours) # array energy carrier bought from the grid (-) or feed into the grid (+)
 
-            if carrier in system['demand']:            
-                self.energy_balance[carrier]['demand'] = - np.tile(pd.read_csv(path+'/loads/'+system['demand'][carrier])['kWh'].to_numpy(),int(self.simulation_hours/8760)) # hourly energy carrier needed for the entire simulation
+            if carrier in system['demand']:
+                if carrier == 'hydrogen':
+                    self.energy_balance[carrier]['demand'] = - np.tile(pd.read_csv(path+'/loads/'+system['demand'][carrier])['kg'].to_numpy(),int(self.simulation_hours/8760)) # hourly energy carrier needed for the entire simulation
+                else:                                                                                                                                                                                                          
+                    self.energy_balance[carrier]['demand'] = - np.tile(pd.read_csv(path+'/loads/'+system['demand'][carrier])['kWh'].to_numpy(),int(self.simulation_hours/8760)) # hourly energy carrier needed for the entire simulation
 
         if 'heatpump' in system:
             self.technologies['heatpump'] = heatpump(system['heatpump']) # heatpump object created and add to 'technologies' dictionary

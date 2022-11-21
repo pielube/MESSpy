@@ -61,10 +61,11 @@ class REC:
                 self.locations[location_name].loc_energy_simulation(h,self.weather) # simulate a single location updating its energy balances
                 
             ### solve electricity grid 
-                if self.locations[location_name].energy_balance['electricity']['grid'][h] < 0:
-                    self.energy_balance['electricity']['into grid'][h] += self.locations[location_name].energy_balance['electricity']['grid'][h] # electricity fed into the grid from the whole rec at hour h
-                else:                                                     
-                    self.energy_balance['electricity']['from grid'][h] += self.locations[location_name].energy_balance['electricity']['grid'][h] # electricity withdrawn from the grid the whole rec at hour h
+                if 'grid' in self.locations[location_name].energy_balance['electricity']:
+                    if self.locations[location_name].energy_balance['electricity']['grid'][h] < 0:
+                        self.energy_balance['electricity']['into grid'][h] += self.locations[location_name].energy_balance['electricity']['grid'][h] # electricity fed into the grid from the whole rec at hour h
+                    else:                                                     
+                        self.energy_balance['electricity']['from grid'][h] += self.locations[location_name].energy_balance['electricity']['grid'][h] # electricity withdrawn from the grid the whole rec at hour h
                 
                 
             ### solve smart heatpumps (relation with batteries?)
@@ -177,7 +178,8 @@ class REC:
             
             tech_name = 'electrolyzer'
             if tech_name in self.locations[location_name].technologies:
-                electrolyzer[location_name][tech_name] = self.locations[location_name].technologies[tech_name].EFF
+                if self.locations[location_name].technologies['electrolyzer'].model == 'PEM General':
+                    electrolyzer[location_name][tech_name] = self.locations[location_name].technologies[tech_name].EFF
         
         directory = './results'
         if not os.path.exists(directory):

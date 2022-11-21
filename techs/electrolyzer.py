@@ -116,7 +116,7 @@ class electrolyzer:
                 
                 pH2O = self.eNepero**(11.676-(3816.44 /(self.OperatingTemp-46.13)))  # [atm]
                 pO2  = self.AnodePressure/101325 - pH2O                              # [atm]
-                pH2  = self.OperatingPress/101325-pH2O                               # [atm]
+                pH2  = self.OperatingPress/101325 - pH2O                             # [atm]
                 
                 Ecell = 1.229-0.85e-3*(self.OperatingTemp-298.15)+4.3085e-5*self.OperatingTemp*ln(pH2*(pO2**0.5)/pH2O) #[V] Cell open curcuit voltage
                 
