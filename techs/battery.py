@@ -1,6 +1,8 @@
 import numpy as np
+import os
 import sys 
-sys.path.append('..')
+path = os.getcwd()
+sys.path.append(os.path.abspath(os.path.join(path, os.pardir)))   # temorarily adding constants module path 
 import constants as c
 
 class battery:    

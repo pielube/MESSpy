@@ -3,8 +3,10 @@ from scipy.interpolate import interp1d
 import numpy as np
 from sklearn.linear_model import LinearRegression
 from numpy import log as ln
+import os
 import sys 
-sys.path.append('..')
+path = os.getcwd()
+sys.path.append(os.path.abspath(os.path.join(path, os.pardir)))   # temorarily adding constants module path 
 import constants as c
 
 class electrolyzer:
@@ -346,8 +348,15 @@ if __name__ == "__main__":
 
     flow = np.random.uniform(1,10,sim_hours)
     
+    
+    a=[]
+    b=[]
     for h in range(24):
-        print(el.use(h,flow[h],99999))
+        a.append(el.use(h,flow[h],99999)[0])
+        b.append(-el.use(h,flow[h],99999)[1])
+        
+    print('Produced Hydrogen in the timestep [kg]: \n\n', a)
+    print('\nAbsorbed energy [kWh]: \n\n', b)
         
         
-    print(el.EFF)                           # electrolyzer efficiency at every hour
+    print('\nElectrolyzer Efficiency [-]: \n\n',el.EFF)                           # electrolyzer efficiency at every hour

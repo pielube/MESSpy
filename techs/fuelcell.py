@@ -4,8 +4,10 @@ import numpy as np
 import math
 from numpy import log as ln
 from sklearn.linear_model import LinearRegression
+import os
 import sys 
-sys.path.append('..')
+path = os.getcwd()
+sys.path.append(os.path.abspath(os.path.join(path, os.pardir)))   # temorarily adding constants module path 
 import constants as c
 
 class fuel_cell:
@@ -262,7 +264,8 @@ class fuel_cell:
               plt.title('PEMFC Polarization Curve (V-i)' )
                 
              
-          else: 
+          else:
+              
               print('Polarization curve not available')
              
     def plot_stackperformance(self):
@@ -384,7 +387,7 @@ class fuel_cell:
         
         elif self.model=='PEM General':
             
-            'Finding the working point of the electrolyzer by explicitly solving the system:'
+            'Finding the working point of the FuelCell by explicitly solving the system:'
             
             p_required = -e  # [kWh] --> equivalent to kW for the considered timestep
             
