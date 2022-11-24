@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from techs import heatpump,boiler_el,boiler_ng,PV,wind,battery,H_tank,fuel_cell,electrolyzer
+from techs import heatpump,boiler_el,boiler_ng,boiler_h2,PV,wind,battery,H_tank,fuel_cell,electrolyzer
 
 
 class location:
@@ -102,12 +102,17 @@ class location:
             
         if 'fuel cell' in system:
             self.technologies['fuel cell'] = fuel_cell(system['fuel cell'],self.simulation_hours) # Fuel cell object created and to 'technologies' dictionary
-            self.energy_balance['electricity']['fuel cell'] = np.zeros(self.simulation_hours) # array fuel cell electricity balance
-            self.energy_balance['hydrogen']['fuel cell'] = np.zeros(self.simulation_hours) # array fuel cell hydrogen balance
+            self.energy_balance['electricity']['fuel cell'] = np.zeros(self.simulation_hours)     # array fuel cell electricity balance
+            self.energy_balance['hydrogen']['fuel cell'] = np.zeros(self.simulation_hours)        # array fuel cell hydrogen balance
             
         if 'H tank' in system:
             self.technologies['H tank'] = H_tank(system['H tank'],self.simulation_hours) # H tank object created and to 'technologies' dictionary
-            self.energy_balance['hydrogen']['H tank'] = np.zeros(self.simulation_hours) # array H tank hydrogen balance
+            self.energy_balance['hydrogen']['H tank'] = np.zeros(self.simulation_hours)  # array H tank hydrogen balance
+
+        if 'boiler_h2' in system:
+            self.technologies['boiler_h2'] = boiler_h2(system['boiler_h2'])                 # boiler_h2 object created and added to 'technologies' dictionary
+            self.energy_balance['hydrogen']['boiler_h2'] = np.zeros(self.simulation_hours)  # array boiler_h2 gas balance
+            self.energy_balance['heat']['boiler_h2'] = np.zeros(self.simulation_hours)      # array boiler_h2 heat balance 
 
         self.energy_balance['electricity']['collective self consumption'] = np.zeros(self.simulation_hours) # array contribution to collective-self-consumption as producer (-) or as consumer (+)
 
@@ -182,6 +187,16 @@ class location:
                 self.energy_balance['electricity']['fuel cell'][h] =self.technologies['fuel cell'].use(h,EB['electricity'],available_hyd)[1] # hydrogen absorbeed by fuel cell(-) and electricity supplied(+) 
                 EB['hydrogen'] += self.energy_balance['hydrogen']['fuel cell'][h]
                 EB['electricity'] += self.energy_balance['electricity']['fuel cell'][h]
+                
+        if 'boiler_h2' in self.technologies: 
+            if 'H tank' in self.technologies: # if hydrogen is stored in a tank
+                available_hyd = self.technologies['H tank'].LOC[h] + self.technologies['H tank'].max_capacity - self.technologies['H tank'].used_capacity-self.energy_balance['hydrogen']['fuel cell'][h]
+            else: # if hydrogen is purchased
+                available_hyd = 99999999999 # there are no limits
+            self.energy_balance['hydrogen']['boiler_h2'][h] = self.technologies['boiler_h2'].use(EB['heat'],available_hyd,1)[1] #h2 consumed from boiler_h2
+            self.energy_balance['heat']['boiler_h2'][h] = self.technologies['boiler_h2'].use(EB['heat'],available_hyd,1)[2] # heat produced from boiler_h2
+            EB['hydrogen'] += self.energy_balance['hydrogen']['boiler_h2'][h] # hydrogen balance update: - hydrogen consumed by boiler_h2
+            EB['heat'] += self.energy_balance['heat']['boiler_h2'][h] # heat balance update: + heat produced by boiler_h2
                 
         if 'H tank' in self.technologies:
             self.energy_balance['hydrogen']['H tank'][h] = self.technologies['H tank'].use(h,EB['hydrogen'])
