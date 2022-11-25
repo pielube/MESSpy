@@ -6,30 +6,46 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 
-def total_balances(simulation_name,loc):
-
+        
+def total_balances(simulation_name,loc,var=None):
+    """
+    Total balances plot
+    
+    simulationa_name : str 
+    loc : str 
+    var :str -> possibility of specifying a single energy carrier
+    
+    """
+    
     with open('Results/balances_'+simulation_name+'.pkl', 'rb') as f:
         balances = pickle.load(f)
     
-    ###### load analysys
+    ###### load analysis
     
-    ##### total electricity balances
-    carriers = ['electricity']
-    units = {'electricity': 'kWh', 'hydrogen': 'kg'}
+    ##### total energy balances
     
+    carriers = ['electricity','heat','gas','hydrogen']
+    units    = {'electricity': 'kWh', 'hydrogen': 'kg', 'gas':'kWh', 'heat':'kWh'}
+    
+    if var: 
+        
+        carriers = [var]
+        units    = {var : units[var]}
+
     for carrier in carriers:
         print('\nTotal '+carrier+' balances:\n')
         print('\n'+loc)   
         for b in balances[loc][carrier]:
             
-            positiv=balances[loc][carrier][b][balances[loc][carrier][b]>0].sum()
-            negativ=balances[loc][carrier][b][balances[loc][carrier][b]<0].sum()
+            positiv=round(balances[loc][carrier][b][balances[loc][carrier][b]>0].sum(),1)
+            negativ=round(balances[loc][carrier][b][balances[loc][carrier][b]<0].sum(),1)
             
             if positiv != 0:
                 print(b+' '+str(round(positiv,1))+' '+units[carrier])
                 
             if negativ != 0:
                 print(b+' '+str(round(negativ,1))+' '+units[carrier])
+                
     print('\n')
    
     
