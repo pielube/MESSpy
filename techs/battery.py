@@ -57,7 +57,7 @@ class battery:
         output : electricity supplied or absorbed that hour [kWh]
         """
         
-        if self.ageing and (h/24%self.ageing_day == 0) and h!=0: # if aeging == 0 and it's time to calculat it
+        if self.ageing and (h/24%self.ageing_day == 0) and h!=0: # if aeging == True and it's time to calculate it
             self.calculate_ageing(h)
             
         if e >= 0: # charge battery
