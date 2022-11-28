@@ -84,7 +84,7 @@ some post-process are alredy avaiable as examples in postprocess_test
 you should create your own postprocess_dev.py
 """
 
-#pp.total_balances(study_case, 'p1')
+pp.total_balances(study_case, 'p1')
 #pp.total_balances(study_case,'p2')
 #pp.total_balances(study_case,'c1')
 pp.REC_electricity_balance(study_case)
