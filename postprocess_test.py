@@ -5,11 +5,13 @@ import pickle
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
+import plotly.io as pio
+import plotly.graph_objects as go
 
         
 def total_balances(simulation_name,loc,var=None):
     """
-    Total balances plot
+    Total balances figures
     
     simulationa_name : str 
     loc : str 
@@ -99,7 +101,9 @@ def REC_electricity_balance(simulation_name):
         
     print('\nREC electricity balances: '+simulation_name+'\n') 
     print(df.round(decimals=2))
+    print('\n')
     return(df.round(decimals=2))
+
     
 def LOC_plot(simulation_name):
       
@@ -119,6 +123,7 @@ def LOC_plot(simulation_name):
             plt.xlabel('Time [hours]')
             plt.title(location_name+' '+tech)
             plt.show()
+            
             
 def storage_control(simulation_name,e_cost=0.30,H_cost=0.05):
     with open('Results/LOC_'+simulation_name+'.pkl', 'rb') as f:
@@ -143,7 +148,7 @@ def storage_control(simulation_name,e_cost=0.30,H_cost=0.05):
             print("\n")
             
     
-def hourly_balances(simulation_name,location_name,first_day,last_day,carrier='electricity',width=0.9,collective=0):
+def hourly_balances_electricity(simulation_name,location_name,first_day,last_day,carrier='electricity',width=0.9,collective=0):
     
         with open('Results/balances_'+simulation_name+'.pkl', 'rb') as f:
             balances = pickle.load(f)
@@ -282,6 +287,78 @@ def hourly_balances(simulation_name,location_name,first_day,last_day,carrier='el
         #plt.yticks([-2,-1,0,1,2],['-2','-1','0','1','2'])
         plt.show()
         
+        
+def hourly_balances_heat(simulation_name,location_name,first_day,last_day,carrier='heat',width=0.9,collective=0):#se copio direttamente la funzione hourly_balances e cambio carrier mi dà errore su "collective self consumptio"
+    with open('Results/balances_'+simulation_name+'.pkl', 'rb') as f:
+        balances = pickle.load(f)
+        
+    balances = balances[location_name][carrier]
+    
+    if 'demand' in balances:
+        load = -balances['demand'][first_day*24:last_day*24+24]
+        
+    if 'grid' in balances:
+        into_grid=balances['grid'][first_day*24:last_day*24+24]
+    else:
+        into_grid=np.zeros(last_day*24+24-first_day*24)
+        
+    if 'boiler_ng' in balances:                
+        boiler_ng = balances['boiler_ng'][first_day*24:last_day*24+24]
+    
+    if 'boiler_h2' in balances:                
+        boiler_h2 = balances['boiler_h2'][first_day*24:last_day*24+24]
+        
+    if 'fuel cell' in balances:
+        fuel_cell=balances['fuel cell'][first_day*24:last_day*24+24]
+                
+                 
+    to_csc = np.zeros(24*(last_day-first_day+1))
+    from_csc = np.zeros(24*(last_day-first_day+1))
+    for i,e in enumerate(balances['collective self consumption'][first_day*24:last_day*24+24]):
+        if e > 0:
+            from_csc[i] = e
+        else:
+            to_csc[i] = e 
+        
+    x = np.linspace(first_day*24+1,(last_day+1)*24,(last_day-first_day+1)*24)
+    x = np.arange((last_day-first_day+1)*24)
+    
+    fig = plt.figure(dpi=1000)
+    from mpl_toolkits.axisartist.axislines import SubplotZero
+    ax = SubplotZero(fig, 1, 1, 1)
+    fig.add_subplot(ax)
+    ax.axis["xzero"].set_visible(True)
+    for n in ["bottom", "top", "right"]:
+        ax.axis[n].set_visible(False)
+    ax.grid(axis='y')   
+    
+    
+    if 'fuel cell' in balances:
+        ax.bar(x, fuel_cell, width,  label='FC self consumption', color='yellowgreen')
+        ax.bar(x, into_grid, width, bottom=load, label='FC surplus', color='cornflowerblue')
+        
+        if 'boiler_h2' in balances:
+            ax.bar(x, boiler_h2-from_csc, width ,bottom=fuel_cell+from_csc, label='from boiler$_\mathregular{H2}$', color='yellow')
+            ax.bar(x, np.array(from_csc), width, bottom=fuel_cell,  color='gold')
+            
+        if 'boiler_ng' in balances:
+            ax.bar(x, boiler_ng-from_csc, width ,bottom=fuel_cell+from_csc, label='from boiler$_\mathregular{NG}$', color='tomato')
+            ax.bar(x, np.array(from_csc), width, bottom=fuel_cell,  color='gold')
+                
+    else:
+        ax.bar(x, boiler_ng-from_csc, width ,bottom=from_csc, label='from boiler$_\mathregular{NG}$', color='tomato')
+        ax.bar(x, np.array(from_csc), width, label='collective self consumption',  color='gold')
+       # plt.ylim(0,3.3)
+    
+    plt.title(location_name+' days '+str(first_day)+'-'+str(last_day)+' heat balance')
+    plt.plot(x,load,'k',label='load')     
+    plt.legend(ncol=2, bbox_to_anchor=(1.2, 0))
+    plt.ylabel("Hourly energy [kWh/h] ")
+    #plt.xticks([0,6,12,18,24],['0','6','12','18','24'],fontsize=10,color='g')
+    #plt.xticks([0,6,12,18,24,30,36,42,48],['0','6','12','18','24','30','36','42','48'],fontsize=10,color='g')
+    #plt.yticks([-2,-1,0,1,2],['-2','-1','0','1','2'])
+    plt.show()
+        
             
 def csc_allocation_sum(simulation_name):
     with open('Results/balances_'+simulation_name+'.pkl', 'rb') as f:
@@ -294,6 +371,215 @@ def csc_allocation_sum(simulation_name):
     
         print(f"{location_name} {int(from_csc)}  {int(to_csc)}")
    
+
+def Flows(simulation_name,carrier='electricity'):
+
+    pio.renderers.default='browser'
+    with open('Results/balances_'+simulation_name+'.pkl', 'rb') as f:
+        balances = pickle.load(f)
     
+    ### data prepearing
+    node_label = ["LV grid","LV grid","MV grid","MV grid"]
+    node_color = ['silver','silver','gray','gray']
+    source = []
+    target = []
+    value = []
+    link_color = []
+    link_label = []
+        
+    ### add from grid
+    node_number = 4
+    for loc in balances:
+        if loc != 'REC':
+            
+            node_color.append('brown')
+            node_label.append('load '+loc)
+            
+            source.append(0)
+            target.append(node_number)
+            value.append(np.sum(balances[loc][carrier]['grid'], where = balances[loc][carrier]['grid'] > 0))
+            link_color.append('chocolate')
+            link_label.append('from LV grid')
+            node_number += 1
+    value.append(sum(value)-sum(balances['REC'][carrier]['collective self consumption']))
+    source.append(2)
+    target.append(0)
+    link_color.append('tomato')
+    link_label.append('from MV grid')
+    
+    ### add to grid and self consumption
+    node_number2 = 4
+    for loc in balances:
+        if loc != 'REC':
+            if 'PV' in balances[loc][carrier]:
+            
+                node_color.append('skyblue')
+                node_label.append('PV '+loc)
+                
+                # into grid
+                source.append(node_number)
+                target.append(1)
+                value.append(- (np.sum(balances[loc][carrier]['grid'], where = balances[loc][carrier]['grid'] < 0)))
+                link_color.append('cornflowerblue')
+                link_label.append('to LV grid')
+                
+                # self consumption
+                source.append(node_number)
+                target.append(node_number2)
+                
+                if 'battery' in balances[loc][carrier]:
+                    value.append(-np.sum(balances[loc][carrier]['demand']) - np.sum(balances[loc][carrier]['grid'], where = balances[loc][carrier]['grid'] > 0) -np.sum(balances[loc][carrier]['battery'], where = balances[loc][carrier]['battery'] > 0))
+                    link_color.append('yellowgreen')
+                    link_label.append('self consumption (directly from PV)')
+                    node_number += 1
+                    
+                    node_color.append('plum')
+                    node_label.append('battery '+loc)
+                    
+                    source.append(node_number)
+                    target.append(node_number2)
+                    value.append(np.sum(balances[loc][carrier]['battery'], where = balances[loc][carrier]['battery'] > 0))
+                    link_color.append('purple')
+                    link_label.append('self consumption (from battery)')
+                    
+                    source.append(node_number-1)
+                    target.append(node_number)
+                    value.append(-np.sum(balances[loc][carrier]['battery'], where = balances[loc][carrier]['battery'] < 0))
+                    link_color.append('violet')
+                    link_label.append('to battery')   
+                    
+                    node_number += 1
+                    
+                elif 'electrolyzer' in balances[loc][carrier] and 'fuel cell' in balances[loc][carrier]:
+                    value.append(-np.sum(balances[loc][carrier]['demand']) - np.sum(balances[loc][carrier]['grid'], where = balances[loc][carrier]['grid'] > 0) -np.sum(balances[loc][carrier]['fuel cell']))
+                    link_color.append('yellowgreen')
+                    link_label.append('self consumption (directly from PV)')
+                    node_number += 1
+                    
+                    node_color.append('sandybrown')
+                    node_label.append('hydrogen '+loc)
+                    
+                    source.append(node_number)
+                    target.append(node_number2)
+                    value.append(np.sum(balances[loc][carrier]['fuel cell']))
+                    link_color.append('peru')
+                    link_label.append('self consumption (from fuel cell)')
+                    
+                    source.append(node_number-1)
+                    target.append(node_number)
+                    value.append(-np.sum(balances[loc][carrier]['electrolyzer']))
+                    link_color.append('chocolate')
+                    link_label.append('to electrolyzer')   
+                    
+                    node_number += 1
+                                        
+                else:
+                    value.append(-np.sum(balances[loc][carrier]['demand']) - np.sum(balances[loc][carrier]['grid'], where = balances[loc][carrier]['grid'] > 0))
+                
+                    link_color.append('yellowgreen')
+                    link_label.append('self consumption')
+                    node_number += 1
+                    
+                    
+                    
+                node_number2 += 1 # load
+                
+    ### LV to MV
+    source.append(1)
+    source.append(1)
+    target.append(0)
+    target.append(3)
+    value.append(sum(balances['REC'][carrier]['collective self consumption'])) 
+    value.append(- np.sum(balances['REC'][carrier]['into grid'])-sum(balances['REC'][carrier]['collective self consumption']))   
+    
+    link_color.append('gold')
+    link_label.append('collective self consumption')
+    
+    link_color.append('orange')
+    link_label.append('to MV grid')
+                
+    fig = go.Figure(data=[go.Sankey(
+        valueformat = ".1f",
+        valuesuffix = " kWh",
+        arrangement = "snap",
+        node = {
+                'thickness': 30,
+                #'line': dict(color = "black", width = 0.5),
+                'label': node_label,
+                'color': node_color,
+                #["x": [0.7,0.3,1,0],
+                #"y": [0.1,0.1,0.1,0.1], # stranamente è ribaltata rispetto ad annotations
+                'pad': 100
+                },
+        link = {
+                'source': source, # indices correspond to labels, eg A1, A2, A1, B1, ...
+                'target': target,
+                'value': value,
+                'color': link_color,
+                'label': link_label
+                })])
+    
+    fig.update_layout(title_text=simulation_name, font_size=25,
+                      annotations=[dict(
+                          x=0.,
+                          y=0.,
+                          text='',
+                          showarrow=False
+                          )] )
+    fig.write_html(f"Results/energy_flows_{simulation_name}.html")
+    fig.show()    
    
         
+
+def ele_param(simulation_name):              # functioning parameter of the electrolyzer over the simulation period
+    
+      with open('results/electrolyzer_'+simulation_name+'.pkl', 'rb') as f:
+        param = pickle.load(f)
+              
+      unit = {'electrolyzer': '[-]'}  
+      # period = []              # period of time for which we are interested in plotting the electrolyzer functioning parameter
+      for location_name in param:
+        for tech in param[location_name]:
+            
+            plt.figure(dpi=300)
+            y = param[location_name][tech]
+            x = np.linspace(0,len(y)-1,len(y))        
+            plt.plot(x[:200],y[:200],label=location_name)
+            plt.grid()
+            plt.ylabel('Efficiency '+unit[tech])
+            plt.xlabel('Time [hours]')
+            plt.title(location_name+' '+tech)
+            plt.show() 
+            
+def load_profile_FC(simulation_name,location_name,first_day,last_day):
+    with open('Results/balances_'+simulation_name+'.pkl', 'rb') as f:
+        balances = pickle.load(f)
+        
+    load_FC = balances[location_name]['current']['fuel cell'][first_day*24:last_day*24+24]
+    
+    plt.figure(dpi=1000)
+    y = load_FC
+    x = np.linspace(first_day*24+1,(last_day+1)*24,(last_day-first_day+1)*24)       
+    plt.plot(x,y)
+    plt.grid()
+    plt.ylabel('Current [A]')
+    plt.xlabel('Time [hours]')
+    plt.title(location_name+' '+'FC load profile')
+    plt.show()    
+    
+    
+def load_profile_ele(simulation_name,location_name,first_day,last_day):
+    with open('Results/balances_'+simulation_name+'.pkl', 'rb') as f:
+        balances = pickle.load(f)
+        
+    load_FC = balances[location_name]['current']['electrolyzer'][first_day*24:last_day*24+24]
+    
+    plt.figure(dpi=1000)
+    y = load_FC
+    x = np.linspace(first_day*24+1,(last_day+1)*24,(last_day-first_day+1)*24)       
+    plt.plot(x,y)
+    plt.grid()
+    plt.ylabel('Current [A]')
+    plt.xlabel('Time [hours]')
+    plt.title(location_name+' '+'electrolyzer load profile')
+    plt.show()    

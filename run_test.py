@@ -84,23 +84,23 @@ some post-process are alredy avaiable as examples in postprocess_test
 you should create your own postprocess_dev.py
 """
 
-pp.total_balances(study_case, 'p1')
-#pp.total_balances(study_case,'p2')
+pp.total_balances(study_case, 'p1','electricity')
+pp.total_balances(study_case,'p2','hydrogen')
 #pp.total_balances(study_case,'c1')
 pp.REC_electricity_balance(study_case)
 
-pp.LOC_plot(study_case)
+# pp.LOC_plot(study_case)
 #pp.storage_control(study_case)
 
-pp.NPV_plot(study_case)
+# pp.NPV_plot(study_case)
 
-pp.hourly_balances(study_case,'p1', 2, 3)
-pp.hourly_balances(study_case,'p2', 2, 3)
-pp.hourly_balances(study_case,'c1', 2, 3)
+# pp.hourly_balances_electricity(study_case,'p1', 2, 3)
+# pp.hourly_balances_electricity(study_case,'p2', 2, 3)
+# pp.hourly_balances(study_case,'c1', 2, 3)
 
-#pp.csc_allocation_sum(study_case)
+# pp.csc_allocation_sum(study_case)
 
-#pp.ele_param(study_case)
+# pp.ele_param(study_case)
 
 #%% ##########################################################################
 "Parametric analysis - workflow example"
