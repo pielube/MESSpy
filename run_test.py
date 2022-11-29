@@ -25,15 +25,15 @@ path = r'./input_test' # change the path with r'./input_dev' if you are working 
 # path = r'./input_dev'
 
 file_structure = 'structure.json'
-file_general = 'general.json'
-file_eco = 'economics.json'
-file_refcase = 'refcase.json'
+file_general   = 'general.json'
+file_eco       = 'economics.json'
+file_refcase   = 'refcase.json'
 
 # Opening input files:
 with open(os.path.join(path,file_structure),'r') as f: structure = json.load(f)
-with open(os.path.join(path,file_general),'r') as f: general = json.load(f)
-with open(os.path.join(path,file_eco),'r') as f: economic_data = json.load(f)
-with open(os.path.join(path,file_refcase),'r') as f: structure0 = json.load(f)
+with open(os.path.join(path,file_general),'r') as   f: general = json.load(f)
+with open(os.path.join(path,file_eco),'r') as       f: economic_data = json.load(f)
+with open(os.path.join(path,file_refcase),'r') as   f: structure0 = json.load(f)
 
 # Edit input files:
 import preprocess_test as pre

@@ -73,4 +73,4 @@ if __name__ == "__main__":
     f2p = 0.310
     f3p = 0.268
     
-    hourly_serie(f1p,f2p,f3p,"energy_price")
+    hourly_serie(f1p,f2p,f3p,"electricity_price")

@@ -39,7 +39,7 @@
          "OeM": 0
 		 },
  "electricity": {
-	             "purchase": "energy_price.csv", 
+	             "purchase": "electricity_price.csv", 
                  "sale": 0.06
 				 }, 
  "hydrogen": {
@@ -47,7 +47,7 @@
               "sale": 0
 			  },
  "gas": {
-	     "purchase": 0, 
+	     "purchase": "naturalgas_price.csv", 
          "sale": 0
 		 }, 
  "heat": {
