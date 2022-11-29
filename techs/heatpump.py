@@ -3,8 +3,7 @@ import matplotlib.pyplot as plt
 from hplib import hplib as hpl # https://github.com/RE-Lab-Projects/hplib
 import os
 import sys 
-path = os.getcwd()
-sys.path.append(os.path.abspath(os.path.join(path, os.pardir)))   # temorarily adding constants module path 
+sys.path.append(os.path.abspath(os.path.join(os.getcwd(),os.path.pardir)))   # temorarily adding constants module path 
 import constants as c
 
 class heatpump:

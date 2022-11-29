@@ -8,12 +8,11 @@ Created on Mon Nov 28 16:05:33 2022
 import pandas as pd
 import os
 import sys
-path = os.getcwd()
-sys.path.append(os.path.abspath(os.path.join(path, os.pardir)))   # temorarily adding constants module path 
+sys.path.append(os.path.abspath(os.path.join(os.getcwd(),os.path.pardir,os.path.pardir)))
 import constants as c
 
 #%%
-LHV_NG=10.69 #[kWh/Sm3]  #Importare constants!!!  ed indirizzo relativo
+LHV_NG=c.LHV_NGSVOL  #[kWh/Sm3]
 
 def gas_price(p1,p2,p3,p4,filename):
     i=0
