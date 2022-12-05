@@ -56,8 +56,8 @@ def gas_price(p1,p2,p3,p4,filename):
         ng_price.append(p4_kWh)
         i+=1
         
-    series_frame = pd.DataFrame(ng_price)
-    series_frame.to_csv(f"{filename}.csv")
+    series_frame = pd.DataFrame(ng_price,columns=['0'])
+    series_frame.to_csv(f"{filename}.csv",encoding='utf-8-sig')
 
 #%% ###########################################################################
 
