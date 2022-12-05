@@ -15,6 +15,27 @@ import constants as c
 LHV_NG=c.LHV_NGSVOL  #[kWh/Sm3]
 
 def gas_price(p1,p2,p3,p4,filename):
+    """
+    Creates a general Natural Gas prices series 
+    
+    Parameters
+    ----------
+    p1 : float value [€/kWh]
+         1st quarter value.
+    p2 : float value [€/kWh]
+         2nd quarter value.
+    p3 : float value [€/kWh]
+         3rd quarter value.
+    p4 : float value [€/kWh]
+         4th quarter value.
+    filename: string value 
+              name of the files where to store data
+
+    Returns
+    -------
+    file.csv 
+
+    """
     i=0
     ng_price=[]
     p1_kWh=p1/100/LHV_NG   #[€/kWh]
