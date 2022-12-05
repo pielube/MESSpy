@@ -92,6 +92,8 @@ def REC_electricity_balance(simulation_name):
             df.loc['Demand']['Value [kWh]'] += -sum(balance['demand'])
             if 'PV' in balance:
                 df.loc['Production']['Value [kWh]'] += sum(balance['PV'])
+            if 'wind' in balance:
+                df.loc['Production']['Value [kWh]'] += sum(balance['wind'])
                 
     df.loc['SC']['Value [kWh]'] = df.loc['Demand']['Value [kWh]'] - df.loc['From MV grid']['Value [kWh]'] - df.loc['CSC']['Value [kWh]']
     

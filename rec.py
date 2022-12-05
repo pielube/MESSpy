@@ -21,7 +21,8 @@ class REC:
         general : dictionary
             'simulation years': number of years to be simulated
             'latitude': float
-            'longitude': float     
+            'longitude': float    
+            'time zone': int 0,1,2 [UTC] es. Italy is in UTC+1 time zone EUROPEAN DATABASE
             'weather': if "TMY" weather database based on typical meteorological year is used
                 if "filename.csv" a different database can be used (upload it in input/weather)
                 in this case 'latitude' and 'longitude' are ignored
@@ -233,10 +234,10 @@ class REC:
         if not os.path.exists(directory):
             os.makedirs(directory)
        
-        if os.path.exists('previous_simulation/general.pkl'):
-            with open('previous_simulation/general.pkl', 'rb') as f:
+        if os.path.exists('previous_simulation/general_w.pkl'):
+            with open('previous_simulation/general_w.pkl', 'rb') as f:
                 ps_general = pickle.load(f) # previous simulation general
-            par_to_check = ['latitude','longitude']
+            par_to_check = ['latitude','longitude','UTC time zone']
             for par in par_to_check:
                 if ps_general[par] != general[par]:
                     check = False  
@@ -248,16 +249,33 @@ class REC:
         
         else: # if new weather data must be downoladed from PV gis
             print('Downolading typical metereological year data from PVGIS')   
-            
-            # save new parameters in previous_simulation            
-            with open('previous_simulation/general.pkl', 'wb') as f:
-                pickle.dump(general, f)               
-                
+                            
             latitude = general['latitude']
             longitude = general['longitude']
 
             weather = pvlib.iotools.get_pvgis_tmy(latitude, longitude, map_variables=True)[0]
+            
+            # time zone correction
+            if general['UTC time zone'] > 0:
+                refindex = weather.index
+                refindex = refindex.shift(general['UTC time zone']*60,'T')
+                weather.index = refindex
+                
+                we2 = pd.DataFrame(data=weather[-general['UTC time zone']:], index=None, columns=weather.columns)
+                weather = weather[:-general['UTC time zone']]
+                
+                reindex = weather.index[:general['UTC time zone']]
+                reindex = reindex.shift(-general['UTC time zone']*60,'T')
+                we2.index = reindex   
+                
+                weather = pd.concat([we2,weather])
+                
+            
             weather.to_csv(path+'/weather/weather_TMY.csv')
+            
+            # save new parameters in previous_simulation            
+            with open('previous_simulation/general_w.pkl', 'wb') as f:
+                pickle.dump(general, f)     
 
         return(weather)
    

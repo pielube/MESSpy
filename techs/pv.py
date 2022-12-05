@@ -54,7 +54,7 @@ class PV:
             if os.path.exists('previous_simulation/general.pkl'):
                 with open('previous_simulation/general.pkl', 'rb') as f:
                     ps_general = pickle.load(f) # previous simulation general
-                par_to_check = ['latitude','longitude']
+                par_to_check = ['latitude','longitude','UTC time zone']
                 for par in par_to_check:
                     if ps_general[par] != general[par]:
                         check = False  
@@ -67,13 +67,6 @@ class PV:
             
             else: # if a new pv serie must be downoladed from PV gis
                 print('downolading a new PV serie from PVgis for '+location_name)   
-                
-                # save new parameters in previous_simulation
-                with open('previous_simulation/parameters_'+location_name+'.pkl', 'wb') as f:
-                    pickle.dump(parameters, f) 
-                    
-                with open('previous_simulation/general.pkl', 'wb') as f:
-                    pickle.dump(general, f)               
                     
                 latitude = general['latitude']
                 longitude = general['longitude']
@@ -83,24 +76,48 @@ class PV:
                 azimuth = parameters['azimuth']
                 
                 weather = pvlib.iotools.get_pvgis_tmy(latitude, longitude, map_variables=True)[0]
-                refindex = weather.index
-                refindex = refindex.shift(10,'T')
-    
+                
                 # Actual production calculation (extract all available data points)
                 res = pvlib.iotools.get_pvgis_hourly(latitude,longitude,surface_tilt=tilt,surface_azimuth=azimuth,pvcalculation=True,peakpower=1,loss=losses)
                 
+                
                 # Index to select TMY relevant data points
                 pv = res[0]['P'] 
+                pv_index = pv.index
+                pv_index = pv_index.shift(general['UTC time zone']*60,'T')
+                pv.index = pv_index
+                refindex = weather.index
+                shift_minutes = int(str(pv.index[0])[14:16])
+                refindex = refindex.shift(shift_minutes,'T')
+                refindex = refindex.shift(general['UTC time zone']*60,'T')
                 pv = pv[refindex]
-            
+                
+                # time zone correction
+                if general['UTC time zone'] > 0:
+                    pv = pv[:-general['UTC time zone']]
+                    pv2 = pd.Series(np.zeros(general['UTC time zone']),name='P')
+                    reindex = pv.index[:general['UTC time zone']]
+                    reindex = reindex.shift(-general['UTC time zone']*60,'T')
+                    pv2.index = reindex        
+                    pv = pv2.append(pv)
+                
+                # save series .csv
                 series_frame = pd.DataFrame(pv)
                 series_frame.to_csv(path+'/production/'+name_serie)
+            
+                # save new parameters in previous_simulation
+                with open('previous_simulation/parameters_'+location_name+'.pkl', 'wb') as f:
+                    pickle.dump(parameters, f) 
+                    
+                with open('previous_simulation/general.pkl', 'wb') as f:
+                    pickle.dump(general, f)             
             
             peakP = parameters['peakP']
             pv = pv * peakP/1000        
             # electricity produced every hour in the reference_year [kWh]
             self.production = np.tile(pv,int(simulation_hours/8760))
             # electricity produced every hour for the entire simulation [kWh]
+            
             
         else:
             # read production serie if "TMY" not have to be used
