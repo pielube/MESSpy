@@ -36,6 +36,7 @@ class REC:
 
         self.locations = {} # initialise REC locations dictionary
         self.energy_balance = {'electricity': {}, 'heat': {}, 'cool': {}, 'dhw':{}, 'hydrogen': {}, 'gas': {}} # initialise energy balances dictionaries
+                                                                                                        
         
         self.simulation_hours = int(general['simulation years']*8760) # hourly timestep  
         
@@ -155,9 +156,11 @@ class REC:
         ageing = {}
         electrolyzer = {}                 
         balances['REC'] = self.energy_balance
+        parameters = {}              
         
         for location_name in self.locations:
             balances[location_name] = self.locations[location_name].energy_balance
+            parameters[location_name] = self.locations[location_name].tech_param                                                                                
             
             LOC[location_name] = {}
             ageing[location_name] = {}
@@ -189,6 +192,8 @@ class REC:
         with open('results/balances_'+simulation_name+".pkl", 'wb') as f:
             pickle.dump(balances, f) 
             
+        with open('results/tech_params_'+simulation_name+".pkl", 'wb') as f:
+            pickle.dump(parameters, f)                                                                             
         with open('results/LOC_'+simulation_name+".pkl", 'wb') as f:
             pickle.dump(LOC, f) 
             

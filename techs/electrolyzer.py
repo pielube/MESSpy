@@ -326,7 +326,7 @@ class electrolyzer:
                 e_absorbed = 0
                
             
-            return (hyd,-e_absorbed)     
+            return (hyd,-e_absorbed,Current)     
 
 ##########################################################################################
 

@@ -19,12 +19,12 @@ def total_balances(simulation_name,loc,var=None):
     
     """
     
-    with open('Results/balances_'+simulation_name+'.pkl', 'rb') as f:
+    with open('results/balances_'+simulation_name+'.pkl', 'rb') as f:
         balances = pickle.load(f)
     
     ###### load analysis
     
-    ##### total energy balances
+    ###### total energy balances
     
     carriers = ['electricity','heat','gas','hydrogen']
     units    = {'electricity': 'kWh', 'hydrogen': 'kg', 'gas':'kWh', 'heat':'kWh'}
@@ -54,7 +54,7 @@ def total_balances(simulation_name,loc,var=None):
 def NPV_plot(study_case):
     ##### economic
     simulation_name = 'economic_assessment_'
-    with open('Results/'+simulation_name+study_case+'.pkl', 'rb') as f:
+    with open('results/'+simulation_name+study_case+'.pkl', 'rb') as f:
         economic = pickle.load(f)
     
     plt.figure(dpi=1000)
@@ -76,7 +76,7 @@ def NPV_plot(study_case):
     
 def REC_electricity_balance(simulation_name):
     
-    with open('Results/balances_'+simulation_name+'.pkl', 'rb') as f:
+    with open('results/balances_'+simulation_name+'.pkl', 'rb') as f:
         balances = pickle.load(f)
         
     df = pd.DataFrame(0.00,columns=["Value [kWh]","Value / production [%]","Value / demand [%]"],
@@ -109,7 +109,7 @@ def REC_electricity_balance(simulation_name):
     
 def LOC_plot(simulation_name):
       
-    with open('Results/LOC_'+simulation_name+'.pkl', 'rb') as f:
+    with open('results/LOC_'+simulation_name+'.pkl', 'rb') as f:
         LOC = pickle.load(f)
            
     unit = {'H tank': '[kg]', 'battery': '[kWh]'}
@@ -117,6 +117,7 @@ def LOC_plot(simulation_name):
     for location_name in LOC:
         for tech in LOC[location_name]:
             
+            plt.figure(dpi=600)                               
             y = LOC[location_name][tech]
             x = np.linspace(0,len(y)-1,len(y))        
             plt.plot(x,y,label=location_name)
@@ -128,7 +129,7 @@ def LOC_plot(simulation_name):
             
             
 def storage_control(simulation_name,e_cost=0.30,H_cost=0.05):
-    with open('Results/LOC_'+simulation_name+'.pkl', 'rb') as f:
+    with open('results/LOC_'+simulation_name+'.pkl', 'rb') as f:
         LOC = pickle.load(f)
         
     for location_name in LOC:
@@ -290,14 +291,17 @@ def hourly_balances_electricity(simulation_name,location_name,first_day,last_day
         plt.show()
         
         
-def hourly_balances_heat(simulation_name,location_name,first_day,last_day,carrier='heat',width=0.9,collective=0):#se copio direttamente la funzione hourly_balances e cambio carrier mi dà errore su "collective self consumptio"
-    with open('Results/balances_'+simulation_name+'.pkl', 'rb') as f:
+def hourly_balances_heat(simulation_name,location_name,first_day,last_day,carrier='heat',width=0.9,collective=0):
+    
+    with open('results/balances_'+simulation_name+'.pkl', 'rb') as f:
         balances = pickle.load(f)
         
     balances = balances[location_name][carrier]
     
     if 'demand' in balances:
         load = -balances['demand'][first_day*24:last_day*24+24]
+    else:
+        return(print('Thermal Load not considered in the case study'))
         
     if 'grid' in balances:
         into_grid=balances['grid'][first_day*24:last_day*24+24]
@@ -377,7 +381,7 @@ def csc_allocation_sum(simulation_name):
 def Flows(simulation_name,carrier='electricity'):
 
     pio.renderers.default='browser'
-    with open('Results/balances_'+simulation_name+'.pkl', 'rb') as f:
+    with open('results/balances_'+simulation_name+'.pkl', 'rb') as f:
         balances = pickle.load(f)
     
     ### data prepearing
@@ -554,7 +558,8 @@ def ele_param(simulation_name):              # functioning parameter of the elec
             plt.show() 
             
 def load_profile_FC(simulation_name,location_name,first_day,last_day):
-    with open('Results/balances_'+simulation_name+'.pkl', 'rb') as f:
+
+    with open('results/tech_params_'+simulation_name+'.pkl', 'rb') as f:
         balances = pickle.load(f)
         
     load_FC = balances[location_name]['current']['fuel cell'][first_day*24:last_day*24+24]
@@ -571,7 +576,8 @@ def load_profile_FC(simulation_name,location_name,first_day,last_day):
     
     
 def load_profile_ele(simulation_name,location_name,first_day,last_day):
-    with open('Results/balances_'+simulation_name+'.pkl', 'rb') as f:
+
+    with open('results/tech_params_'+simulation_name+'.pkl', 'rb') as f:
         balances = pickle.load(f)
         
     load_FC = balances[location_name]['current']['electrolyzer'][first_day*24:last_day*24+24]

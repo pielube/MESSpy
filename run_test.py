@@ -21,8 +21,8 @@ study_case = 'REC_test' # str name for results file.pkl
 reference_case = 'buiseness as usual' # str name for results file.pkl
 
 # Selecting input files:
-path = r'./input_test' # change the path with r'./input_dev' if you are working on your own run_dev
-# path = r'./input_dev'
+# path = r'./input_test' # change the path with r'./input_dev' if you are working on your own run_dev
+path = r'./input_dev'
 
 file_structure = 'structure.json'
 file_general   = 'general.json'
@@ -41,7 +41,7 @@ import preprocess_test as pre
 # Instead of modifying the original input files.json we suggest to modify the dictionary variables 
 # structure, structure0, general and economic_data using specific functions that you can define in preprocess_dev. 
 # An example:
-structure = pre.change_peakP(structure, 'p1', 5) 
+# structure = pre.change_peakP(structure, 'p1', 5) 
 
 #%% ###########################################################################
 """
@@ -85,19 +85,24 @@ you should create your own postprocess_dev.py
 """
 
 pp.total_balances(study_case, 'p1','electricity')
-pp.total_balances(study_case, 'p2','electricity')
-pp.total_balances(study_case,'p2','hydrogen')
+pp.total_balances(study_case, 'p1','heat')
+# pp.total_balances(study_case,'p2','hydrogen')
 #pp.total_balances(study_case,'c1')
 pp.REC_electricity_balance(study_case)
 
-# pp.LOC_plot(study_case)
+pp.LOC_plot(study_case)
 #pp.storage_control(study_case)
 
-# pp.NPV_plot(study_case)
+pp.NPV_plot(study_case)
 
-#pp.hourly_balances_electricity(study_case,'p1', 2, 3)
-# pp.hourly_balances_electricity(study_case,'p2', 2, 3)
-# pp.hourly_balances(study_case,'c1', 2, 3)
+pp.hourly_balances_electricity(study_case,'p1', 0, 5)
+pp.hourly_balances_heat(study_case,'p1',0, 5)
+
+pp.ele_param(study_case)
+# pp.Flows(study_case)
+
+# pp.load_profile_FC(study_case, 'p1', 0, 50)
+# pp.load_profile_ele(study_case, 'p1', 0, 50 )
 
 # pp.csc_allocation_sum(study_case)
 
