@@ -10,19 +10,19 @@ COSTANTS MODULE
 """
 #%%
 
-# from CoolProp.CoolProp import PropsSI
+from CoolProp.CoolProp import PropsSI
 
 #%%
 
 'PHYSICAL & MATHEMATICAL CONSTANTS'
 
-FARADAY     =  96485                    # [C/mol]     Faraday constant
-R_UNIVERSAL =  8.3144621                # [J/(mol*K)] Molar ideal gas constant
-GAMMA       =  1.4                      # [-]         Gamma ideal gas = cp/cv 
-NEPERO      =  2.71828182845904523536   # [-]         Euler's number
-AMBTEMP     =  288                      # [K]         Standard ambient temperature - 15 °C
-GIBBS       = -237.17                   # [kJ/mol]    Gibbs free energy @ T = 25°C p = 101325 Pa
-R_H2        =  4124.2                   # [J/(kgK)]   H2 characteristic constant
+FARADAY     =  96485                       # [C/mol]     Faraday constant
+R_UNIVERSAL =  8.3144621                   # [J/(mol*K)] Molar ideal gas constant
+GAMMA       =  1.4                         # [-]         Gamma ideal gas = cp/cv 
+NEPERO      =  2.71828182845904523536      # [-]         Euler's number
+AMBTEMP     =  288                         # [K]         Standard ambient temperature - 15 °C
+GIBBS       = -237.17                      # [kJ/mol]    Gibbs free energy @ T = 25°C p = 101325 Pa
+R_H2        =  4124.2                      # [J/(kgK)]   H2 characteristic constant
 
 #%%
 
@@ -30,27 +30,32 @@ R_H2        =  4124.2                   # [J/(kgK)]   H2 characteristic constant
 
 'Hydrogen'
 
-H2NDENSITY   =  0.08988237638480538      # [kg/m^3]    Hydrogen density at Normal conditions (T = 0°C, P = 101325 Pa) -> PropsSI('D', 'T', 273.15, 'P', 101325, 'H2') 
-H2SDENSITY   =  0.08520493577522305      # [kg/m^3]    Hydrogen density at Standard conditions (T = 15°C, P = 101325 Pa) -> PropsSI('D', 'T', 288.15, 'P', 101325, 'H2') 
-LHVH2        =  119.96                   # [MJ/kg]     Hydrogen Lower Heating Value              - https://www.eniscuola.net/mediateca/caratteristiche-dellidrogeno/
-LHVH2VOL     =  10.05                    # [MJ/m^3]    Hydrogen Lower Heating Value - Volumetric
-LHVH2MOL     =  241.80                   # [kJ/mol]    Hydrogen Lower Heating Value - Molar
-LHV_H2       =  33.33                    # [kWh/kg]    Hydrogen Lower Heating Value - kWh-mass
-LHV_H2NVOL   =  2.78                     # [kWh/Nm^3]  Hydrogen Lower Heating Value - kWh-volume at Normal conditions (T = 0°C, P = 101325 Pa) -> PropsSI('D', 'T', 273.15, 'P', 101325, 'H2') 
-HHVH2        =  141.8                    # [MJ/kg]     Hydrogen Higher Heating Value
-HHVH2VOL     =  11.89                    # [MJ/m^3]    Hydrogen Higher Heating Value - Volumetric
-HHVH2MOL     =  285.83                   # [kJ/mol]    Hydrogen Higher Heating Value - Molar
-HHV_H2       =  39.41                    # [kWh/kg]    Hydrogen Higher Heating Value - kWh-mass
-HHV_H2VOL    =  3.28                     # [kWh/Nm^3]  Hydrogen Higher Heating Value - kWh-volume
-H2MOLMASS    =  2.01588e-3               # [kg/mol]    Hydrogen molar mass
+H2MOLMASS    =  2.01588e-3                 # [kg/mol]     Hydrogen molar mass
+H2NDENSITY   =  0.08988237638480538        # [kg/Nm^3]    Hydrogen density at Normal conditions (T = 0°C, P = 101325 Pa) -> PropsSI('D', 'T', 273.15, 'P', 101325, 'H2') 
+H2SDENSITY   =  0.08520493577522305        # [kg/Sm^3]    Hydrogen density at Standard conditions (T = 15°C, P = 101325 Pa) -> PropsSI('D', 'T', 288.15, 'P', 101325, 'H2') 
+LHVH2        =  119.96                     # [MJ/kg]      Hydrogen Lower Heating Value              - https://www.eniscuola.net/mediateca/caratteristiche-dellidrogeno/
+LHVH2VOL     =  LHVH2*H2NDENSITY           # [MJ/Nm^3]    Hydrogen Lower Heating Value - Volumetric
+LHVH2MOL     =  H2MOLMASS*LHVH2*1e3        # [kJ/mol]     Hydrogen Lower Heating Value - Molar
+LHV_H2       =  LHVH2*(1000/3600)          # [kWh/kg]     Hydrogen Lower Heating Value - kWh-mass
+LHV_H2NVOL   =  LHV_H2*H2NDENSITY          # [kWh/Nm^3]   Hydrogen Lower Heating Value - kWh-volume at Normal conditions (T = 0°C, P = 101325 Pa) -> PropsSI('D', 'T', 273.15, 'P', 101325, 'H2') 
+HHVH2        =  141.8                      # [MJ/kg]      Hydrogen Higher Heating Value
+HHVH2VOL     =  HHVH2*H2NDENSITY           # [MJ/m^3]     Hydrogen Higher Heating Value - Volumetric
+HHVH2MOL     =  H2MOLMASS*HHVH2*1e3        # [kJ/mol]     Hydrogen Higher Heating Value - Molar
+HHV_H2       =  HHVH2*(1000/3600)          # [kWh/kg]     Hydrogen Higher Heating Value - kWh-mass
+HHV_H2VOL    =  HHV_H2*H2NDENSITY          # [kWh/Nm^3]   Hydrogen Higher Heating Value - kWh-volume
 
 'Water'
 
-H2ONDENSITY  =  999.8437620819061        # [kg/m^3]    Water density at Normal conditions (T = 0°C, P = 101325 Pa) -> PropsSI('D', 'T', 273.16, 'P', 101325, 'Water') 
-H2OSDENSITY  =  999.1026214670995        # [kg/m^3]    Water density at Standard conditions (T = 15°C, P = 101325 Pa) -> PropsSI('D', 'T', 288.15, 'P', 101325, 'Water') 
-CP_WATER     =  4188.460622611614        # [J/kgK]     Water Mass specific constant pressure specific heat
-H2OMOLMASS   =  0.01801528               # [kg/mol]    Water molar mass
+H2OMOLMASS   =  0.01801528                 # [kg/mol]     Water molar mass
+H2ONDENSITY  =  999.8437620819061          # [kg/Nm^3]    Water density at Normal conditions (T = 0°C, P = 101325 Pa) -> PropsSI('D', 'T', 273.16, 'P', 101325, 'Water') 
+H2OSDENSITY  =  999.1026214670995          # [kg/Sm^3]    Water density at Standard conditions (T = 15°C, P = 101325 Pa) -> PropsSI('D', 'T', 288.15, 'P', 101325, 'Water') 
+CP_WATER     =  4188.460622611614          # [J/kgK]      Water Mass specific constant pressure specific heat
 
 'Natural Gas'
 
-LHV_NGSVOL    = 10.4                     # [kWh/Sm^3]  Natural Gas Lower Heating Value at Standard Conditions
+NGMOLMASS    = 16.04                       # [g/mol]      Gas Methane molar mass
+NGNDENSITY   = 0.7174587771429166          # [kg/Nm^3]    Methane density at Normal conditions (T = 0°C, P = 101325 Pa) -> PropsSI('D', 'T', 273.15, 'P', 101325, 'CH4')
+NGSDENSITY   = 0.6798343282369096          # [kg/Sm^3]    Methane density at Standard conditions (T = 15°C, P = 101325 Pa) -> PropsSI('D', 'T', 288.15, 'P', 101325, 'CH4')
+LHVNG        = 47.451                      # [MJ/kg]      Natural Gas Lower Heating Value
+LHVNGVOL     = LHVNG*NGSDENSITY            # [MJ/Sm^3]    Natural Gas Lower Heating Value - Volumetric
+LHV_NGSVOL   = LHVNGVOL/3.6                # [kWh/Sm^3]  Natural Gas Lower Heating Value at Standard Conditions
