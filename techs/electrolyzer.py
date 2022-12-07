@@ -28,22 +28,32 @@ class electrolyzer:
             self.Npower = parameters['Npower'] # float nominal power of electrolyzers installed capacity for the location [kW]
     
 
-        if parameters['stack model'] == 'Enapter 2.1': # https://www.enapter.com/it/newsroom/enapter-reveals-new-electrolyser-el-2-1
+        if parameters['stack model'] == 'Enapter 2.1':   # https://www.enapter.com/it/newsroom/enapter-reveals-new-electrolyser-el-2-1
             self.model= parameters['stack model'] 
-            stack_operative_power_consumption = 2.4    # [kW] Single module nominal power
-            stack_production_rate_L = 500              # [NL/h]
+            stack_operative_power_consumption = 2.4      # [kW] Single module nominal power
+            stack_production_rate_L = 500                # [Nl/h]
             stack_production_rate = stack_production_rate_L / 1000 * self.rhoNrh2 # [kg/h]
             self.production_rate = stack_production_rate * (self.Npower / stack_operative_power_consumption) # [kg/h] actual production defined in a simplified way 
-                                                                                                             # by dividing the selected electorlyzer size in the location                                                                                         # for the single unit nominal power      
-
-        if parameters['stack model'] == 'McLyzer 800': # https://mcphy.com/it/apparecchiature-e-servizi/elettrolizzatori/large/
+                                                                                                             # by dividing the selected electorlyzer size in the location
+                                                                                                             # for the single unit nominal power
+       
+        if parameters['stack model'] == 'McLyzer 800':   # https://mcphy.com/it/apparecchiature-e-servizi/elettrolizzatori/large/
             self.model= parameters['stack model']      
-            stack_operative_power_consumption = 4000   # [kW] Single module nominal power
-            stack_production_rate_m3 = 800             # [Nm3/hr]
+            stack_operative_power_consumption = 4000     # [kW] Single module nominal power
+            stack_production_rate_m3 = 800               # [Nm3/hr]
             stack_production_rate = stack_production_rate_m3 * self.rhoNrh2   # [kg/hr]
             self.production_rate = stack_production_rate * (self.Npower / stack_operative_power_consumption) # [kg/h] actual production defined in a simplified way 
                                                                                                              # by dividing the selected electorlyzer size in the location                                                                                                     # for the single unit nominal power      
+                                                                                                             # for the single unit nominal power
     
+        if parameters['stack model'] == 'Hylizer 1000':  # https://www.ie-net.be/sites/default/files/Presentatie%205_Baudouin%20de%20Lannoy.pdf
+            self.model= parameters['stack model']      
+            stack_operative_power_consumption = 5000     # [kW] Single module nominal power
+            stack_production_rate_m3 = 1000              # [Nm3/hr]
+            stack_production_rate = stack_production_rate_m3 * self.rhoNrh2   # [kg/hr]
+            self.production_rate = stack_production_rate * (self.Npower / stack_operative_power_consumption) # [kg/h] actual production defined in a simplified way 
+                                                                                                             # by dividing the selected electorlyzer size in the location
+                                                                                                             # for the single unit nominal powe
         if parameters['stack model'] == 'PEM General':
             
             self.EFF = np.zeros(simulation_hours)   # so far - easiest way of keeping track of the elecrolyzer efficiency over the simulation
@@ -179,14 +189,7 @@ class electrolyzer:
             self.PI=interp1d(P,self.Current,bounds_error=False,fill_value='extrapolate')                # Linear spline 1-D interpolation
             #self.PI=PchipInterpolator(P,self.Current)                                                  # PCHIP 1-D monotonic cubic interpolation
                  
-            # interval = np.linspace(min(P),max(P),num)      # Current interval - useful for self.PI interpolation
-            # #print('INTERVALLO---------------------------------------------', interval)
-            # plt.figure(dpi=1000)
-            # plt.plot(interval,self.PI(interval))
-            # plt.title('Curva P-I prova')
     
-    # Step eventuale successivo definire tali funzioni secondo il principio di ereditarietà delle classi 
-    # (https://www.programmareinpython.it/video-corso-python-programmazione-a-oggetti/03-ereditarieta/)
     def plot_polarizationpts(self):
         
         if self.model == 'PEM General': 
@@ -256,7 +259,7 @@ class electrolyzer:
         float electricity absorbed that hour [kWh]
         """
        
-        if self.model == 'Enapter 2.1' or self.model == 'McLyzer 800':
+        if self.model != 'PEM General':
             
             e_absorbed = min(self.Npower,e)    # [kWh] when timestep is kept at 1 h kWh = kW
             hyd = self.production_rate * (e_absorbed / self.Npower)  # [kg/h] (e_absorbed / self.Npower) represents the fraction of the maximum possible 
@@ -271,7 +274,7 @@ class electrolyzer:
             return(hyd,-e_absorbed) # return hydrogen supplied and electricity absorbed
                     
                 
-        elif self.model == 'PEM General':    
+        else:    
             
             'Defining the working point of the electrolyzer by spline interpolation:'
                # PowerInput=CellCurrDensity*CellActiveArea*Vstack
