@@ -31,7 +31,8 @@ class location:
             simulate the energy flows of present technologies .loc_simulation
             record energy balances .energy_balance (electricity, heat, gas, hydrogen and cool)
         """
-        
+
+        self.system = system
         self.name = location_name
         self.technologies = {} # initialise technologies dictionary
         self.energy_balance = {'electricity': {}, 'heat': {}, 'cool': {}, 'dhw':{}, 'hydrogen': {}, 'gas': {}} # initialise energy balances dictionaries
@@ -52,8 +53,8 @@ class location:
                 else:                                                                                                                                                                                                          
                     self.energy_balance[carrier]['demand'] = - np.tile(pd.read_csv(path+'/loads/'+system['demand'][carrier])['kWh'].to_numpy(),int(self.simulation_hours/8760)) # hourly energy carrier needed for the entire simulation
 
-        if 'heatpump' in system:
-            self.technologies['heatpump'] = heatpump(system['heatpump']) # heatpump object created and add to 'technologies' dictionary
+        if 'heatpump' in self.system:
+            self.technologies['heatpump'] = heatpump(self.system['heatpump']) # heatpump object created and add to 'technologies' dictionary
             self.energy_balance['electricity']['heatpump'] = np.zeros(self.simulation_hours) # array heatpump electricity balance
             self.energy_balance['heat']['heatpump'] = np.zeros(self.simulation_hours) # array heatpump heat balance
             self.energy_balance['heat']['inertialtank'] = np.zeros(self.simulation_hours) # array inertial tank heat balance
@@ -67,58 +68,60 @@ class location:
                 self.energy_balance['heat']['demand'] = self.energy_balance['dhw']['demand']
             # if usage == 1 only heating          
             
-        if 'boiler_hp' in system:
-            self.technologies['boiler_hp'] = heatpump(system['heatpump']) # boiler_hp object created and add to 'technologies' dictionary
+        if 'boiler_hp' in self.system:
+            self.technologies['boiler_hp'] = heatpump(self.system['heatpump']) # boiler_hp object created and add to 'technologies' dictionary
             self.energy_balance['electricity']['boiler_hp'] = np.zeros(self.simulation_hours) # array boiler_hp electricity balance
             self.energy_balance['dhw']['boiler_hp'] = np.zeros(self.simulation_hours) # array boiler_hp dhw balance
             self.energy_balance['dhw']['boiler_tank'] = np.zeros(self.simulation_hours) # array boiler_tank dhw balance
             
-        if 'boiler_el' in system:
-            self.technologies['boiler_el'] = boiler_el(system['boiler_el']) # boiler_el object created and add to 'technologies' dictionary
+        if 'boiler_el' in self.system:
+            self.technologies['boiler_el'] = boiler_el(self.system['boiler_el']) # boiler_el object created and add to 'technologies' dictionary
             self.energy_balance['electricity']['boiler_el'] = np.zeros(self.simulation_hours) # array boiler_el electricity balance
             self.energy_balance['heat']['boiler_el'] = np.zeros(self.simulation_hours) # array boiler_el heat balance
-            if 'dhw' in system:
+            if 'dhw' in self.system:
                 self.energy_balance['heat']['demand'] += self.energy_balance['dhw']['demand']
                 
-        if 'boiler_ng' in system:
-            self.technologies['boiler_ng'] = boiler_ng(system['boiler_ng'])  # boiler_ng object created and add to 'technologies' dictionary
+        if 'boiler_ng' in self.system:
+            self.technologies['boiler_ng'] = boiler_ng(self.system['boiler_ng'])  # boiler_ng object created and add to 'technologies' dictionary
             self.energy_balance['gas']['boiler_ng'] = np.zeros(self.simulation_hours) # array boiler_ng gas balance
             self.energy_balance['heat']['boiler_ng'] = np.zeros(self.simulation_hours) # array boiler_ng heat balance 
-            if 'dhw' in system:
+            if 'dhw' in self.system:
                 self.energy_balance['heat']['demand'] += self.energy_balance['dhw']['demand']
 
-        if 'PV' in system:
-            self.technologies['PV'] = PV(system['PV'],general,self.simulation_hours,self.name,path) # PV object created and add to 'technologies' dictionary
+        if 'PV' in self.system:
+            self.technologies['PV'] = PV(self.system['PV'],general,self.simulation_hours,self.name,path) # PV object created and add to 'technologies' dictionary
             self.energy_balance['electricity']['PV'] = np.zeros(self.simulation_hours) # array PV electricity balance
            
-        if 'wind' in system:
-            self.technologies['wind'] = wind(system['wind']) # wind object created and add to 'technologies' dictionary
+        if 'wind' in self.system:
+            self.technologies['wind'] = wind(self.system['wind']) # wind object created and add to 'technologies' dictionary
             self.energy_balance['electricity']['wind'] = np.zeros(self.simulation_hours) # array wind electricity balance 
            
-        if 'battery' in system:
-            self.technologies['battery'] = battery(system['battery'],self.simulation_hours) # battery object created and to 'technologies' dictionary
+        if 'battery' in self.system:
+            self.technologies['battery'] = battery(self.system['battery'],self.simulation_hours) # battery object created and to 'technologies' dictionary
             self.energy_balance['electricity']['battery'] = np.zeros(self.simulation_hours) # array battery electricity balance
                            
-        if 'electrolyzer' in system:
-            self.technologies['electrolyzer'] = electrolyzer(system['electrolyzer'],self.simulation_hours) # electrolyzer object created and to 'technologies' dictionary
+        if 'electrolyzer' in self.system:
+            self.technologies['electrolyzer'] = electrolyzer(self.system['electrolyzer'],self.simulation_hours) # electrolyzer object created and to 'technologies' dictionary
             self.energy_balance['electricity']['electrolyzer'] = np.zeros(self.simulation_hours) # array electrolyzer electricity balance
             self.energy_balance['hydrogen']['electrolyzer'] = np.zeros(self.simulation_hours) # array electrolyzer hydrogen balance
-            self.tech_param['current']['electrolyzer']= np.zeros(self.simulation_hours)
+            if self.system['electrolyzer']['stack model'] == 'PEM General':
+                print('OKK')
+                self.tech_param['current']['electrolyzer']= np.zeros(self.simulation_hours)
             
-        if 'fuel cell' in system:
-            self.technologies['fuel cell'] = fuel_cell(system['fuel cell'],self.simulation_hours) # Fuel cell object created and to 'technologies' dictionary
+        if 'fuel cell' in self.system:
+            self.technologies['fuel cell'] = fuel_cell(self.system['fuel cell'],self.simulation_hours) # Fuel cell object created and to 'technologies' dictionary
             self.energy_balance['electricity']['fuel cell'] = np.zeros(self.simulation_hours)     # array fuel cell electricity balance
             self.energy_balance['hydrogen']['fuel cell'] = np.zeros(self.simulation_hours)        # array fuel cell hydrogen balance
             self.energy_balance['heat']['fuel cell']=np.zeros(self.simulation_hours)              #array fuel cell heat balance used
             self.tech_param['current']['fuel cell']=np.zeros(self.simulation_hours)
             self.tech_param['voltage']['fuel cell']=np.zeros(self.simulation_hours)
             
-        if 'H tank' in system:
-            self.technologies['H tank'] = H_tank(system['H tank'],self.simulation_hours) # H tank object created and to 'technologies' dictionary
+        if 'H tank' in self.system:
+            self.technologies['H tank'] = H_tank(self.system['H tank'],self.simulation_hours) # H tank object created and to 'technologies' dictionary
             self.energy_balance['hydrogen']['H tank'] = np.zeros(self.simulation_hours)  # array H tank hydrogen balance
 
-        if 'boiler_h2' in system:
-            self.technologies['boiler_h2'] = boiler_h2(system['boiler_h2'])                 # boiler_h2 object created and added to 'technologies' dictionary
+        if 'boiler_h2' in self.system:
+            self.technologies['boiler_h2'] = boiler_h2(self.system['boiler_h2'])                 # boiler_h2 object created and added to 'technologies' dictionary
             self.energy_balance['hydrogen']['boiler_h2'] = np.zeros(self.simulation_hours)  # array boiler_h2 gas balance
             self.energy_balance['heat']['boiler_h2'] = np.zeros(self.simulation_hours)      # array boiler_h2 heat balance 
 
@@ -184,7 +187,8 @@ class location:
                     
                 self.energy_balance['hydrogen']['electrolyzer'][h] = self.technologies['electrolyzer'].use(h,EB['electricity'],storable_hydrogen)[0]     # hydrogen supplied by electrolyzer(+) 
                 self.energy_balance['electricity']['electrolyzer'][h] = self.technologies['electrolyzer'].use(h,EB['electricity'],storable_hydrogen)[1]  # electricity absorbed by the electorlyzer(-)
-                self.tech_param['current']['electrolyzer'][h] = self.technologies['electrolyzer'].use(h,EB['electricity'],storable_hydrogen)[2]         
+                if self.system['electrolyzer']['stack model'] == 'PEM General':
+                    self.tech_param['current']['electrolyzer'][h] = self.technologies['electrolyzer'].use(h,EB['electricity'],storable_hydrogen)[2]         
                 EB['hydrogen'] += self.energy_balance['hydrogen']['electrolyzer'][h]
                 EB['electricity'] += self.energy_balance['electricity']['electrolyzer'][h]
                 
