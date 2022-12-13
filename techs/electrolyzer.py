@@ -79,21 +79,6 @@ class electrolyzer:
             "2H2O --> 2H2 + O2"
             # https://doi.org/10.1016/j.ijhydene.2008.11.083    # Electrolyzer Parameters - depending on the different types of electrolyzers chosen - model to be specified also in class - name
         
-            # self.nc                  = parameters['CellNumber']           # number of cells in the stack
-            # self.MembThickness       = parameters['MembThickness']        # [micron]
-            # self.Lambda              = parameters['Lambda']               # [-] Cell mositure content
-            # self.AnodeCurrDensity    = parameters['AnodeCurrDensity']     # [A/cm^2]
-            # self.AnodePressure       = parameters['AnodePressure']        # [Pa]
-            # self.CathodeCurrDensity  = parameters['CathodeCurrDensity']   # [A/cm^2]
-            # self.CTCanode            = parameters['CTCanode']             # [-] Charge transfer coefficient - Anode   https://www.sciencedirect.com/science/article/pii/S0360319918309017
-            # self.CTCcathode          = parameters['CTCcathode']           # [-] Charge transfer coefficient - Cathode //      //      //
-            # self.OperatingTemp       = parameters['OperatingTemp']        # [K]
-            # self.OperatingPress      = parameters['OperatingPress']       # [Pa]
-            # self.CurrDensityMax      = parameters['CurrDensityMax']       # [A/cm^2]
-            # self.CurrDensityMin      = parameters['CurrDensityMin']       # [A/cm^2]
-            # self.CellArea            = parameters['CellArea']             # [cm^2] cell active area 
-            # self.PowerNominal        = 5           # [kW] Max power absorbable - this value is now defined through interpolation 
-
             self.nc                  = 10            # number of cells in the stack
             self.MembThickness       = 250           # [micron]
             self.Lambda              = 20            # [-] Cell mositure content

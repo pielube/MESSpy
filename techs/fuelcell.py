@@ -60,7 +60,9 @@ class fuel_cell:
             
             'Model: NEDSTACK FCS 13-XXL' # https://nedstack.com/sites/default/files/2022-07/nedstack-fcs-13-xxl-gen-2.9-datasheet-rev01.pdf
             
-            self.EFF=np.zeros(simulation_hours)
+            self.EFF       = np.zeros(simulation_hours)   # [-]    Keeping track of fuel cell efficiency
+            self.VOLT      = np.zeros(simulation_hours)   # [V]    Keeping track of single cell working voltage - necessary for ageing calculations
+            self.CURR_DENS = np.zeros(simulation_hours)   # [A]    Keeping track of single cell working current - necessary for ageing calculations
             
             self.model=parameters['stack model']
             
@@ -119,12 +121,12 @@ class fuel_cell:
             
             Ndatapoints= 101         # Number of points used to compute the polarization curve 
             
-            self.OCpotential=[]
-            self.ActLosses  =[]
-            self.OhmLosses  =[]
-            self.CellVolt=np.zeros(Ndatapoints)
-            self.Voltage=np.zeros(Ndatapoints)
-            self.CellCurrDensity=np.linspace(self.FC_MinCurrDens,self.FC_MaxCurrDens,Ndatapoints)   
+            self.OCpotential = []
+            self.ActLosses   = []
+            self.OhmLosses   = []
+            self.CellVolt = np.zeros(Ndatapoints)
+            self.Voltage  = np.zeros(Ndatapoints)
+            self.CellCurrDensity = np.linspace(self.FC_MinCurrDens,self.FC_MaxCurrDens,Ndatapoints)   
             
             for i in range(0,Ndatapoints):
                 
@@ -397,6 +399,7 @@ class fuel_cell:
             Current = FC_CellCurrDensity*self.FC_CellArea     # [A] FuelCell Stack operating current 
             
             FC_Vstack= self.iV1(FC_CellCurrDensity)           # [V] Stack operating voltage
+            V_cell=FC_Vstack/self.nc
             # FC_Vstack_ = (p/Current)*1000                     # [V] voltage check
 
             'Computing FC efficiency and  hydrogen energy demand'    
@@ -412,7 +415,10 @@ class fuel_cell:
             eta_th = - deltaG/self.HHVh2Mol                   # [-] Thermodynamic efficiency
          
             etaFC = eta_th*eta_voltage                        # [-] FC efficiency
-            self.EFF[h]=etaFC
+            
+            self.EFF[h]       = etaFC                         # [-]      FC efficiency history
+            self.VOLT[h]      = V_cell                        # [V]      Cell voltage history
+            self.CURR_DENS[h] = FC_CellCurrDensity            # [A/cm2]  Cell current density history
             
             'Hydrogen demand'
          
@@ -432,7 +438,8 @@ class fuel_cell:
                 # turn off the fuel cell
                 # this behavior could be solved with more advanced models, necessary inverse production functions.
                 
-            return (-hyd,p,FC_Heat,Current,etaFC) # return hydrogen absorbed [kg] and electricity required [kWh](sarebbero kW ma tanto h=1 ora) e il calore di scarto [kWh]
+            # return (-hyd,p,FC_Heat,Current,etaFC) # return hydrogen absorbed [kg] and electricity required [kWh] and heat as a co-product [kWh]
+            return (-hyd,p,FC_Heat,Current) # return hydrogen absorbed [kg] and electricity required [kWh] and heat as a co-product [kWh]
             
             
     
@@ -450,7 +457,7 @@ if __name__ == "__main__":
                 }
     
     sim_hours=96                               # [h] simulated period of time - usually it's 1 year minimum
-    time=np.linspace(0,sim_hours,sim_hours)
+    time=np.arange(sim_hours)
     
     fc = fuel_cell(inp_test,sim_hours)         # creating fuel cell object
     fc.plot_polarizationpts()                  # cell polarization curve
@@ -462,23 +469,11 @@ if __name__ == "__main__":
     P_el=[]
     P_th=[]
     I=[]
-    EFF=[]
     for h in range(len(flow)):
-        # print(f"\nL'idrogeno richiesto è {fc.use(h,flow[h],100)[0]}\n")
-        # print(f"\nLa potenza elettrica è {fc.use(h,flow[h],100)[1]}\n")
-        # print(f"\nLa potenza termica è {fc.use(h,flow[h],100)[2]}\n")
-        # print(f"La corrente è {fc.use(h,flow[h],100)[3]}\n")
         P_el.append(fc.use(h,flow[h],100)[1])
         P_th.append(fc.use(h,flow[h],100)[2])
-        I.append(fc.use(h,flow[h],100)[3])
-        EFF.append(fc.use(h,flow[h],100)[4])
+        I.append(fc.use(h,flow[h],100)[3]) 
         
-        
-    # print(f"\nP_el:\n {P_el}")
-    # print(f"\nP_th:\n {P_th}")
-    # print(f"\nI:\n {I}")
-
-    # print(f"\neta:\n {fc.EFF}\n")                           # fuel cell efficiency at every hour
 
     fig=plt.figure(figsize=(8,8),dpi=1000)
     fig.suptitle("PEMFC ({} kW) performances".format(round(fc.FC_NominalPower,1)))
@@ -493,7 +488,7 @@ if __name__ == "__main__":
     PI.legend(fontsize=15)
     
     ETA=fig.add_subplot(212)
-    ETA.plot(I,EFF,label="Eta",color="green")
+    ETA.plot(I,fc.EFF,label="Eta",color="green")
     ETA.set_title("ETA vs I")
     ETA.grid()
     ETA.set_xlabel("I [A]")
@@ -508,12 +503,10 @@ if __name__ == "__main__":
     P_el=[]
     P_th=[]
     I=[]
-    EFF=[]
     for h in range(len(flow)):
         P_el.append(fc.use(h,fd[h],100)[1])
         P_th.append(fc.use(h,fd[h],100)[2])
         I.append(fc.use(h,fd[h],100)[3])
-        EFF.append(fc.use(h,fd[h],100)[4])
     
     fig=plt.figure(figsize=(8,8),dpi=1000)
     fig.suptitle("PEMFC ({} kW) performances ".format(round(fc.FC_NominalPower,1)))
@@ -528,7 +521,7 @@ if __name__ == "__main__":
     PI.legend(fontsize=15)
     
     ETA=fig.add_subplot(212)
-    ETA.plot(time,EFF,label="Eta",color="green")
+    ETA.plot(time,fc.EFF,label="Eta",color="green")
     ETA.set_title("ETA over time")
     ETA.grid()
     ETA.set_xlabel("Time [h]")
