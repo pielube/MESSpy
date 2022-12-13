@@ -536,58 +536,74 @@ def Flows(simulation_name,carrier='electricity'):
     fig.show()    
    
         
-
-def ele_param(simulation_name):              # functioning parameter of the electrolyzer over the simulation period
+def ele_param(simulation_name,first_day,last_day):              # functioning parameter of the electrolyzer over the simulation period
     
-      with open('results/electrolyzer_'+simulation_name+'.pkl', 'rb') as f:
-        param = pickle.load(f)
-              
-      unit = {'electrolyzer': '[-]'}  
-      # period = []              # period of time for which we are interested in plotting the electrolyzer functioning parameter
+      with open('results/tech_params_'+simulation_name+'.pkl', 'rb') as f:
+          param = pickle.load(f)
+      
+      units = {'efficiency': '[-]'}  
       for location_name in param:
-        for tech in param[location_name]:
+         if 'electrolyzer' in param[location_name].keys():
+             for parameter in param[location_name]['electrolyzer']:
             
-            plt.figure(dpi=300)
-            y = param[location_name][tech]
-            x = np.linspace(0,len(y)-1,len(y))        
-            plt.plot(x[:200],y[:200],label=location_name)
-            plt.grid()
-            plt.ylabel('Efficiency '+unit[tech])
-            plt.xlabel('Time [hours]')
-            plt.title(location_name+' '+tech)
-            plt.show() 
+                 plt.figure(dpi=300)
+                 y = param[location_name]['electrolyzer'][parameter][first_day*24:last_day*24]
+                 x = np.arange(first_day*24,last_day*24)
+                 plt.plot(x,y,label=location_name)
+                 plt.grid()
+                 plt.ylabel(parameter+' '+units['efficiency'])
+                 plt.xlabel('Time [hours]')
+                 plt.title(location_name+' electrolyzer')
+                 plt.show() 
             
-def load_profile_FC(simulation_name,location_name,first_day,last_day):
+
+#     with open('results/tech_params_'+simulation_name+'.pkl', 'rb') as f:
+#         balances = pickle.load(f)
+        
+#     curr_FC = balances[location_name]['current density']['fuel cell'][first_day*24:last_day*24+24]
+#     x = np.arange(first_day*24,last_day*24) 
+
+#     plt.figure(dpi=1000)
+#     y = curr_FC
+#     # x = np.linspace(first_day*24+1,(last_day+1)*24,(last_day-first_day+1)*24)   
+#     plt.plot(x,y)
+#     plt.grid()
+#     plt.ylabel('Current [A]')
+#     plt.xlabel('Time [hours]')
+#     plt.title(location_name+' '+'FC load profile')
+#     plt.show()    
+    
+#     volt_FC = balances[location_name]['cell voltage']['fuel cell'][first_day*24:last_day*24+24]
+    
+#     plt.figure(dpi=1000)
+#     y = volt_FC  
+#     plt.plot(x,y)
+#     plt.grid()
+#     plt.ylabel('Current [A]')
+#     plt.xlabel('Time [hours]')
+#     plt.title(location_name+' '+'FC load profile')
+#     plt.show()
+    
+def fc_param(simulation_name,first_day,last_day):
 
     with open('results/tech_params_'+simulation_name+'.pkl', 'rb') as f:
-        balances = pickle.load(f)
+        param = pickle.load(f)
         
-    load_FC = balances[location_name]['current']['fuel cell'][first_day*24:last_day*24+24]
-    
-    plt.figure(dpi=1000)
-    y = load_FC
-    x = np.linspace(first_day*24+1,(last_day+1)*24,(last_day-first_day+1)*24)       
-    plt.plot(x,y)
-    plt.grid()
-    plt.ylabel('Current [A]')
-    plt.xlabel('Time [hours]')
-    plt.title(location_name+' '+'FC load profile')
-    plt.show()    
-    
-    
-def load_profile_ele(simulation_name,location_name,first_day,last_day):
-
-    with open('results/tech_params_'+simulation_name+'.pkl', 'rb') as f:
-        balances = pickle.load(f)
+    units = {'current density': '[A/cm2]',
+             'cell voltage'   : '[V]'
+             } 
         
-    load_FC = balances[location_name]['current']['electrolyzer'][first_day*24:last_day*24+24]
-    
-    plt.figure(dpi=1000)
-    y = load_FC
-    x = np.linspace(first_day*24+1,(last_day+1)*24,(last_day-first_day+1)*24)       
-    plt.plot(x,y)
-    plt.grid()
-    plt.ylabel('Current [A]')
-    plt.xlabel('Time [hours]')
-    plt.title(location_name+' '+'electrolyzer load profile')
-    plt.show()    
+    for location_name in param:
+       if 'fuel cell' in param[location_name].keys():
+           for parameter in param[location_name]['fuel cell']:
+          
+               plt.figure(dpi=300)
+               y = param[location_name]['fuel cell'][parameter][first_day*24:last_day*24]
+               x = np.arange(first_day*24,last_day*24)
+               plt.plot(x,y,label=location_name)
+               plt.grid()
+               plt.ylabel(parameter+' '+units[parameter])
+               plt.xlabel('Time [hours]')
+               plt.title(location_name+' fuel cell')
+               plt.show() 
+        

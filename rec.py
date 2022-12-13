@@ -160,11 +160,12 @@ class REC:
         
         for location_name in self.locations:
             balances[location_name] = self.locations[location_name].energy_balance
-            parameters[location_name] = self.locations[location_name].tech_param                                                                                
+            # parameters[location_name] = self.locations[location_name].tech_param                                                                                
             
             LOC[location_name] = {}
             ageing[location_name] = {}
-            electrolyzer[location_name] = {}                                
+            electrolyzer[location_name] = {}    
+            parameters[location_name] = {}                            
             
             tech_name = 'battery'
             if tech_name in self.locations[location_name].technologies:
@@ -182,8 +183,16 @@ class REC:
             
             tech_name = 'electrolyzer'
             if tech_name in self.locations[location_name].technologies:
+                parameters[location_name][tech_name] = {}      
                 if self.locations[location_name].technologies['electrolyzer'].model == 'PEM General':
-                    electrolyzer[location_name][tech_name] = self.locations[location_name].technologies[tech_name].EFF
+                    parameters[location_name][tech_name]['efficiency'] = self.locations[location_name].technologies[tech_name].EFF
+                    
+            tech_name = 'fuel cell'
+            if tech_name in self.locations[location_name].technologies:
+                if self.locations[location_name].technologies['fuel cell'].model == 'PEM General':
+                    parameters[location_name][tech_name] = {}      
+                    parameters[location_name][tech_name]['cell voltage'] = self.locations[location_name].technologies[tech_name].VOLT
+                    parameters[location_name][tech_name]['current density'] = self.locations[location_name].technologies[tech_name].CURR_DENS
         
         directory = './results'
         if not os.path.exists(directory):
@@ -193,15 +202,14 @@ class REC:
             pickle.dump(balances, f) 
             
         with open('results/tech_params_'+simulation_name+".pkl", 'wb') as f:
-            pickle.dump(parameters, f)                                                                             
+            pickle.dump(parameters, f)           
+                                                                  
         with open('results/LOC_'+simulation_name+".pkl", 'wb') as f:
             pickle.dump(LOC, f) 
             
         with open('results/ageing_'+simulation_name+".pkl", 'wb') as f:
             pickle.dump(ageing, f) 
             
-        with open('results/electrolyzer_'+simulation_name+".pkl", 'wb') as f:
-            pickle.dump(electrolyzer, f)    
             
     def reset(self):
         """
