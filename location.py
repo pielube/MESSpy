@@ -36,7 +36,6 @@ class location:
         self.name = location_name
         self.technologies = {} # initialise technologies dictionary
         self.energy_balance = {'electricity': {}, 'heat': {}, 'cool': {}, 'dhw':{}, 'hydrogen': {}, 'gas': {}} # initialise energy balances dictionaries
-        self.tech_param =     {'current':{}, 'voltage':{}}    # initialise technologies parameters dictionary
 
         self.simulation_hours = int(general['simulation years']*8760) # hourly timestep     
         
@@ -104,17 +103,12 @@ class location:
             self.technologies['electrolyzer'] = electrolyzer(self.system['electrolyzer'],self.simulation_hours) # electrolyzer object created and to 'technologies' dictionary
             self.energy_balance['electricity']['electrolyzer'] = np.zeros(self.simulation_hours) # array electrolyzer electricity balance
             self.energy_balance['hydrogen']['electrolyzer'] = np.zeros(self.simulation_hours) # array electrolyzer hydrogen balance
-            if self.system['electrolyzer']['stack model'] == 'PEM General':
-                print('OKK')
-                self.tech_param['current']['electrolyzer']= np.zeros(self.simulation_hours)
             
         if 'fuel cell' in self.system:
             self.technologies['fuel cell'] = fuel_cell(self.system['fuel cell'],self.simulation_hours) # Fuel cell object created and to 'technologies' dictionary
             self.energy_balance['electricity']['fuel cell'] = np.zeros(self.simulation_hours)     # array fuel cell electricity balance
             self.energy_balance['hydrogen']['fuel cell'] = np.zeros(self.simulation_hours)        # array fuel cell hydrogen balance
             self.energy_balance['heat']['fuel cell']=np.zeros(self.simulation_hours)              #array fuel cell heat balance used
-            self.tech_param['current']['fuel cell']=np.zeros(self.simulation_hours)
-            self.tech_param['voltage']['fuel cell']=np.zeros(self.simulation_hours)
             
         if 'H tank' in self.system:
             self.technologies['H tank'] = H_tank(self.system['H tank'],self.simulation_hours) # H tank object created and to 'technologies' dictionary
@@ -187,8 +181,6 @@ class location:
                     
                 self.energy_balance['hydrogen']['electrolyzer'][h] = self.technologies['electrolyzer'].use(h,EB['electricity'],storable_hydrogen)[0]     # hydrogen supplied by electrolyzer(+) 
                 self.energy_balance['electricity']['electrolyzer'][h] = self.technologies['electrolyzer'].use(h,EB['electricity'],storable_hydrogen)[1]  # electricity absorbed by the electorlyzer(-)
-                if self.system['electrolyzer']['stack model'] == 'PEM General':
-                    self.tech_param['current']['electrolyzer'][h] = self.technologies['electrolyzer'].use(h,EB['electricity'],storable_hydrogen)[2]         
                 EB['hydrogen'] += self.energy_balance['hydrogen']['electrolyzer'][h]
                 EB['electricity'] += self.energy_balance['electricity']['electrolyzer'][h]
                 
@@ -200,8 +192,6 @@ class location:
                     available_hyd = 99999999999 # there are no limits
                 self.energy_balance['hydrogen']['fuel cell'][h] =self.technologies['fuel cell'].use(h,EB['electricity'],available_hyd)[0]
                 self.energy_balance['electricity']['fuel cell'][h] =self.technologies['fuel cell'].use(h,EB['electricity'],available_hyd)[1] # hydrogen absorbeed by fuel cell(-) and electricity supplied(+) 
-                self.tech_param['current']['fuel cell'][h]=self.technologies['fuel cell'].use(h,EB['electricity'],available_hyd)[3]
-                self.tech_param['voltage']['fuel cell'][h]=self.technologies['fuel cell'].use(h,EB['electricity'],available_hyd)[4]
                 
                 if self.technologies['fuel cell'].use(h,EB['electricity'],available_hyd)[2] < -EB['heat']: #all of the heat producted by FC is used      
                     self.energy_balance['heat']['fuel cell'][h]=self.technologies['fuel cell'].use(h,EB['electricity'],available_hyd)[2] # heat loss of fuel cell
