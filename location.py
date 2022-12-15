@@ -22,7 +22,11 @@ class location:
             'battery':      dictionary parameters needed to create battery object (see Battery.py)
             'electrolyzer': dictionary parameters needed to create electrolyzer object (see electrolyzer.py)
             'H tank':       dictionary parameters needed to create H_tank object (see H_tank.py)
-            'fuel cell':    dictionary parameters needed to create fuel cell object (see fuel_cell.py)
+            'heatpump':     dictionary parameters needed to create heat pump object (see heatpump.py)
+            'boiler_ng':    dictionary parameters needed to create fuel cell object (see boiler.py)
+            'boiler_el':    dictionary parameters needed to create fuel cell object (see boiler.py)
+            'boiler_h2':    dictionary parameters needed to create fuel cell object (see boiler.py)
+            
             
         general: dictionary 
             see rec.py
