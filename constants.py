@@ -43,6 +43,8 @@ HHVH2VOL     =  HHVH2*H2NDENSITY           # [MJ/m^3]     Hydrogen Higher Heatin
 HHVH2MOL     =  H2MOLMASS*HHVH2*1e3        # [kJ/mol]     Hydrogen Higher Heating Value - Molar
 HHV_H2       =  HHVH2*(1000/3600)          # [kWh/kg]     Hydrogen Higher Heating Value - kWh-mass
 HHV_H2VOL    =  HHV_H2*H2NDENSITY          # [kWh/Nm^3]   Hydrogen Higher Heating Value - kWh-volume
+H2MOL_S_E    =  130.7                      # [J/K*mol]    Hydrogen Standard Entropy - gaseous phase
+
 
 'Water'
 
@@ -50,6 +52,7 @@ H2OMOLMASS   =  0.01801528                 # [kg/mol]     Water molar mass
 H2ONDENSITY  =  999.8437620819061          # [kg/Nm^3]    Water density at Normal conditions (T = 0°C, P = 101325 Pa) -> PropsSI('D', 'T', 273.16, 'P', 101325, 'Water') 
 H2OSDENSITY  =  999.1026214670995          # [kg/Sm^3]    Water density at Standard conditions (T = 15°C, P = 101325 Pa) -> PropsSI('D', 'T', 288.15, 'P', 101325, 'Water') 
 CP_WATER     =  4188.460622611614          # [J/kgK]      Water Mass specific constant pressure specific heat
+H2OMOL_S_E   =  188.8                      # [J/K*mol]    Water Standard Entropy - gaseous phase
 
 'Natural Gas'
 
@@ -58,4 +61,8 @@ NGNDENSITY   = 0.7174587771429166          # [kg/Nm^3]    Methane density at Nor
 NGSDENSITY   = 0.6798343282369096          # [kg/Sm^3]    Methane density at Standard conditions (T = 15°C, P = 101325 Pa) -> PropsSI('D', 'T', 288.15, 'P', 101325, 'CH4')
 LHVNG        = 47.451                      # [MJ/kg]      Natural Gas Lower Heating Value
 LHVNGVOL     = LHVNG*NGSDENSITY            # [MJ/Sm^3]    Natural Gas Lower Heating Value - Volumetric
-LHV_NGSVOL   = LHVNGVOL/3.6                # [kWh/Sm^3]  Natural Gas Lower Heating Value at Standard Conditions
+LHV_NGSVOL   = LHVNGVOL/3.6                # [kWh/Sm^3]   Natural Gas Lower Heating Value at Standard Conditions
+
+'Oxygen'
+
+O2MOL_S_E    = 205.1                       # [J/K*mol]    Oxygen Standard Entropy - gaseous phase
