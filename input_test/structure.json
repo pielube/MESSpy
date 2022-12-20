@@ -69,7 +69,7 @@
 				  },
     "fuel cell":
 	           {
-				"Npower": false,
+				"Npower": 13.6,
 				"stack model": "PEM General"
 			   },
     "H tank":
