@@ -50,18 +50,18 @@
 	    {
         "tilt": 30,
         "azimuth": 0,
-        "losses": 0.1,
-        "peakP": 1.5,
+        "losses": 10,
+        "peakP": 2,
         "serie": "TMY"
 		},
     "electrolyzer":
 	              {
-				  "Npower": 1,
+				  "Npower": 2,
                   "stack model": "Enapter 2.1"
 				  },
     "fuel cell":
 	           {
-				"Npower": 2,
+				"Npower": 1,
 				"stack model": "FCS-C5000"
 			   },
     "H tank":
@@ -80,7 +80,7 @@
 			{
 			"electricity": true,
 			"hydrogen": false,
-			"gas": true,
+			"gas": false,
 			"heat": false,
 			"cool": false
 			}

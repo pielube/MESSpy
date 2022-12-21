@@ -15,7 +15,7 @@ def total_balances(simulation_name,loc,var=None):
     
     simulationa_name : str 
     loc : str 
-    var :str -> possibility of specifying a single energy carrier
+    var : str -> possibility of specifying a single energy carrier
     
     """
     

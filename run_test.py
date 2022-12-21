@@ -1,7 +1,7 @@
 """
 MESSpy - Run_test
 
-doon't work on this script:
+don't work on this script:
     you should create your own run_dev.py and input_dev/ 
 """
 
@@ -84,7 +84,7 @@ some post-process are alredy avaiable as examples in postprocess_test
 you should create your own postprocess_dev.py
 """
 
-pp.total_balances(study_case, 'p1','electricity')
+pp.total_balances(study_case,'p1','electricity')
 pp.total_balances(study_case,'p2','electricity')
 pp.total_balances(study_case,'p2','hydrogen')
 pp.total_balances(study_case,'c1','electricity')
