@@ -183,8 +183,8 @@ class location:
                 else: # if hydrogen is sold to the grid 
                     storable_hydrogen = 99999999999 # there are no limits, f.i an hydrogen producer
                     
-                self.energy_balance['hydrogen']['electrolyzer'][h] = self.technologies['electrolyzer'].use(h,EB['electricity'],storable_hydrogen)[0]     # hydrogen supplied by electrolyzer(+) 
-                self.energy_balance['electricity']['electrolyzer'][h] = self.technologies['electrolyzer'].use(h,EB['electricity'],storable_hydrogen)[1]  # electricity absorbed by the electorlyzer(-)
+                self.energy_balance['hydrogen']['electrolyzer'][h],self.energy_balance['electricity']['electrolyzer'][h] = self.technologies['electrolyzer'].use(h,EB['electricity'],storable_hydrogen)[:2] # hydrogen supplied by electrolyzer(+) # electricity absorbed by the electorlyzer(-) 
+                  
                 EB['hydrogen'] += self.energy_balance['hydrogen']['electrolyzer'][h]
                 EB['electricity'] += self.energy_balance['electricity']['electrolyzer'][h]
                 
@@ -194,7 +194,8 @@ class location:
                     available_hyd = self.technologies['H tank'].LOC[h] + self.technologies['H tank'].max_capacity - self.technologies['H tank'].used_capacity
                 else: # if hydrogen is purchased
                     available_hyd = 99999999999 # there are no limits
-                self.energy_balance['hydrogen']['fuel cell'][h] =self.technologies['fuel cell'].use(h,EB['electricity'],available_hyd)[0]
+                use = 
+                self.energy_balance['hydrogen']['fuel cell'][h], =[0]
                 self.energy_balance['electricity']['fuel cell'][h] =self.technologies['fuel cell'].use(h,EB['electricity'],available_hyd)[1] # hydrogen absorbeed by fuel cell(-) and electricity supplied(+) 
                 
                 if self.technologies['fuel cell'].use(h,EB['electricity'],available_hyd)[2] < -EB['heat']: #all of the heat producted by FC is used      

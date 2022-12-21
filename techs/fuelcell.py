@@ -28,7 +28,7 @@ class fuel_cell:
         
         #########################################
         if self.model == 'FCS-C5000':   # this model is based on FCS-C5000 characteristic curves https://www.horizonfuelcell.com/hseries
-            self.nc = 120 * self.Npower*1000 / 5000      #  number of cells (120 cells are required to have a nominal power of 5000 W)
+            self.nc = 120 * self.Npower/5      #  number of cells (120 cells are required to have a nominal power of 5000 W)
         
             # characteristic curves
             I=[0, 10, 20, 30, 40, 50, 60, 70, 80]
@@ -528,9 +528,9 @@ class fuel_cell:
         ##########################
         if self.model=='FCS-C5000':
            
-            p_required = -e*1000  # kWh --> W
+            p_required = -e  # kWh 
             
-            p = min(p_required,self.Npower)    # [W] how much electricity can be absorbed by the fuel cell absorb
+            p = min(p_required,self.Npower)    # [kW] how much electricity can be absorbed by the fuel cell absorb
             
             # find the operating point on the characteristic curves
             I=self.PI(p)
@@ -548,7 +548,7 @@ class fuel_cell:
                 # turn off the fuel cell
                 # this behavior could be solved with more advanced models, necessary inverse production functions.
                 
-            return (-hyd,p/1000) # return hydrogen absorbed [kg] and electricity required [kWh]
+            return (-hyd,p,0,0) # return hydrogen absorbed [kg] and electricity required [kWh]
 
         ###############################
         if self.model=='PEM General':
