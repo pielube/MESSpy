@@ -46,31 +46,23 @@
 			"heat": false,
 			"cool": false
 			},	
-    "wind":  {
-                "model": "detailed",
-                "area":  39.6 ,
-                "efficiency": 0.45,
-                "Prated": 10.0,
-                "WSrated": 11.0,
-                "WScutin": 2.5,
-                "WScutout": 32.0,
-                "beta": 0.0,
-                "idx": 5,
-                "z_i": 40.0,
-                "z_hub": 30.0,
-                "alpha": 0.25,
-                "Vu": 0.5,
-                "Nbands": 10
-                },
+    "PV":
+	    {
+        "tilt": 30,
+        "azimuth": 0,
+        "losses": 10,
+        "peakP": 2,
+        "serie": "TMY"
+		},
     "electrolyzer":
 	              {
-				  "Npower": false,
-                  "stack model": "PEM General"
+				  "Npower": 2,
+                  "stack model": "Enapter 2.1"
 				  },
     "fuel cell":
 	           {
-				"Npower": 13.6,
-				"stack model": "PEM General"
+				"Npower": 1,
+				"stack model": "FCS-C5000"
 			   },
     "H tank":
             {
@@ -88,7 +80,7 @@
 			{
 			"electricity": true,
 			"hydrogen": false,
-			"gas": true,
+			"gas": false,
 			"heat": false,
 			"cool": false
 			}
