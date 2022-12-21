@@ -6,7 +6,7 @@ from numpy import log as ln
 from sklearn.linear_model import LinearRegression
 import os
 import sys 
-sys.path.append(os.path.abspath(os.path.join(os.getcwd(),os.path.pardir)))   # temorarily adding constants module path 
+sys.path.append(os.path.abspath(os.path.join(os.getcwd(),os.path.pardir)))   # temporarily adding constants module path 
 import constants as c
 
 class fuel_cell:
