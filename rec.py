@@ -250,7 +250,7 @@ class REC:
         if os.path.exists('previous_simulation/general_w.pkl'):
             with open('previous_simulation/general_w.pkl', 'rb') as f:
                 ps_general = pickle.load(f) # previous simulation general
-            par_to_check = ['latitude','longitude','UTC time zone']
+            par_to_check = ['latitude','longitude','UTC time zone','DST']
             for par in par_to_check:
                 if ps_general[par] != general[par]:
                     check = False  
@@ -282,8 +282,30 @@ class REC:
                 we2.index = reindex   
                 
                 weather = pd.concat([we2,weather])
+                weather['Local time']=weather.index
+                weather.set_index('Local time',inplace=True)
+
+            # Daily saving time (DST) correction 
+            # Is CEST (Central European Summertime) observed? if yes it means that State is applying DST
+            # DST lasts between last sunday of march at 00:00:00+UTC+1 and last sunday of october at 00:00:00+UTC+2
+            # For example in Italy DST in 2022 starts in March 27th at 02:00:00 and finishes in October 30th at 03:00:00
+            if general['DST']==True:
+
+                zzz_in = weather[weather.index.month==3]
+                zzz_in = zzz_in[zzz_in.index.weekday==6]
+                zzz_in = zzz_in[zzz_in.index.hour==1+general['UTC time zone']]
+                zzz_in = pd.Series(zzz_in.index).unique()[-1]
+              
+                zzz_end = weather[weather.index.month==10]
+                zzz_end = zzz_end[zzz_end.index.weekday==6]
+                zzz_end = zzz_end[zzz_end.index.hour==1+general['UTC time zone']]
+                zzz_end = pd.Series(zzz_end.index).unique()[-1]
                 
-            
+                weather.loc[zzz_in:zzz_end] = weather.loc[zzz_in:zzz_end].shift(60,'T')
+                weather = weather.interpolate(method='linear')
+
+                weather['Local time - DST'] = weather.index
+                weather.set_index('Local time - DST',inplace=True)                                               
             weather.to_csv(path+'/weather/weather_TMY.csv')
             
             # save new parameters in previous_simulation            
