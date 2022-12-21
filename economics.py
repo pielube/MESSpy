@@ -11,14 +11,14 @@ def NPV(structure,structure0,study_case,reference_case,economic_data,simulation_
             'total installation cost': tech_name cost + installation costs [€]
             'OeM': operations and maintenance costs [€/kW/y]
             'lifetime': time after which the tech_name must be replaced [years]            
-        'refund': dictionary inventives definition
-            'rate': rate of initial investemt that will be refund [%]
-            'time': refund time [years]
+        'refund': dictionary incentives definition
+            'rate': rate of initial investemt that will be refunded [%]
+            'time': refunding time [years]
         'CER': dictionary REC economic parameters definition
             'collective self consumption incentives': [€/kWh]
-            'costitution cost': [€]
+            'constitution cost': [€]
             'OeM': [€/y]
-        'carrier_name': dictionary (repeat for reach considered carriers: electricity, hydrogen, gas, heat)
+        'carrier_name': dictionary (repeat for reach considered carrier: electricity, hydrogen, gas, heat)
             'purchase': [€/kWh] or [€/kg] 
             'sales': [€/kWh] or [€/kg]   
         'interest rate': [%]
@@ -33,7 +33,7 @@ def NPV(structure,structure0,study_case,reference_case,economic_data,simulation_
         
     """  
     
-    years_factor = int(economic_data['investment years'] / simulation_years) # this factor is usefull to match the length of the energy simulation with the length of the economic investment
+    years_factor = int(economic_data['investment years'] / simulation_years) # this factor is useful to match the length of the energy simulation with the length of the economic investment
     
     # open energy balances of study and reference case
     with open('Results/balances_'+study_case+'.pkl', 'rb') as f:
@@ -41,29 +41,29 @@ def NPV(structure,structure0,study_case,reference_case,economic_data,simulation_
     with open('Results/balances_'+reference_case+'.pkl', 'rb') as f:
         rec0 = pickle.load(f)
         
-    results = {} # dictionary initialise economic results of each locations
+    results = {}                              # dictionary initialise economic results of each locations
     
-    for location_name in structure: # for reach locations
+    for location_name in structure:           # for reach location
         
-        results[location_name] = {} # dictionary initialise economic results
-        system = structure[location_name] # location system (see Location.py)
-        system0 = structure0[location_name] # same for reference case
+        results[location_name] = {}           # dictionary initialise economic results
+        system = structure[location_name]     # location system (see Location.py)
+        system0 = structure0[location_name]   # same for reference case
         
-        results[location_name]['Annual cash flow'] = {} # dictionary initialise annual cash flow
+        results[location_name]['Annual cash flow'] = {}   # dictionary initialise annual cash flow
                 
-        CF = np.zeros(economic_data['investment years']) # array initialize Casch Flow
-        I0 = 0 # initialise initial investment     
-        OeM = 0 # initialise OeM        
+        CF = np.zeros(economic_data['investment years'])  # array initialize Casch Flow
+        I0 = 0                                            # initialise initial investment     
+        OeM = 0                                           # initialise OeM        
         
         # each tech has a different sizing parameter:
         size = {'PV': 'peakP', 'battery': 'nominal capacity', 'electrolyzer': 'Npower', 'fuel cell': 'Npower', 'H tank': 'max capacity', 'heatpump': 'nom Pth'} 
         
-        for tech_name in system: # considering each techonlogies in the location
-            if tech_name in economic_data: # to not consider 'electricity demand' as a technology and avoid bugs
+        for tech_name in system:              # considering each techonlogiy in the location
+            if tech_name in economic_data:    # to avoid considering 'electricity demand' as a technology and thus avoiding errors
                 
                 # Calculate I0 and OeM 
-                I0 += system[tech_name][size[tech_name]]*economic_data[tech_name]['total installation cost'] # add technology total installation cost to location I0
-                OeM += system[tech_name][size[tech_name]]*economic_data[tech_name]['OeM'] # add technology OeM to location OeM
+                I0 += system[tech_name][size[tech_name]]*economic_data[tech_name]['total installation cost']  # add technology total installation cost to location I0
+                OeM += system[tech_name][size[tech_name]]*economic_data[tech_name]['OeM']                     # add technology OeM to location OeM
                
                 # replacements 
                 if economic_data[tech_name]['lifetime'] == "ageing": # if replacement time is calculated according to ageing
@@ -99,18 +99,18 @@ def NPV(structure,structure0,study_case,reference_case,economic_data,simulation_
                     if economic_data[tech_name]['lifetime'] < economic_data['investment years']: # if tech_name replacement happens before the end of the simulation
                         CF[economic_data[tech_name]['lifetime']] += + system[tech_name][size[tech_name]]*economic_data[tech_name]['total installation cost'] # add technology replacement to location Cash Flow
 
-        CF[:] += - OeM # OeM every year
-        results[location_name]['Annual cash flow']['OeM'] = -OeM # OeM every year
+        CF[:] += - OeM   # OeM every year
+        results[location_name]['Annual cash flow']['OeM'] = -OeM     # OeM every year
         
         # energy sold and purchased in study case 
-        results[location_name]['Annual cash flow']['Sale'] = {} #initialise
-        results[location_name]['Annual cash flow']['Purchase'] = {} #initialise
+        results[location_name]['Annual cash flow']['Sale'] = {}      #initialise
+        results[location_name]['Annual cash flow']['Purchase'] = {}  #initialise
             
-        for carrier in rec[location_name]: # for each carrier (electricity, hydrogen, gas, heat)
+        for carrier in rec[location_name]:                           # for each carrier (electricity, hydrogen, gas, heat)
             if 'grid' in rec[location_name][carrier]:  
                 
-                results[location_name]['Annual cash flow']['Sale'][carrier] = 0 #initialise
-                results[location_name]['Annual cash flow']['Purchase'][carrier] = 0 #initialise                
+                results[location_name]['Annual cash flow']['Sale'][carrier] = 0        #initialise
+                results[location_name]['Annual cash flow']['Purchase'][carrier] = 0    #initialise                
                 
                 if type(economic_data[carrier]['sale']) == str: # if there is the price serie
                     sale_serie = np.tile(pd.read_csv(path+'/energy_price/'+economic_data[carrier]['sale'])['0'].to_numpy(),int(simulation_years))  
@@ -123,7 +123,7 @@ def NPV(structure,structure0,study_case,reference_case,economic_data,simulation_
                 CF = CF - sold.sum(axis=1,where=sold<0)
                 results[location_name]['Annual cash flow']['Sale'][carrier] += - sold.sum(axis=1,where=sold<0)
           
-                if type(economic_data[carrier]['purchase']) == str: # if there is the price serie
+                if type(economic_data[carrier]['purchase']) == str: # if there is the price series
                     purchase_serie = np.tile(pd.read_csv(path+'/energy_price/'+economic_data[carrier]['purchase'])['0'].to_numpy(),int(simulation_years))  
                     purchase = rec[location_name][carrier]['grid'] * purchase_serie
                 else: # if the price is always the same 
@@ -140,10 +140,10 @@ def NPV(structure,structure0,study_case,reference_case,economic_data,simulation_
             if 'grid' in rec0[location_name][carrier]: 
                 
                 if not carrier in results[location_name]['Annual cash flow']['Sale']:
-                    results[location_name]['Annual cash flow']['Sale'][carrier] = 0 #initialise
-                    results[location_name]['Annual cash flow']['Purchase'][carrier] = 0 #initialise 
+                    results[location_name]['Annual cash flow']['Sale'][carrier] = 0       #initialise
+                    results[location_name]['Annual cash flow']['Purchase'][carrier] = 0   #initialise 
                
-                if type(economic_data[carrier]['sale']) == str: # if there is the price serie
+                if type(economic_data[carrier]['sale']) == str:                           # if there is the price serie
                     sold = rec0[location_name][carrier]['grid'] * sale_serie
                 else: # if the price is always the same 
                     sold = rec0[location_name][carrier]['grid']*economic_data[carrier]['sale'] 

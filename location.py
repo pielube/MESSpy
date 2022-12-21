@@ -183,8 +183,8 @@ class location:
                 else: # if hydrogen is sold to the grid 
                     storable_hydrogen = 99999999999 # there are no limits, f.i an hydrogen producer
                     
-                self.energy_balance['hydrogen']['electrolyzer'][h] = self.technologies['electrolyzer'].use(h,EB['electricity'],storable_hydrogen)[0]     # hydrogen supplied by electrolyzer(+) 
-                self.energy_balance['electricity']['electrolyzer'][h] = self.technologies['electrolyzer'].use(h,EB['electricity'],storable_hydrogen)[1]  # electricity absorbed by the electorlyzer(-)
+                self.energy_balance['hydrogen']['electrolyzer'][h],self.energy_balance['electricity']['electrolyzer'][h] = self.technologies['electrolyzer'].use(h,EB['electricity'],storable_hydrogen)[:2] # hydrogen supplied by electrolyzer(+) # electricity absorbed by the electorlyzer(-) 
+                  
                 EB['hydrogen'] += self.energy_balance['hydrogen']['electrolyzer'][h]
                 EB['electricity'] += self.energy_balance['electricity']['electrolyzer'][h]
                 
@@ -192,21 +192,23 @@ class location:
             if EB['electricity'] < 0:      
                 if 'H tank' in self.technologies: # if hydrogen is stored in a tank
                     available_hyd = self.technologies['H tank'].LOC[h] + self.technologies['H tank'].max_capacity - self.technologies['H tank'].used_capacity
-                else: # if hydrogen is purchased
-                    available_hyd = 99999999999 # there are no limits
-                self.energy_balance['hydrogen']['fuel cell'][h] =self.technologies['fuel cell'].use(h,EB['electricity'],available_hyd)[0]
-                self.energy_balance['electricity']['fuel cell'][h] =self.technologies['fuel cell'].use(h,EB['electricity'],available_hyd)[1] # hydrogen absorbeed by fuel cell(-) and electricity supplied(+) 
-                
-                if self.technologies['fuel cell'].use(h,EB['electricity'],available_hyd)[2] < -EB['heat']: #all of the heat producted by FC is used      
-                    self.energy_balance['heat']['fuel cell'][h]=self.technologies['fuel cell'].use(h,EB['electricity'],available_hyd)[2] # heat loss of fuel cell
+                else:                             # if hydrogen is purchased
+                    available_hyd = 99999999999   # there are no limits
+
+                use = self.technologies['fuel cell'].use(h,EB['electricity'],available_hyd)     # saving fuel cell working parameters for the current timeframe
+                self.energy_balance['hydrogen']['fuel cell'][h],self.energy_balance['electricity']['fuel cell'][h] = use[:2] # hydrogen absorbed by fuel cell(-) and electricity supplied(+) 
+
+                if use[2] < -EB['heat']: #all of the heat producted by FC is used      
+                    self.energy_balance['heat']['fuel cell'][h]=use[2] # heat loss of fuel cell
                 else:
                     self.energy_balance['heat']['fuel cell'][h]=-EB['heat'] # heat loss of fuel cell- demand
                     # self.energy_balance['heat']['fuel cell']['unused'][h]=self.technologies['fuel cell'].use(h,EB['electricity'],available_hyd)[2]+EB['heat']
                 if 'grid' in self.energy_balance['heat']:
-                    if self.technologies['fuel cell'].use(h,EB['electricity'],available_hyd)[2] > -EB['heat']:      
-                        self.energy_balance['heat']['grid'][h]=self.technologies['fuel cell'].use(h,EB['electricity'],available_hyd)[2]+EB['heat']
+                    if use[2] > -EB['heat']:      
+                        self.energy_balance['heat']['grid'][h]=use[2]+EB['heat']
                     else:
                         self.energy_balance['heat']['grid'][h]=0
+          
                 EB['hydrogen'] += self.energy_balance['hydrogen']['fuel cell'][h]
                 EB['electricity'] += self.energy_balance['electricity']['fuel cell'][h]
                 EB['heat'] += self.energy_balance['heat']['fuel cell'][h] 
@@ -216,8 +218,7 @@ class location:
                 available_hyd = self.technologies['H tank'].LOC[h] + self.technologies['H tank'].max_capacity - self.technologies['H tank'].used_capacity-self.energy_balance['hydrogen']['fuel cell'][h]
             else: # if hydrogen is purchased
                 available_hyd = 99999999999 # there are no limits
-            self.energy_balance['hydrogen']['boiler_h2'][h] = self.technologies['boiler_h2'].use(EB['heat'],available_hyd,1)[1] #h2 consumed from boiler_h2
-            self.energy_balance['heat']['boiler_h2'][h] = self.technologies['boiler_h2'].use(EB['heat'],available_hyd,1)[2] # heat produced from boiler_h2
+            self.energy_balance['hydrogen']['boiler_h2'][h], self.energy_balance['heat']['boiler_h2'][h] = self.technologies['boiler_h2'].use(EB['heat'],available_hyd,1)[1:3] #h2 consumed from boiler_h2 and heat produced by boiler_h2
             EB['hydrogen'] += self.energy_balance['hydrogen']['boiler_h2'][h] # hydrogen balance update: - hydrogen consumed by boiler_h2
             EB['heat'] += self.energy_balance['heat']['boiler_h2'][h] # heat balance update: + heat produced by boiler_h2
                 

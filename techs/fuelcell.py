@@ -28,18 +28,18 @@ class fuel_cell:
         
         #########################################
         if self.model == 'FCS-C5000':   # this model is based on FCS-C5000 characteristic curves https://www.horizonfuelcell.com/hseries
-            self.nc = 120 * self.Npower*1000 / 5000      #  number of cells (120 cells are required to have a nominal power of 5000 W)
+            self.nc = 120 * self.Npower/5      #  number of cells (120 cells are required to have a nominal power of 5000 W)
         
             # characteristic curves
-            I=[0, 10, 20, 30, 40, 50, 60, 70, 80]
-            v=[0.96, 0.83, 0.796, 0.762, 0.728, 0.694, 0.66, 0.6, 0.5]
-            V=[]
-            P=[]
+            I=[0, 10, 20, 30, 40, 50, 60, 70, 80]                        # [A]
+            v=[0.96, 0.83, 0.796, 0.762, 0.728, 0.694, 0.66, 0.6, 0.5]   # [V]
+            V=[]                                                         # [V] Stack voltage list 
+            P=[]                                                         # [W] Stack output power list
             for i in range(len(I)):
                 volt=self.nc*v[i]
                 V.append(volt)
-                pot=I[i]*volt
-                P.append(pot)
+                pot=I[i]*volt/1000                                       # [W] -> [kW] conversion
+                P.append(pot)                                            # [kW] Stack power
             
             self.IP=interp1d(I,P,kind='cubic',bounds_error=False,fill_value='extrapolate')  
             self.Pmax=max(P)
@@ -528,9 +528,9 @@ class fuel_cell:
         ##########################
         if self.model=='FCS-C5000':
            
-            p_required = -e*1000  # kWh --> W
+            p_required = -e  # kWh 
             
-            p = min(p_required,self.Npower)    # [W] how much electricity can be absorbed by the fuel cell absorb
+            p = min(p_required,self.Npower)    # [kW] how much electricity can be absorbed by the fuel cell absorb
             
             # find the operating point on the characteristic curves
             I=self.PI(p)
@@ -548,14 +548,14 @@ class fuel_cell:
                 # turn off the fuel cell
                 # this behavior could be solved with more advanced models, necessary inverse production functions.
                 
-            return (-hyd,p/1000) # return hydrogen absorbed [kg] and electricity required [kWh]
+            return (-hyd,p,0,0) # return hydrogen absorbed [kg] and electricity required [kWh]
 
         ###############################
         if self.model=='PEM General':
             
             'Finding the working point of the FuelCell by explicitly solving the system:'
             
-            p_required = -e  # [kWh] --> equivalent to kW for the considered timestep
+            p_required = -e                                   # [kWh] --> equivalent to kW for the considered timestep
             
             p = min(p_required,self.FC_NominalPower)          # [kW] limiting maximum power that the Fuel Cell can provide 
             
@@ -603,9 +603,8 @@ class fuel_cell:
                 # turn off the fuel cell
                 # this behavior could be solved with more advanced models, necessary inverse production functions.
                 
-            # return (-hyd,p,FC_Heat,Current,etaFC) # return hydrogen absorbed [kg] and electricity required [kWh] and heat as a co-product [kWh]
             return (-hyd,p,FC_Heat,Current) # return hydrogen absorbed [kg] and electricity required [kWh] and heat as a co-product [kWh]
-        
+
         ##########################
         if self.model == 'SOFC':
             

@@ -47,7 +47,7 @@
               "sale": 0
 			  },
  "gas": {
-	     "purchase": "NG_2020.csv", 
+	     "purchase": 0, 
          "sale": 0
 		 }, 
  "heat": {
