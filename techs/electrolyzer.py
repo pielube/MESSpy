@@ -176,7 +176,6 @@ class electrolyzer:
             self.Voltage           = self.Voltage[:Ndatapoints]
             
             self.CellArea = (self.Npower/(self.CurrDensityMax*1e-3*self.CellVoltage[Ndatapoints-1]))/self.nc       # [cm^2] cell active area  file:///C:/Users/Andrea/Downloads/1-s2.0-S0360319913002607-main.pdf  up to 5000cm2 (Fig.15 and Table A)            
-            print(self.CellArea)
             self.Current=self.CellCurrDensity*self.CellArea
 
        #MIA PARTE     'Interpolation of calculated functioning points to detect the best fit-function for i-V curve'
@@ -302,45 +301,53 @@ class electrolyzer:
             'Defining the working point of the electrolyzer by spline interpolation:'
             
             # PowerInput [kW] - Electric Power from renewables directed to the electrolyzer
-            if e <= self.Npower:
+            if e <= self.Npower:                           # if available power is lower than single module Nominal Power
+                
                 self.n_modules_used[h]=1
                 e_absorbed=e
                 #hyd,e_absorbed,etaElectr,watCons=electrolyzer.use1(self,e_absorbed,storable_hydrogen,TankMaxCapacity)
-                hyd,e_absorbed,etaElectr,watCons,CellCurrden=electrolyzer.use1(self,e_absorbed,storable_hydrogen,TankMaxCapacity)
+                hyd,e_absorbed,etaElectr,watCons,CellCurrden=electrolyzer.use1(self,e,storable_hydrogen,TankMaxCapacity)
+                print('effic',etaElectr)
                 self.EFF[h] = etaElectr
-                self.wat_cons[h]=watCons
+                print(self.EFF)
+                self.wat_cons[h]= watCons
                 
-            if self.Npower < e <= self.MaxPowerStack:
+            if self.Npower < e <= self.MaxPowerStack:      # if available power is between single module power and stack power
+                
                 n_modules_used=int(e/self.Npower)
-                e_absorbed=self.Npower
-                hyd,e_absorbed,etaElectr,watCons=electrolyzer.use1(self,e_absorbed,storable_hydrogen,TankMaxCapacity)
-                hyd_1=hyd*n_modules_used
-                e_absorbed_1=e_absorbed*n_modules_used
-                watCons_1=watCons*n_modules_used
-                self.EFF[h] = etaElectr                 #I'm saving here the work efficiency of modules working at nominal power and not of the last one working with the remaining power
+                e_absorbed=self.Npower                     # power absorbed by the single module          
+                hyd,e_absorbed,etaElectr,watCons=electrolyzer.use1(self,e_absorbed,storable_hydrogen,TankMaxCapacity) 
+                hyd_1=hyd*n_modules_used                   # total amount of H2 produced by modules working at full load
+                e_absorbed_1=e_absorbed*n_modules_used     # total power absorbed    // // // // // 
+                watCons_1=watCons*n_modules_used           # total water consumption // // // // // 
+                self.EFF[h] = etaElectr                    # work efficiency of modules working at nominal power 
                 
-                e_remained=e-self.Npower*n_modules_used
+                e_remained=e-self.Npower*n_modules_used    # remaining power after considering modules at full load
+                # !!!if di riga 326 andrebbe messo forse qui subito dopo il calcolo di e_remained? Se > 0 si prosegue
                 hyd,e_absorbed,etaElectr,watCons=electrolyzer.use1(self,e_remained,storable_hydrogen,TankMaxCapacity)
-                if -e_absorbed>0:
+                if -e_absorbed>0:                # !!! mettere qui la condiizone sul 10% minimo della potenza nominale per funzionare?
                     n_modules_used=n_modules_used+1
-                    self.EFF_last_module[h]=etaElectr   #I'm saving here the work efficiency of the last module working with the remaining power
+                    self.EFF_last_module[h]=etaElectr      # work efficiency of the last module working with the remaining power
                     self.wat_cons_last_module[h]=watCons
                 self.n_modules_used[h]=n_modules_used
                 self.wat_cons[h]=watCons_1+watCons
                 hyd=hyd+hyd_1
-                e_absorbed=e_absorbed+e_absorbed_1
+                e_absorbed=e_absorbed_1+e_absorbed
                 
-            if e > self.MaxPowerStack:
+            if e > self.MaxPowerStack:                     # if available power greater than stack power
+               
                 self.n_modules_used[h]=self.n_modules
                 e_absorbed=self.Npower
-                hyd,e_absorbed,etaElectr,watCons=electrolyzer.use1(self,e_absorbed,storable_hydrogen,TankMaxCapacity)
+                hyd,e_absorbed,etaElectr,watCons=electrolyzer.use1(self,e,storable_hydrogen,TankMaxCapacity)
                 hyd=hyd*self.n_modules
                 e_absorbed=e_absorbed*self.n_modules
                 self.EFF[h] = etaElectr                
                 self.wat_cons[h]=watCons*self.n_modules
-                
+        print(type(self.EFF))        
+        print(len(self.EFF))        
         #return (hyd,e_absorbed)
-        return (hyd,e_absorbed,self.EFF[h],self.wat_cons[h],CellCurrden)
+        return (hyd,e_absorbed,CellCurrden)
+        # return (hyd,e_absorbed,self.EFF[h],self.wat_cons[h],CellCurrden)  # non importa includere gli elementi self. nel return della funzione
         
         
         
@@ -422,7 +429,9 @@ class electrolyzer:
                 
                 hyd_vol       = HydroMol*self.H2MolMass/self.rhoNrh2                         # [Nm^3] hydrogen produced in the considered timestep          
                 deltaHydrogen = hyd_vol*self.LHVh2*self.rhoNrh2*(1000/3600)                  # [kWh] Energy produced, in the form of hydrogen 
+                
                 'Water consumption' 
+                
                 watCons = hyd_vol*self.rhoNrh2*self.h2oMolMass/self.H2MolMass/etaElectr/self.rhoStdh2o      # [m^3] water used by the electrolyzer - volume calculated @ 15°C & Pamb  
                 
             #return (hyd,-e_absorbed,etaElectr,watCons) 
@@ -461,8 +470,8 @@ if __name__ == "__main__":
         
     # print('\nElectrolyzer Efficiency [-]: \n\n',el.EFF)                           # electrolyzer efficiency at every hour
     
-    u=electrolyzer({'Npower':1000,'N_modules':80,'stack model':'PEM General'},2)
-    PowerInput = np.linspace(0,u.PowerNominal*0.99,300)
+    el=electrolyzer({'Npower':1000,'N_modules':80,'stack model':'PEM General'},2)
+    PowerInput = np.linspace(0,el.PowerNominal*0.99,300)
           
                       
           
@@ -480,7 +489,8 @@ if __name__ == "__main__":
     Cellcurrdens=np.zeros(len(PowerInput))
     
     for i in range(len(PowerInput)):
-        hyd[i],eabsorbed[i],etaElectr[i],watCons[i],Cellcurrdens[i] = u.use(1,PowerInput[i],2000000,2000000000)
+        hyd[i],eabsorbed[i],Cellcurrdens[i] = el.use(1,PowerInput[i],2000000,2000000000)
+        etaElectr[i]=el.EFF
         
     # plt.figure(dpi=1000)
     # plt.plot(PowerInput,etaElectr,'b')
@@ -495,10 +505,10 @@ if __name__ == "__main__":
     
     plt.figure(dpi=1000)
     plt.plot(PowerInput,etaElectr,'b')
-    plt.title("$i_{max}$ and $n_{cell}$ respectively "+str([u.CurrDensityMax,u.nc]))
+    plt.title("$i_{max}$ and $n_{cell}$ respectively "+str([el.CurrDensityMax,el.nc]))
     plt.ylim([0,0.8]) 
-    plt.text(u.Npower/2,0.2,'$CellArea$ = {:.0f} cm2'.format(u.CellArea),fontsize=10,va='bottom',backgroundcolor='none')
-    plt.text(u.Npower/2,0.3,'$Pnom$ = {:.0f} kW'.format(u.Npower),fontsize=10,va='bottom',backgroundcolor='none') 
+    plt.text(el.Npower/2,0.2,'$CellArea$ = {:.0f} cm2'.format(el.CellArea),fontsize=10,va='bottom',backgroundcolor='none')
+    plt.text(el.Npower/2,0.3,'$Pnom$ = {:.0f} kW'.format(el.Npower),fontsize=10,va='bottom',backgroundcolor='none') 
     plt.grid()
     plt.xlabel('Input Power [kW]')
     plt.ylabel('$\\eta$')
@@ -517,10 +527,10 @@ if __name__ == "__main__":
     
     plt.figure(dpi=1000)
     plt.plot(Cellcurrdens,etaElectr,'b')
-    plt.title("$i_{max}$ and $n_{cell}$ respectively "+str([u.CurrDensityMax,u.nc]))
+    plt.title("$i_{max}$ and $n_{cell}$ respectively "+str([el.CurrDensityMax,el.nc]))
     plt.ylim([0,0.8]) 
-    plt.text(1.12,0.2,'$CellArea$ = {:.0f} cm2'.format(u.CellArea),fontsize=10,va='bottom',backgroundcolor='none')
-    plt.text(1.12,0.3,'$Pnom$ = {:.0f} kW'.format(u.Npower),fontsize=10,va='bottom',backgroundcolor='none') 
+    plt.text(1.12,0.2,'$CellArea$ = {:.0f} cm2'.format(el.CellArea),fontsize=10,va='bottom',backgroundcolor='none')
+    plt.text(1.12,0.3,'$Pnom$ = {:.0f} kW'.format(el.Npower),fontsize=10,va='bottom',backgroundcolor='none') 
     plt.grid()
     plt.xlabel('Curr dens [A/cm2]')
     plt.ylabel('$\\eta$')
