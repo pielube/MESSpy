@@ -180,13 +180,17 @@ class location:
             if EB['electricity'] > 0:
                 if 'H tank' in self.technologies: # if hydrogen is stored in a tank
                     storable_hydrogen = self.technologies['H tank'].max_capacity-self.technologies['H tank'].LOC[h] # the tank can't be full
+                    if storable_hydrogen>self.technologies['H tank'].max_capacity*0.001:
+                        self.energy_balance['hydrogen']['electrolyzer'][h], self.energy_balance['electricity']['electrolyzer'][h] = self.technologies['electrolyzer'].use(h,EB['electricity'],storable_hydrogen,self.technologies['H tank'].max_capacity) # hydrogen supplied by electrolyzer(+) and electricity absorbed(-) 
+                        EB['hydrogen'] += self.energy_balance['hydrogen']['electrolyzer'][h]
+                        EB['electricity'] += self.energy_balance['electricity']['electrolyzer'][h]                                                                  
                 else: # if hydrogen is sold to the grid 
                     storable_hydrogen = 99999999999 # there are no limits, f.i an hydrogen producer
                     
-                self.energy_balance['hydrogen']['electrolyzer'][h],self.energy_balance['electricity']['electrolyzer'][h] = self.technologies['electrolyzer'].use(h,EB['electricity'],storable_hydrogen)[:2] # hydrogen supplied by electrolyzer(+) # electricity absorbed by the electorlyzer(-) 
+                    self.energy_balance['hydrogen']['electrolyzer'][h],self.energy_balance['electricity']['electrolyzer'][h] = self.technologies['electrolyzer'].use(h,EB['electricity'],storable_hydrogen,self.technologies['H tank'].max_capacity)#[:2] # hydrogen supplied by electrolyzer(+) # electricity absorbed by the electorlyzer(-) 
                   
-                EB['hydrogen'] += self.energy_balance['hydrogen']['electrolyzer'][h]
-                EB['electricity'] += self.energy_balance['electricity']['electrolyzer'][h]
+                    EB['hydrogen'] += self.energy_balance['hydrogen']['electrolyzer'][h]
+                    EB['electricity'] += self.energy_balance['electricity']['electrolyzer'][h]
                 
         if 'fuel cell' in self.technologies:
             if EB['electricity'] < 0:      
