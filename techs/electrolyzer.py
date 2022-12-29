@@ -98,9 +98,9 @@ class electrolyzer:
             self.MaxPowerStack         = self.n_modules*self.Npower
             
             
-            
             self.nc=10+int((self.Npower/1000)*(35-10))
             self.CurrDensityMax=2.1+(self.Npower/1000)*(3-2.1)
+           
             # if 0<=self.Npower<=10:
             #    self.nc = 10
             #    self.CurrDensityMax = 2            # [A/cm^2] https://www.sciencedirect.com/science/article/pii/S266638642030151X#:~:text=In%20contrast%2C%20PEM%20electrolyzers%20experience,at%20high%20current%20density%20operations.&text=While%20commercial%20electrolyzers%20typically%20operate,reported%20by%20Lewinski%20et%20al.
