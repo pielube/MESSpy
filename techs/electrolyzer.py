@@ -98,8 +98,8 @@ class electrolyzer:
             self.MaxPowerStack       = self.n_modules*self.Npower  # [kW] electrolyzer stack total power
             
             
-            self.nc=10+int((self.Npower/1000)*(35-10))          #For a power range between 0kW and 1000kW the number of cells in the stack varies between 10 and 35 
-            self.CurrDensityMax=2.1+(self.Npower/1000)*(3-2.1)  #For a power range between 0kW and 1000kW the maximum current density varies between 2.1 and 3 A/cm2 
+            self.nc             = 10+int((self.Npower/1000)*(35-10))  # For a power range between 0kW and 1000kW the number of cells in the stack varies between 10 and 35 
+            self.CurrDensityMax = 2.1+(self.Npower/1000)*(3-2.1)      # For a power range between 0kW and 1000kW the maximum current density varies between 2.1 and 3 A/cm2 
             
             #    self.CurrDensityMax = 2            # [A/cm^2] https://www.sciencedirect.com/science/article/pii/S266638642030151X#:~:text=In%20contrast%2C%20PEM%20electrolyzers%20experience,at%20high%20current%20density%20operations.&text=While%20commercial%20electrolyzers%20typically%20operate,reported%20by%20Lewinski%20et%20al.
           
@@ -231,7 +231,7 @@ class electrolyzer:
         etaFaraday : Faraday efficiency [-]
 
         """
-        if 0 < h2 <= self.maxh2prod:
+        if 0 <= h2 <= self.maxh2prod:
             
             hyd        = h2
             e_absorbed = self.h2P(hyd)                                                                # [kW] required power
@@ -556,9 +556,6 @@ if __name__ == "__main__":
 
     cellarea = el.CellArea
     nompower = el.Npower
-
-    indexes = np.where(flow >= el.Npower)[0]
-    index = indexes[0]
 
     plt.figure(dpi=600)
     plt.scatter(el.cell_currdens,el.EFF,s=20,color='tab:orange',edgecolors='k',zorder=3)
