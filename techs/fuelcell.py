@@ -22,13 +22,14 @@ class fuel_cell:
             absosrb hydrogen and produce electricity .use(e)
         """
         
-        self.model    = parameters['stack model'] # Fuel cell model
-        self.Npower   = parameters['Npower']      # [kW]
-        self.timestep = 1                         # [h]
+        self.model               = parameters['stack model']  # [-]  Fuel cell model
+        self.Npower              = parameters['Npower']       # [kW] Single module nominal power   
+        self.timestep = 1                                     # [h]  simulation timestep
+    
         
         #########################################
-        if self.model == 'FCS-C5000':   # this model is based on FCS-C5000 characteristic curves https://www.horizonfuelcell.com/hseries
-            self.nc = 120 * self.Npower/5      #  number of cells (120 cells are required to have a nominal power of 5000 W)
+        if self.model == 'FCS-C5000':           # this model is based on FCS-C5000 characteristic curves https://www.horizonfuelcell.com/hseries
+            self.nc = 120 * self.Npower/5       # number of cells (120 cells are required to have a nominal power of 5000 W)
         
             # characteristic curves
             I=[0, 10, 20, 30, 40, 50, 60, 70, 80]                        # [A]
@@ -59,12 +60,17 @@ class fuel_cell:
         ###########################################
         if self.model == 'PEM General':
             
-            'Model: NEDSTACK FCS 13-XXL' # https://nedstack.com/sites/default/files/2022-07/nedstack-fcs-13-xxl-gen-2.9-datasheet-rev01.pdf
+            # Model validation with experimental data for the specifications below:
+                
+            'Model: NEDSTACK FCS 13-XXL'      # https://nedstack.com/sites/default/files/2022-07/nedstack-fcs-13-xxl-gen-2.9-datasheet-rev01.pdf
             'Rated nominal power:  13.6 kW'
             
-            self.EFF       = np.zeros(simulation_hours)   # [-]    Keeping track of fuel cell efficiency
-            self.VOLT      = np.zeros(simulation_hours)   # [V]    Keeping track of single cell working voltage - necessary for ageing calculations
-            self.CURR_DENS = np.zeros(simulation_hours)   # [A]    Keeping track of single cell working current - necessary for ageing calculations
+            self.EFF       = np.zeros(simulation_hours)              # [-]  Keeping track of fuel cell efficiency
+            self.VOLT      = np.zeros(simulation_hours)              # [V]  Keeping track of single cell working voltage - necessary for ageing calculations
+            self.CURR_DENS = np.zeros(simulation_hours)              # [A]  Keeping track of single cell working current - necessary for ageing calculations
+            self.EFF_last_module     = np.zeros(simulation_hours)    # [-]  Keeping track of the elecrolyzer last module efficiency over the simulation
+            self.n_modules_used      = np.zeros(simulation_hours)    # [-]  Number of modules active at each timestep 
+
             
             self.rhoStdh2        = c.H2SDENSITY           # [kg/Sm3]    PropsSI('D', 'T', 288.15, 'P', 101325, 'H2') H2  density @ T = 15°C p = 101325 Pa
             self.rhoStdh2o       = c.H2OSDENSITY          # [kg/m3]     H2O density @ T = 15°C p = 101325 Pa
@@ -87,32 +93,42 @@ class fuel_cell:
             self.AmbTemp      = c.AMBTEMP                 # [K]         Standard ambient temperature - 15 °C
      
             "H2 --> 2H+ + 2e" 
-            # FuelCellctrolyzer Parameters - depending on different technologies and sizes 
+          
+            # FuelCell  Parameters 
             
-            self.nc                  = 96                                  # [-] number of cells in the stack 
-            self.Lambda              = 23                                  # [-] Cell mositure content
+            self.Lambda              = 23                                  # [-]      Cell mositure content
             self.FC_AnodeCurrDens    = 0.000000009                         # [A/cm^2] Anode current density
             self.FC_CathodeCurrDens  = 0.001                               # [A/cm^2] Cathode current density
-            self.FC_OperatingTemp    = 273.15 + 62                         # [K]   https://www.google.com/search?q=working+temperature+PEM+fuel+cell&oq=working+temperature+PEM+fuel+cell+&aqs=chrome..69i57j0i512l9.10383j0j7&sourceid=chrome&ie=UTF-8
-            self.FC_FuelPress        = 101325 + 25000                      # [Pa] Fuel supply pressure (Anode) 
-            self.FC_AirPress         = 101325                              # [Pa] Air supply pressure (Cathode)
+            self.FC_OperatingTemp    = 273.15 + 62                         # [K]      https://www.google.com/search?q=working+temperature+PEM+fuel+cell&oq=working+temperature+PEM+fuel+cell+&aqs=chrome..69i57j0i512l9.10383j0j7&sourceid=chrome&ie=UTF-8
+            self.FC_FuelPress        = 101325 + 25000                      # [Pa]     Fuel supply pressure (Anode) 
+            self.FC_AirPress         = 101325                              # [Pa]     Air supply pressure (Cathode)
             self.FC_MinCurrDens      = 0.0001                              # [A/cm^2] FC min. current density      
-            self.FC_MaxCurrDens      = 1.2                                 # [A/cm^2] FC max. current density      
-            self.CTC                 = 0.4                                 # [-] Charge Transfer Coefficient  - if Nominal Power < 6 kW: CTC = 0.45
+            self.CTC                 = 0.4                                 # [-]      Charge Transfer Coefficient  - if Nominal Power < 6 kW: CTC = 0.45
                                                                            #                                  - if //   //   //  > 6 kW: CTC = 0.4
-            self.MembThickness       = 250                                 # !! [μm] fuel cell membrane thickness - if Nominal Power < 6 kW: MembThickness = 100 
+            self.MembThickness       = 250                                 # [μm]     Fuel cell membrane thickness - if Nominal Power < 6 kW: MembThickness = 100 
                                                                            #                                    - if //   //   //  > 6 kW: MembThickness = 145 
-            self.FC_MaxCurrent       = 230                                 # [A] value taken from datasheet. Current value at which max power is delivered
+            self.FC_MaxCurrent       = 230                                 # [A]      Value taken from datasheet. Current value at which max power is delivered
             
-            # Computing the single cell polarization curve V-i
+            self.n_modules           = parameters['number of modules']     # [-]      Number of modules constituting the stack
+            self.MaxPowerTot         = self.n_modules*self.Npower          # [kW]     Stack maximum power output
+         
+            self.nc                  = 90 + int((self.Npower/1000)*(250-90))   # For a power range between 0kW and 1000kW the number of cells in the stack varies between 90 and 250 
+            self.FC_MaxCurrDens      = 1.2 + (self.Npower/1000)*(1.3-1.2)      # For a power range between 0kW and 1000kW the maximum current density varies between 1.2 and 1.3 A/cm2 
+            self.FC_NominalPower = self.Npower                 # [kW] Max Power - Nominal Power at max current
+            
+            # Varying the number of cells, module efficiency remains unchanged
+            # nc = 96 and FC_MaxCurrDens = 1.2 are derived from the above-mentioned datasheet and are specific for the specified size of 13.6 kW 
+            
             
             'POLARIZATION CURVE'
             
-            Ndatapoints= 101         # Number of points used to compute the polarization curve 
+            Ndatapoints= 1000                    # Number of points used to compute the polarization curve 
             
-            self.OCpotential = []
-            self.ActLosses   = []
-            self.OhmLosses   = []
+            # Saving different losses contruibutions to be considered in the polarization curve
+            
+            self.OCpotential = []                # [V] Open circuit voltage
+            self.ActLosses   = []                # [V] Activation losses
+            self.OhmLosses   = []                # [V] Ohmic losses
             self.CellVolt = np.zeros(Ndatapoints)
             self.CellCurrDensity = np.linspace(self.FC_MinCurrDens,self.FC_MaxCurrDens,Ndatapoints)   
             
@@ -136,7 +152,7 @@ class fuel_cell:
                 Vact_cat = -self.Runiv*self.FC_OperatingTemp*np.log10(self.FC_CathodeCurrDens)/(self.CTC*4*self.FaradayConst)+self.Runiv*self.FC_OperatingTemp*np.log10(self.CellCurrDensity[i])/(self.CTC*4*self.FaradayConst) #[V]
                 Vact_an = -self.Runiv*self.FC_OperatingTemp*np.log10(self.FC_AnodeCurrDens)/(self.CTC*2*self.FaradayConst)+self.Runiv*self.FC_OperatingTemp*np.log10(self.CellCurrDensity[i])/(self.CTC*2.*self.FaradayConst)   #[V]
           
-                Vact = Vact_cat +Vact_an              # [V] Activation losses
+                Vact = Vact_cat +Vact_an               # [V] Activation losses
                 
                 self.ActLosses.append(Ecell-Vact)
            
@@ -145,9 +161,9 @@ class fuel_cell:
                 rho_m = (181.6*(1+0.03*(self.CellCurrDensity[i])+0.062*((self.FC_OperatingTemp/303)**2)*(self.CellCurrDensity[i])**2.5))/ \
                     ((self.Lambda-0.634-3*(self.CellCurrDensity[i]))*self.eNepero**(4.18*(self.FC_OperatingTemp-303)/self.FC_OperatingTemp))      #[Ohm*cm] specific membrane recistence
               
-                Rm = rho_m*self.MembThickness/10000      # [Ohm/cm2]  Cell resistance depending on temperature and moisture content (Lambda) 
+                Rm = rho_m*self.MembThickness/10000    # [Ohm/cm2]  Cell resistance depending on temperature and moisture content (Lambda) 
          
-                Vohm = self.CellCurrDensity[i]*Rm        # [V] Ohmic losses
+                Vohm = self.CellCurrDensity[i]*Rm      # [V] Ohmic losses
                 
                 self.OhmLosses.append(Ecell-Vact-Vohm)
                 
@@ -161,56 +177,112 @@ class fuel_cell:
             'RESULTING STACK VOLTAGE'
          
             self.Voltage = self.CellVolt*self.nc                                      # [V] Stack Voltage
-                
+
             'Interpolation of  polarization curve: defining the fit-function for i-V curve'
             
             self.num = Ndatapoints                                                    # [-] number of intervals to be considered for the interpolation
-            
             self.x = np.linspace(self.CellCurrDensity[0],self.CellCurrDensity[-1],self.num) 
             
             # Interpolating functions
             
-            self.iV1 = interp1d(self.CellCurrDensity,self.Voltage,bounds_error=False,fill_value='extrapolate')          # Linear spline 1-D interpolation
-            self.iV2 = interp1d(self.CellCurrDensity,self.CellVolt,bounds_error=False,fill_value='extrapolate')         # Linear spline 1-D interpolation
+            self.iV1 = interp1d(self.CellCurrDensity,self.Voltage,bounds_error=False,fill_value='extrapolate')    # Linear spline 1-D interpolation
+            self.iV2 = interp1d(self.CellCurrDensity,self.CellVolt,bounds_error=False,fill_value='extrapolate')   # Linear spline 1-D interpolation
             
             # Creating the reverse curve IP - necessary to define the exact functioning point        
             
-            self.Current = self.CellCurrDensity*self.FC_CellArea                      # [A] Defining the current value: same both for the single cell and the full stack!
-
+            self.Current = self.CellCurrDensity*self.FC_CellArea    # [A] Defining the current value: same both for the single cell and the full stack!
+            
             # Defining Fuel Cell Max Power Generation
+            
+            'Fuel Cell Max Power Consumption'
             
             FC_power = []
             for i in range(len(self.Current)):
                 pot=self.Current[i]*self.Voltage[i]/1000       # [kW] Power
                 FC_power.append(pot)
-                
-            # self.FC_NominalPower = max(FC_power)             # [kW] Max Power - Nominal Power at max current
-            self.FC_NominalPower = self.Npower                 # [kW] Max Power - Nominal Power at max current
+            self.MinPower = min(FC_power)
             
-            self.IP=interp1d(self.Current,FC_power,bounds_error=False,fill_value='extrapolate')          
-            self.P = []
+            self.IP = interp1d(self.Current,FC_power,bounds_error=False,fill_value='extrapolate')          
+            self.P  = []
             for i in range(len(self.Current)):
-                power = (self.iV1(self.CellCurrDensity[i])*self.Current[i])/1000          # [kW] Resolving the equation system via interpolation
-                self.P.append(power)                                                      # [kW] Output power values varying current
+                power = (self.iV1(self.CellCurrDensity[i])*self.Current[i])/1000     # [kW] Resolving the equation system via interpolation
+                self.P.append(power)                                                 # [kW] Output power values varying current
                 
             self.PI=interp1d(self.P,self.Current,bounds_error=False,fill_value='extrapolate')  # Interpolating function returning Current if interrogated with Power 
+            
+            'Single module electricity production'
+            
+            # Building lists of values needed for interpolation functions
+            
+            hydrogen             = []
+            electricity_produced = []
+            eta_FuelCell         = []
+            FC_Heat_produced     = []
+            
+            for i in range(len(FC_power)):
+               
+                p_required = FC_power[i]                                   # [kWh] --> equivalent to kW for the considered timestep
+                
+                FC_CellCurrDensity = self.PI(p_required)/self.FC_CellArea  # [A/cm^2] current density value at which the fuel cell is working 
         
+                Current = FC_CellCurrDensity*self.FC_CellArea     # [A] FuelCell Stack operating current 
+                
+                FC_Vstack = self.iV1(FC_CellCurrDensity)          # [V] Stack operating voltage
+                V_cell = FC_Vstack/self.nc                        # [V] Single cell operating voltage
+        
+                'Computing FC efficiency and hydrogen energy demand'    
+                
+                pO2 = (self.FC_AirPress*0.21)/101325              # [atm]
+                pH2O = 1                                          # [atm]
+                pH2 = self.FC_FuelPress/101325                    # [atm]  
+                
+                Ecell = 1.229-0.85e-3*(self.FC_OperatingTemp-298.15) + 4.3085e-5*self.FC_OperatingTemp*ln(pH2*(pO2**0.5)/pH2O)   # [V] Open circuit voltage 
+                deltaG = self.deltaG0 - self.Runiv*self.FC_OperatingTemp*ln(pH2*math.sqrt(pO2)/pH2O)/(2*self.FaradayConst)       # [kJ/mol] Gibbs free energy at actual conditions
+              
+                eta_voltage = FC_Vstack/(Ecell*self.nc)           # [-] Voltage efficiency 
+                eta_th = - deltaG/self.HHVh2Mol                   # [-] Thermodynamic efficiency
+             
+                etaFC = eta_th*eta_voltage                        # [-] FC efficiency
+
+                'Hydrogen demand'
+             
+                FC_HydroCons = Current*self.nc*3600/(95719.25*1000)/self.rhoStdh2*self.timestep   # [Sm3] (Chavan 2017)
+                hyd = FC_HydroCons*self.rhoStdh2/self.timestep                                    # [kg/h]
+                FC_deltaHydrogen = - FC_HydroCons*self.rhoStdh2*self.HHVh2*1000/3600              # [kWh]
+             
+             
+                'Process heat, that can be recovered'
+              
+                FC_Heat = ((1.481*self.nc)/FC_Vstack-1)*p_required*self.timestep     # [kWh] --> equivalent to kW for the considered timestep of 1h
+                    
+                hydrogen.append(hyd)                       # [kg]  produced hydrogen
+                electricity_produced.append(p_required)    # [kWh] output power
+                eta_FuelCell.append(etaFC)                 # [-]   fc efficiency
+                FC_Heat_produced.append(FC_Heat)           # [kWh] co-product heat
+                
+            self.maxh2used = max(hydrogen)                 # [kg] maximum amount of exploitable hydrogen for the considered module
+          
+            self.etaFuelCell = interp1d(hydrogen,eta_FuelCell,bounds_error=False,fill_value='extrapolate')          # Linear spline 1-D interpolation -> H2 consumption - FC efficiency
+            self.h2P         = interp1d(hydrogen,electricity_produced,bounds_error=False,fill_value='extrapolate')  # Linear spline 1-D interpolation -> H2 consumption - produced electricity
+            self.FC_Heat     = interp1d(hydrogen,FC_Heat_produced,bounds_error=False,fill_value='extrapolate')      # Linear spline 1-D interpolation -> H2 consumption - produced heat
+
         ####################################   
         if self.model == 'SOFC':
             
-            self.EFF=np.zeros(simulation_hours)                    # [-]      Keeping track of fuel cell efficiency
+            self.EFF=np.zeros(simulation_hours)                    # [-]      keeping track of fuel cell efficiency
+            
+            self.EFF_last_module     = np.zeros(simulation_hours)  # [-]      keeping track of the elecrolyzer last active module efficiency over the simulation
+            self.n_modules_used      = np.zeros(simulation_hours)  # [-]      Number of modules active at each timestep 
             
             self.e                            = c.NEPERO           # [-]      Euler's number
-            self.nc                           = 77                 # [-]      number of cells in the stack 
+
             self.FC_OperatingTemp             = 273.15+800         # [K]      Operating temperature
             self.FC_RefTemp                   = 273.15+750         # [K]      Operating temperature reference
             self.FC_FuelPress                 = 116000             # [Pa]     Fuel supply pressure (Anode)  
             self.FC_AirPress                  = 101325/101325      # [atm]    Air supply pressure (Cathode)
-            # self.FC_MinCurrDens               = 0.001              # [A/cm^2] FC min. current density - arbitrary
+            # self.FC_MinCurrDens               = 0.0001              # [A/cm^2] FC min. current density - arbitrary
             self.FC_MinCurrDens               = 0.04194            # [A/cm^2] FC min. current density - derived from experimental plot
-            self.FC_MaxCurrDens               = 1.23457            # [A/cm^2] FC max. current density - //  //  //  //  //  //
-            self.FC_CellArea                  = 81                 # [cm^2]   FC cell active area                                                              Calculated as follows -> CellArea= FC_NominalPower/(Vmin*FC_MaxCurrDens)
-            self.Vmin_FC                      = 0.70               # [V]      Minimum value for working voltage - derived from experimental plot
+
             self.FC_NominalPower              = self.Npower        # [W]      FC nominal power
             self.FC_AlfaAnode                 = 0.55               # [-]      Charge transfer coefficient for anode
             self.FC_AlfaCathode               = 0.33               # [-]      Charge transfer coefficient for cathode 
@@ -232,10 +304,24 @@ class fuel_cell:
             self.rhoStdh2                     = c.H2SDENSITY       # [kg/Sm3] Hydrogen density at Standard conditions 
             self.HHVh2                        = c.HHVH2            # [MJ/kg]  Hydrogen  higher heating value      
             
+            h2oMolMass       = c.H2OMOLMASS   # [kg/mol]     Water molar mass
+            H2MolMass        = c.H2MOLMASS    # [kg/mol]     Hydrogen molar mass
+            H2MolStdEntropy  = c.H2MOL_S_E    # [J/K*mol]    Specific molar entropy (gaseous phase)
+            O2MolStdEntropy  = c.O2MOL_S_E    # [J/K*mol]    Specific molar entropy
+            H20MolStdEntropy = c.H2OMOL_S_E   # [J/K*mol]    Specific molar entropy
+            
+            self.n_modules           = parameters['number of modules']  # [-]      Number of modules constituting the stack
+            self.MaxPowerTot         = self.n_modules*self.Npower       # [kW]     Max power output 
+            
+            self.nc                  = 90 + int((self.Npower/1000)*(250-90))       # For a power range between 0kW and 1000kW the number of cells in the stack varies between 90 and 250 
+            self.FC_MaxCurrDens      = 1.2 + (self.Npower/1000)*(1.3-1.2)          # For a power range between 0kW and 1000kW the maximum current density varies between 1.2 and 1.3 A/cm2 
+            
+            # Varying the number of cells, module efficiency remains unchanged
+            # nc = 77 and FC_MaxCurrDens = 1.23457 are derived from the above-mentioned datasheet
             
             'POLARIZATION CURVE'
             
-            Ndatapoints = 192                      # Number of points used to compute the polarization curve 
+            Ndatapoints = 1000                        # Number of points used to compute the polarization curve 
             
             self.DeltaV_ohm = np.zeros(Ndatapoints)   # Ohmic losses
             self.DeltaV_con = np.zeros(Ndatapoints)   # Concentration losses
@@ -253,10 +339,9 @@ class fuel_cell:
         
             '1 - Open circuit potential'                
             
-            CellCurr = self.CellCurrDensity*self.FC_CellArea  # [A]
             Ecell = 1.19 + ((c.R_UNIVERSAL*self.FC_OperatingTemp)/(2*c.FARADAY))*ln(pH2*(pO2**0.5)/pH2O)  # [V] Open circuit voltage
             self.Ecell  = [Ecell for i in range(Ndatapoints)]
-    
+
             for i in range(0,Ndatapoints):
                                 
                 '2 - Ohmic losses'
@@ -273,13 +358,13 @@ class fuel_cell:
                 
                 self.CellVoltage[i] = self.Ecell[i]-self.DeltaV_ohm[i]-self.DeltaV_con[i]
                 
-            self.Vmin_FC_stack = self.CellVoltage[-1]*self.nc                                    # [V]    Minimum value for working voltage
-            self.FC_CellArea = self.Npower*1000/(self.Vmin_FC_stack*self.FC_MaxCurrDens)         # [cm^2] FC cell active area
-                
+            self.Vmin_FC_stack = self.CellVoltage[-1]*self.nc                                 # [V]    Minimum value for working voltage
+            self.FC_CellArea = self.Npower*1000/(self.Vmin_FC_stack*self.FC_MaxCurrDens)      # [cm^2] FC cell active area
+            self.FC_Pmax = self.Npower                                                        # [kW] Max output power
+
             '5- Stack voltage'
             
             self.Voltage = self.nc*self.CellVoltage
-            
 
             'Interpolation of  polarization curve: defining the fit-function for i-V curve'    
           
@@ -291,24 +376,123 @@ class fuel_cell:
             
             # Creating the reverse curve IP - necessary to define the exact functioning point
             self.Current = self.CellCurrDensity*self.FC_CellArea
-            
+
             'Fuel Cell Max Power Consumption'
             
             FC_power = []
             for i in range(len(self.Current)):
                  pot = self.Current[i]*self.Voltage[i]/1000     # [kW] Power
                  FC_power.append(pot)
-                
-            # self.FC_Pmax = max(FC_power)                        # [kW] Max output power
-            self.FC_Pmax = self.Npower                            # [kW] Max output power
+            self.MinPower = min(FC_power)
+
             
             self.IP=interp1d(self.Current,FC_power,kind='cubic',bounds_error=False,fill_value='extrapolate') 
             self.P = np.zeros(Ndatapoints)
             
             for i in range (len(self.Current)):
-                  self.P[i] = (self.iV1(self.CellCurrDensity[i])*self.Current[i])/1000   # [kW]
+                  self.P[i] = (self.iV1(self.CellCurrDensity[i])*self.Current[i])/1000   # [kW] power output 
             
             self.PI=interp1d(self.P,self.Current,bounds_error=False,fill_value='extrapolate')   # Interpolating function returning Current if interrogated with Power 
+
+            'Single module electricity production'
+   
+            # Building lists of values needed for interpolation functions    
+    
+            hydrogen = []
+            electricity_produced = []
+            eta_FuelCell   = []
+            FC_Heat_produced = []
+            
+            for i in range(len(FC_power)):
+                
+                p_required = FC_power[i]                                   # [kWh] --> equivalent to kW for the considered timestep                
+                FC_CellCurrDensity = self.PI(p_required)/self.FC_CellArea  # [A/cm^2] current density value at which the fuel cell is working 
+                
+                Current = FC_CellCurrDensity*self.FC_CellArea     # [A] FuelCell Stack operating current
+                
+                FC_Vstack= self.iV1(FC_CellCurrDensity)           # [V] Stack operating voltage
+    
+                'Computing FC efficiency and hydrogen energy demand'    
+                
+                pO2 = (self.FC_AirPress*0.21*101325)/101325      # [atm]
+                pH2O = 1                                         # [atm]
+                pH2 = self.FC_FuelPress/101325                   # [atm]  
+                
+                Ecell = 1.19 + ((c.R_UNIVERSAL*self.FC_OperatingTemp)/(2*c.FARADAY))*ln(pH2*(pO2**0.5)/pH2O)
+                DeltaV_OHM = (FC_CellCurrDensity*self.ThicknessElectrolyte*self.FC_OperatingTemp)/(9000*self.e**(-100000/(c.R_UNIVERSAL*self.FC_OperatingTemp)))
+                DeltaV_CON = ((c.R_UNIVERSAL*self.FC_OperatingTemp)/(2*c.FARADAY))*ln((FC_CellCurrDensity/(self.FC_ExchangeCurrDensCathode*self.FC_AirPress*(0.21-0.0008*10000*FC_CellCurrDensity*c.R_UNIVERSAL*self.FC_OperatingTemp/(4*c.FARADAY*101325*0.00002)))))
+    
+                TotalLoss = DeltaV_OHM + DeltaV_CON   # [V]
+                
+                deltaG = c.GIBBS - c.R_UNIVERSAL*self.FC_OperatingTemp*ln(pH2*math.sqrt(pO2)/pH2O)/(2*c.FARADAY)    # [kJ/mol] Gibbs free energy at actual conditions
+              
+                eta_voltage = FC_Vstack/(Ecell*self.nc)           # [-] Voltage efficiency 
+                eta_th = c.GIBBS/self.HHVh2Mol                    # [-] Thermodynamic efficiency
+                etaFC = -eta_th*eta_voltage                       # [-] FC efficiency
+                
+                'Hydrogen demand'
+                
+                FC_HydroCons = ((Current*self.nc*3600)/(c.FARADAY*1000))/(self.rhoStdh2*self.timestep)     # [Sm^3]
+                hyd=FC_HydroCons*self.rhoStdh2/self.timestep                                               # [kg/h]
+                FC_deltaHydrogen = - FC_HydroCons*self.rhoStdh2*self.HHVh2*1000/3600                       # [kWh]
+                
+                z = Current/(2*c.FARADAY)   # [mol/s]
+                
+                DeltaS = -((H20MolStdEntropy-(O2MolStdEntropy/2)-H2MolStdEntropy)+(c.R_UNIVERSAL/2)*ln((pH2**2)*pO2/(pH2O**2))) # [J/mol*K]
+                
+                FC_Heat = (((z*self.FC_OperatingTemp*DeltaS + Current*TotalLoss)*self.timestep)*self.nc)/1000   # [kWh] --> equivalent to kW for the considered timestep of 1h
+
+                hydrogen.append(hyd)                       # [kg]  produced hydrogen
+                electricity_produced.append(p_required)    # [kWh] output power
+                eta_FuelCell.append(etaFC)                 # [-]   fc efficiency
+                FC_Heat_produced.append(FC_Heat)           # [kWh] co-product heat
+                
+            self.maxh2used = max(hydrogen)                                                          # [kg] maximum amount of exploitable hydrogen for the considered module
+          
+            self.etaFuelCell = interp1d(hydrogen,eta_FuelCell,bounds_error=False,fill_value='extrapolate')       # Linear spline 1-D interpolation -> H2 consumption - FC efficiency
+            self.h2P  = interp1d(hydrogen,electricity_produced,bounds_error=False,fill_value='extrapolate')      # Linear spline 1-D interpolation -> H2 consumption - produced electricity
+            self.FC_Heat = interp1d(hydrogen,FC_Heat_produced,bounds_error=False,fill_value='extrapolate')       # Linear spline 1-D interpolation -> H2 consumption - produced heat  
+            
+    def h2power(self,h2):
+        """
+        Inverse function that computes the h2 consumption and Fuel cell efficiency
+        corresponding to a required amount of electricity by means of interpolating functions.
+
+        Parameters
+        ----------
+        h2 : float exploitable hydrogen to produce electricity in the timestep [kg]
+
+        Returns
+        -------
+        hyd: float exploited hydrogen in the timestep [kg] (same as input 'h2')
+        p_required : float electricity produced in the timestep [kWh]
+        FC_Heat : Heat produced by Fuel cell operation in the time step [kWh]
+        etaFC : module efficiency [-]
+
+        """
+        if 0 <= h2 <= self.maxh2used:
+            
+            hyd                = h2                                     # [kg] hydrogen consumption
+            p_required         = self.h2P(hyd)                          # [kW] coverable electric power
+            FC_CellCurrDensity = self.PI(p_required)/self.FC_CellArea   # [A/cm^2] current density value at which the fuel cell is working 
+            
+            # Checking if resulting current density is high enough for the fuel cell to start, otherwise hydrogen used = 0
+    
+            if FC_CellCurrDensity < self.FC_MinCurrDens:      # condition for operability set for current density 
+                                                                                          
+                etaFC         = 0       # [-]      fuel cell efficiency
+                hyd           = 0       # [kg]     hydrogen used in the considered timestep
+                Current       = 0       # [A]      Operational Current
+                p_required    = 0       # [kWh]    required energy - when timestep is kept at 1 h kWh = kW
+                FC_Heat       = 0       # [kWh]    thermal energy used
+                FC_CellCurrDensity = 0  # [A/cm^2] current density
+            
+            else: 
+            
+                etaFC      = self.etaFuelCell(hyd)  # [-]   FC efficiency
+                FC_Heat    = self.FC_Heat(hyd)      # [kWh] FC produced heat
+        
+        return(hyd,p_required,FC_Heat,etaFC)
 
 #%%                     
     def plot_polarizationpts(self):
@@ -428,7 +612,7 @@ class fuel_cell:
          
               
 #%%             
-    def plot_stackperformance(self):
+    def plot_stackperformancePEM(self):
         
         if self.model == 'PEM General':
         
@@ -514,12 +698,13 @@ class fuel_cell:
              print('Polarization curve not available') 
              
 #################################################################################            
-    # Computing FuelCell performance via Spline Interpolation 
+#%%    # Computing FuelCell performance via Spline Interpolation 
        
     def use(self,h,e,available_hyd):
         """
         The Fuel cell can absorb hydrogen and produce electricity: H2 --> 2H+ + 2e
-    
+        
+        h: int hour under examination [h]
         e: float < 0 energy required  [kWh]
         available_hyd: float available hydrogen H tank SOC[h-1] [kg]
       
@@ -528,17 +713,17 @@ class fuel_cell:
         ##########################
         if self.model=='FCS-C5000':
            
-            p_required = -e  # kWh 
+            p_required = -e                    # [kWh]
             
             p = min(p_required,self.Npower)    # [kW] how much electricity can be absorbed by the fuel cell absorb
             
-            # find the operating point on the characteristic curves
+            # Calculating the operating point on the characteristic curves
             I=self.PI(p)
            
             # calculate the hydrogen consumed by each single cell
-            qe=I/96485 #[mol_e/s] Faraday
-            qH=qe*0.5*3600 #[mol_H2/h] the moles of H2 are 1/2 the moles of electrons. 3600s in one hour.
-            QH=qH*2.058 #[g_H2/h] H2 molar mass = 2.058
+            qe=I/96485                         # [mol_e/s] Faraday
+            qH=qe*0.5*3600                     # [mol_H2/h] the moles of H2 are 1/2 the moles of electrons. 3600s in one hour.
+            QH=qH*2.058                        # [g_H2/h] H2 molar mass = 2.058
             
             hyd = QH*self.nc/1000 # total stack hydrogen [kg/hr]
             
@@ -546,127 +731,222 @@ class fuel_cell:
                 hyd = 0
                 p = 0
                 # turn off the fuel cell
-                # this behavior could be solved with more advanced models, necessary inverse production functions.
                 
             return (-hyd,p,0,0) # return hydrogen absorbed [kg] and electricity required [kWh]
 
         ###############################
-        if self.model=='PEM General':
+        if self.model=='PEM General' or self.model=='SOFC':
             
-            'Finding the working point of the FuelCell by explicitly solving the system:'
-            
-            p_required = -e                                   # [kWh] --> equivalent to kW for the considered timestep
-            
-            p = min(p_required,self.FC_NominalPower)          # [kW] limiting maximum power that the Fuel Cell can provide 
-            
-            FC_CellCurrDensity =self.PI(p)/self.FC_CellArea   # [A/cm^2] current density value at which the fuel cell is working 
-
-            Current = FC_CellCurrDensity*self.FC_CellArea     # [A] FuelCell Stack operating current 
-            
-            FC_Vstack= self.iV1(FC_CellCurrDensity)           # [V] Stack operating voltage
-            V_cell=FC_Vstack/self.nc
-            # FC_Vstack_ = (p/Current)*1000                     # [V] voltage check
-
-            'Computing FC efficiency and  hydrogen energy demand'    
-            
-            pO2 = (self.FC_AirPress*0.21)/101325              # [atm]
-            pH2O = 1                                          # [atm]
-            pH2 = self.FC_FuelPress/101325                    # [atm]  
-            
-            Ecell = 1.229-0.85e-3*(self.FC_OperatingTemp-298.15) + 4.3085e-5*self.FC_OperatingTemp*ln(pH2*(pO2**0.5)/pH2O)   # [V] Open circuit voltage 
-            deltaG = self.deltaG0 - self.Runiv*self.FC_OperatingTemp*ln(pH2*math.sqrt(pO2)/pH2O)/(2*self.FaradayConst)       # [kJ/mol] Gibbs free energy at actual conditions
-          
-            eta_voltage = FC_Vstack/(Ecell*self.nc)           # [-] Voltage efficiency 
-            eta_th = - deltaG/self.HHVh2Mol                   # [-] Thermodynamic efficiency
-         
-            etaFC = eta_th*eta_voltage                        # [-] FC efficiency
-            
-            self.EFF[h]       = etaFC                         # [-]      FC efficiency history
-            self.VOLT[h]      = V_cell                        # [V]      Cell voltage history
-            self.CURR_DENS[h] = FC_CellCurrDensity            # [A/cm2]  Cell current density history
-            
-            'Hydrogen demand'
-         
-            FC_HydroCons = Current*self.nc*3600/(95719.25*1000)/self.rhoStdh2*self.timestep   #[Sm3] (Chavan 2017)
-            hyd=FC_HydroCons*self.rhoStdh2/self.timestep                                      #[kg/h]
-            FC_deltaHydrogen = - FC_HydroCons*self.rhoStdh2*self.HHVh2*1000/3600              #[kWh]
-         
-         
-            'Process heat, that can be recovered'
-          
-            FC_Heat = ((1.481*self.nc)/FC_Vstack-1)*p*self.timestep               # [kWh] --> equivalent to kW for the considered timestep of 1h
-            
-            
-            if hyd > available_hyd: # if not enough hydrogen is available to meet demand (H tank is nearly empty)
-                hyd = 0
-                p = 0
-                # turn off the fuel cell
-                # this behavior could be solved with more advanced models, necessary inverse production functions.
+            # PowerOutput [kW] - Electric Power required from the fuel cell
+            if abs(e) <= self.Npower:
                 
-            return (-hyd,p,FC_Heat,Current) # return hydrogen absorbed [kg] and electricity required [kWh] and heat as a co-product [kWh]
+                e_required = e
+                hyd,p,FC_Heat,etaFC,hydrogen = fuel_cell.use1(self,h,e_required,available_hyd)
+                if abs(hyd) > 0:
+                    self.n_modules_used[h] = 1
+                else:
+                    self.n_modules_used[h] = 0
+                self.EFF[h]   = etaFC
+    
+                            
+            if abs(e) > self.Npower:      # if Electric Power required is higher than nominal one, i.e., more modules can be used
 
-        ##########################
+                n_modules_used = min(self.n_modules,int(abs(e)/self.Npower))
+                e_required =  -self.Npower                     # power required by the single module   
+                hyd,p,FC_Heat,etaFC,hydrogen = fuel_cell.use1(self,h,e_required,available_hyd)
+                if hydrogen == hyd:                            # if required hydrogen is equal to the maximum requestable one, i.e., if the required hydrogen is lower than the available one. Otherwise it means that only one module can be used
+                    hyd_11 = np.zeros(n_modules_used+1)
+                    for i in range (n_modules_used+1):
+                        hyd_11[i] = hydrogen*i                   # Saving the requested hydrogen for each number of n_modules_used
+                        if abs(hyd_11[i]) > available_hyd and abs(hyd_11[i-1]) < available_hyd: #if, using i modules, the total amount of requested hydrogen is higher than the available one 
+                            hyd_1 = hyd_11[i-1]                 # Hydrogen requested using i-1 modules
+                            p_1 = p*(i-1)                       # Total power requested using i-1 modules 
+                            FC_Heat_1 = FC_Heat*(i-1)
+                            self.EFF[h] = etaFC                 # work efficiency of modules working at nominal power 
+                        
+                            remained_available_hyd = available_hyd-abs(hyd_1)
+                            hyd,p,FC_Heat,etaFC = fuel_cell.h2power(self,remained_available_hyd)
+                            if abs(hyd) > 0:
+                                self.n_modules_used[h] = i
+                                self.EFF_last_module[h] = etaFC
+                            else:
+                                self.n_modules_used[h] = i-1
+                            hyd = -hyd+hyd_1
+                            p = p+p_1
+                            FC_Heat = FC_Heat+FC_Heat_1
+          
+                    if abs(hyd_11[-1]) <= available_hyd:       # if, using n_modules, the total amount of requested hydrogen is lower than available one  
+                        hyd_1 = hyd*n_modules_used             # total amount of H2 requested by modules working at full load
+                        p_1 = p*n_modules_used                 # total power produced    // // // // //  
+                        FC_Heat_1 = FC_Heat*n_modules_used
+                        self.EFF[h] = etaFC                    # work efficiency of modules working at nominal power 
+                        
+                        if abs(e) <= self.MaxPowerTot:                             # if available energy is lower than total installed power
+                            e_excess_req = -(abs(e)-self.Npower*n_modules_used)    # remaining requested power after considering modules at full load
+                            remained_available_hyd = available_hyd-abs(hyd_1)
+                            hyd,p,FC_Heat,etaFC,hydrogen = fuel_cell.use1(self,h,e_excess_req,remained_available_hyd)
+                            if abs(hyd) > 0:
+                                self.n_modules_used[h] = n_modules_used+1
+                                self.EFF_last_module[h] = etaFC
+                            else:
+                                self.n_modules_used[h] = n_modules_used
+                            hyd = hyd+hyd_1
+                            p = p+p_1
+                            FC_Heat = FC_Heat+FC_Heat_1   
+                            
+                        else:                     # if available energy is higher than total installed power it means that there are no more exploitable modules, thus no more hydrogen can be produced 
+                            p = p_1
+                            hyd = hyd_1
+                            FC_Heat = FC_Heat_1
+                            self.n_modules_used[h] = self.n_modules
+                            
+                else:                             # only one module used because requested hydrogen from one module is higher than the available one 
+                    if abs(hyd) > 0:
+                        self.n_modules_used[h] = 1
+                    else:
+                        self.n_modules_used[h] = 0
+                    self.EFF[h] = etaFC
+
+        return (hyd,p,FC_Heat)  # return hydrogen absorbed [kg] electricity required [kWh] and heat as a co-product [kWh]
+        
+            
+    def use1(self,h,e,available_hyd):
+         
+        'Finding the working point of the FuelCell by explicitly solving the system:'
+        
+        if self.model == 'PEM General':
+            
+            p_required = -e                                             # [kWh] --> equivalent to kW for the considered timestep
+            FC_CellCurrDensity = self.PI(p_required)/self.FC_CellArea   # [A/cm^2] current density value at which the fuel cell is working 
+            
+            # Checking if resulting current density is high enough for the fuel cell to start, otherwise hydrogen used = 0
+    
+            if FC_CellCurrDensity < self.FC_MinCurrDens:      # condition for operability set for current density 
+                                                                                          
+                etaFC              = 0      # [-] fuel cell efficiency
+                hyd                = 0      # [kg] hydrogen used in the considered timestep
+                Current            = 0      # [A] Operational Current
+                p_required         = 0      # [kWh] required energy - when timestep is kept at 1 h kWh = kW
+                FC_Heat            = 0      # [kWh] thermal energy used
+                FC_CellCurrDensity = 0
+                hydrogen           = hyd
+            
+            else: 
+                
+                Current = FC_CellCurrDensity*self.FC_CellArea     # [A] FuelCell Stack operating current 
+                
+                FC_Vstack= self.iV1(FC_CellCurrDensity)           # [V] Stack operating voltage
+                V_cell=FC_Vstack/self.nc
+                # FC_Vstack_ = (p/Current)*1000                     # [V] voltage check
+        
+                'Computing FC efficiency and  hydrogen energy demand'    
+                
+                pO2 = (self.FC_AirPress*0.21)/101325              # [atm]
+                pH2O = 1                                          # [atm]
+                pH2 = self.FC_FuelPress/101325                    # [atm]  
+                
+                Ecell = 1.229-0.85e-3*(self.FC_OperatingTemp-298.15) + 4.3085e-5*self.FC_OperatingTemp*ln(pH2*(pO2**0.5)/pH2O)   # [V] Open circuit voltage 
+                deltaG = self.deltaG0 - self.Runiv*self.FC_OperatingTemp*ln(pH2*math.sqrt(pO2)/pH2O)/(2*self.FaradayConst)       # [kJ/mol] Gibbs free energy at actual conditions
+              
+                eta_voltage = FC_Vstack/(Ecell*self.nc)           # [-] Voltage efficiency 
+                eta_th = - deltaG/self.HHVh2Mol                   # [-] Thermodynamic efficiency
+             
+                etaFC = eta_th*eta_voltage                        # [-] FC efficiency
+                
+                self.VOLT[h]      = V_cell                        # [V]      Cell voltage history
+                self.CURR_DENS[h] = FC_CellCurrDensity            # [A/cm2]  Cell current density history
+                
+                'Hydrogen demand'
+             
+                FC_HydroCons = Current*self.nc*3600/(95719.25*1000)/self.rhoStdh2*self.timestep   # [Sm3] (Chavan 2017)
+                hyd = FC_HydroCons*self.rhoStdh2/self.timestep                                    # [kg/h]
+                FC_deltaHydrogen = - FC_HydroCons*self.rhoStdh2*self.HHVh2*1000/3600              # [kWh]
+             
+                'Process heat, that can be recovered'
+              
+                FC_Heat = ((1.481*self.nc)/FC_Vstack-1)*p_required*self.timestep               # [kWh] --> equivalent to kW for the considered timestep of 1h
+                
+                hydrogen = -hyd   # [kg] check value to be implemented in use function
+                
+                if hyd > available_hyd: # if not enough hydrogen is available to meet demand (H tank is nearly empty)
+                    
+                    # defining the electric load that can be covered with the available hydrogen
+                    hyd,p_required,FC_Heat,etaFC = fuel_cell.h2power(self,available_hyd)
+
+            return (-hyd,p_required,FC_Heat,etaFC,hydrogen)  # return hydrogen absorbed [kg] electricity required [kWh] and heat as a co-product [kWh]
+
+
         if self.model == 'SOFC':
             
-            h2oMolMass = c.H2OMOLMASS        # [kg/mol]     Water molar mass
-            H2MolMass  = c.H2MOLMASS         # [kg/mol]     Hydrogen molar mass
-            H2MolStdEntropy = c.H2MOL_S_E    # [J/K*mol]    Specific molar entropy (gaseous phase)
-            O2MolStdEntropy = c.O2MOL_S_E    # [J/K*mol]    Specific molar entropy
-            H20MolStdEntropy = c.H2OMOL_S_E  # [J/K*mol]    Specific molar entropy
-            
-            p_required=-e
-            
-            p=min(p_required, self.FC_Pmax)
+            h2oMolMass       = c.H2OMOLMASS   # [kg/mol]     Water molar mass
+            H2MolMass        = c.H2MOLMASS    # [kg/mol]     Hydrogen molar mass
+            H2MolStdEntropy  = c.H2MOL_S_E    # [J/K*mol]    Specific molar entropy (gaseous phase)
+            O2MolStdEntropy  = c.O2MOL_S_E    # [J/K*mol]    Specific molar entropy
+            H20MolStdEntropy = c.H2OMOL_S_E   # [J/K*mol]    Specific molar entropy
             
             
-            FC_CellCurrDensity = self.PI(p)/self.FC_CellArea   # [A/cm^2] current density value at which the fuel cell is working 
+            p_required=-e                                               # [kWh] --> equivalent to kW for the considered timestep
             
-            Current = FC_CellCurrDensity*self.FC_CellArea      # [A] FuelCell Stack operating current
+            FC_CellCurrDensity = self.PI(p_required)/self.FC_CellArea   # [A/cm^2] current density value at which the fuel cell is working 
             
+            # Checking if resulting current density is high enough for the fuel cell to start, otherwise hydrogen used = 0
+    
+            if FC_CellCurrDensity < self.FC_MinCurrDens:      # condition for operability set for current density 
+                                                                                          
+                etaFC         = 0      # [-] fuel cell efficiency
+                hyd           = 0      # [kg] hydrogen used in the considered timestep
+                Current       = 0      # [A] Operational Current
+                p_required    = 0      # [kWh] required energy - when timestep is kept at 1 h kWh = kW
+                FC_Heat       = 0      # [kWh] thermal energy used
+                FC_CellCurrDensity = 0
+                hydrogen = hyd
             
-            FC_Vstack= self.iV1(FC_CellCurrDensity)            # [V] Stack operating voltage
-            # FC_Vstack_ = (p/Current)*1000                     # [V] voltage check
-
-            'Computing FC efficiency and  hydrogen energy demand'    
-            
-            pO2 = (self.FC_AirPress*0.21*101325)/101325       # [atm]
-            pH2O = 1                                          # [atm]
-            pH2 = self.FC_FuelPress/101325                    # [atm]  
-            
-            Ecell = 1.19 + ((c.R_UNIVERSAL*self.FC_OperatingTemp)/(2*c.FARADAY))*ln(pH2*(pO2**0.5)/pH2O)
-            DeltaV_OHM = (FC_CellCurrDensity*self.ThicknessElectrolyte*self.FC_OperatingTemp)/(9000*self.e**(-100000/(c.R_UNIVERSAL*self.FC_OperatingTemp)))
-            DeltaV_CON = ((c.R_UNIVERSAL*self.FC_OperatingTemp)/(2*c.FARADAY))*ln((FC_CellCurrDensity/(self.FC_ExchangeCurrDensCathode*self.FC_AirPress*(0.21-0.0008*10000*FC_CellCurrDensity*c.R_UNIVERSAL*self.FC_OperatingTemp/(4*c.FARADAY*101325*0.00002)))))
-
-            TotalLoss = DeltaV_OHM + DeltaV_CON   # [V]
-            
-            deltaG = c.GIBBS - c.R_UNIVERSAL*self.FC_OperatingTemp*ln(pH2*math.sqrt(pO2)/pH2O)/(2*c.FARADAY)       # [kJ/mol] Gibbs free energy at actual conditions
-          
-            eta_voltage = FC_Vstack/(Ecell*self.nc)           # [-] Voltage efficiency 
-            eta_th = c.GIBBS/self.HHVh2Mol                    # [-] Thermodynamic efficiency
-         
-            etaFC = -eta_th*eta_voltage                       # [-] FC efficiency
-            self.EFF[h]=etaFC
-            
-            'Hydrogen demand'
-            
-            FC_HydroCons = ((Current*self.nc*3600)/(c.FARADAY*1000))/(self.rhoStdh2*self.timestep)     # [Sm^3]
-            hyd=FC_HydroCons*self.rhoStdh2/self.timestep                                               # [kg/h]
-            FC_deltaHydrogen = - FC_HydroCons*self.rhoStdh2*self.HHVh2*1000/3600                       # [kWh]
-            
-            z = Current/(2*c.FARADAY)   # [mol/s]
-            
-            DeltaS = -((H20MolStdEntropy-(O2MolStdEntropy/2)-H2MolStdEntropy)+(c.R_UNIVERSAL/2)*ln((pH2**2)*pO2/(pH2O**2))) # [J/mol*K]
-            
-            FC_Heat = (((z*self.FC_OperatingTemp*DeltaS + Current*TotalLoss)*self.timestep)*self.nc)/1000   # [kWh] --> equivalent to kW for the considered timestep of 1h
-
-            if hyd > available_hyd: # if not enough hydrogen is available to meet demand (H tank is nearly empty)
-                hyd = 0
-                p = 0
-                # turn off the fuel cell
-                # this behavior could be solved with more advanced models, necessary inverse production functions.
+            else: 
+ 
+                Current = FC_CellCurrDensity*self.FC_CellArea      # [A] FuelCell Stack operating current
+             
+                FC_Vstack= self.iV1(FC_CellCurrDensity)            # [V] Stack operating voltage
+    
+                'Computing FC efficiency and hydrogen energy demand'    
                 
-            return (-hyd,p,FC_Heat,Current)         # return hydrogen absorbed [kg] and electricity required [kWh]
-        
+                pO2 = (self.FC_AirPress*0.21*101325)/101325       # [atm]
+                pH2O = 1                                          # [atm]
+                pH2 = self.FC_FuelPress/101325                    # [atm]  
+                
+                Ecell = 1.19 + ((c.R_UNIVERSAL*self.FC_OperatingTemp)/(2*c.FARADAY))*ln(pH2*(pO2**0.5)/pH2O)
+                DeltaV_OHM = (FC_CellCurrDensity*self.ThicknessElectrolyte*self.FC_OperatingTemp)/(9000*self.e**(-100000/(c.R_UNIVERSAL*self.FC_OperatingTemp)))
+                DeltaV_CON = ((c.R_UNIVERSAL*self.FC_OperatingTemp)/(2*c.FARADAY))*ln((FC_CellCurrDensity/(self.FC_ExchangeCurrDensCathode*self.FC_AirPress*(0.21-0.0008*10000*FC_CellCurrDensity*c.R_UNIVERSAL*self.FC_OperatingTemp/(4*c.FARADAY*101325*0.00002)))))
+    
+                TotalLoss = DeltaV_OHM + DeltaV_CON   # [V]
+                
+                deltaG = c.GIBBS - c.R_UNIVERSAL*self.FC_OperatingTemp*ln(pH2*math.sqrt(pO2)/pH2O)/(2*c.FARADAY)       # [kJ/mol] Gibbs free energy at actual conditions
+              
+                eta_voltage = FC_Vstack/(Ecell*self.nc)           # [-] Voltage efficiency 
+                eta_th = c.GIBBS/self.HHVh2Mol                    # [-] Thermodynamic efficiency
+             
+                etaFC = -eta_th*eta_voltage                       # [-] FC efficiency
+                
+                'Hydrogen demand'
+                
+                FC_HydroCons     = ((Current*self.nc*3600)/(c.FARADAY*1000))/(self.rhoStdh2*self.timestep)     # [Sm^3] volumetric hydrogen consumption in the timestep
+                hyd              = FC_HydroCons*self.rhoStdh2/self.timestep                                    # [kg/h] hourly hydrogen consumption
+                FC_deltaHydrogen = - FC_HydroCons*self.rhoStdh2*self.HHVh2*1000/3600                           # [kWh]
+                
+                z = Current/(2*c.FARADAY)   # [mol/s]
+                
+                DeltaS = -((H20MolStdEntropy-(O2MolStdEntropy/2)-H2MolStdEntropy)+(c.R_UNIVERSAL/2)*ln((pH2**2)*pO2/(pH2O**2))) # [J/mol*K]
+                
+                FC_Heat = (((z*self.FC_OperatingTemp*DeltaS + Current*TotalLoss)*self.timestep)*self.nc)/1000   # [kWh] --> equivalent to kW for the considered timestep of 1h
+            
+                hydrogen = -hyd          # [kg] check value to be implemented in use function
+                
+                if hyd > available_hyd: # if not enough hydrogen is available to meet demand (H tank is nearly empty)
+                    
+                    # defining the electric load that can be covered with the available hydrogen
+                    hyd,p_required,FC_Heat,etaFC = fuel_cell.h2power(self,available_hyd)
+
+            return (-hyd,p_required,FC_Heat,etaFC,hydrogen)  # return hydrogen absorbed [kg] electricity required [kWh] and heat as a co-product [kWh]
+
 #%%##########################################################################################
 
 if __name__ == "__main__":
@@ -675,82 +955,141 @@ if __name__ == "__main__":
     Functional test
     """
     
-    inp_test = {'Npower': 5,
+    inp_test = {'Npower': 1000,
+                "number of modules": 4,
                 'stack model':'SOFC',
                 }
     
-    sim_hours=96                               # [h] simulated period of time - usually it's 1 year minimum
+    sim_hours=60                               # [h] simulated period of time - usually it's 1 year minimum
     time=np.arange(sim_hours)
     
     fc = fuel_cell(inp_test,sim_hours)         # creating fuel cell object
-    fc.plot_polarizationpts()                  # cell polarization curve
-    fc.plot_stackperformanceSOFC()             # stack performance curve
+    # fc.plot_polarizationpts()                  # cell polarization curve
     
-    flow =-np.linspace(1,25,sim_hours)         # [kW] power required from the Fuel Cell 
-    fd   =-np.random.uniform(0,15,sim_hours)   # [kW] power required from the Fuel Cell - random values
+    available_hydrogen = 1000                  # [kg] hydrogen available in the storage system
 
-    P_el=[]
-    P_th=[]
-    I=[]
-    for h in range(len(flow)):
-        P_el.append(fc.use(h,flow[h],100)[1])
-        P_th.append(fc.use(h,flow[h],100)[2])
-        I.append(fc.use(h,flow[h],100)[3]) 
+    if fc.model == 'PEM General' and fc.Npower == 13.6:
+        fc.plot_stackperformancePEM()                   # PEMFC stack performance curve
+    if fc.model == 'SOFC' and fc.Npower == 5:
+        fc.plot_stackperformanceSOFC()                  # SOFC stack performance curve
+
+    'Test 1 - Tailored ascending power input'
+
+    flow  = - np.linspace(0,fc.Npower*6,sim_hours)  # [kW] power input - ascending series
+    flow1 = - np.linspace(0,fc.Npower,sim_hours)    # [kW] power input - ascending series
+
+    hyd_used = np.zeros(len(flow))      # [kg] hydrogen used by fuel cell
+    P_el     = np.zeros(len(flow))      # [kW] electricity produced
+    P_th     = np.zeros(len(flow))      # [kW] produced heat
+    
+    for h in range(len(flow1)):
+        hyd_used[h],P_el[h],P_th[h] = fc.use(h,flow1[h],available_hydrogen)
         
+    # fc.EFF[fc.EFF == 0] = math.nan      # activate to avoid representation o '0' values when fuel cell is turned off
+    
+    fig=plt.figure(figsize=(8,8),dpi=1000)
+    fig.suptitle("{} ({} kW) performance".format(inp_test['stack model'],round(fc.FC_NominalPower,1)))
+    
+    PI=fig.add_subplot(211)
+    PI.plot(-flow1,P_th,label="Thermal Power") 
+    PI.axvline(x=fc.MinPower,linestyle=':',label= 'Lower Functioning Boundary', zorder=3, linewidth = 2)   
+    PI.set_title("Heat vs Electric Power")
+    PI.grid()
+    PI.set_xlabel("Power Output [kW]")
+    PI.set_ylabel("Heat Output [kW]")
+    PI.legend(fontsize=15)
+    
+    ETA=fig.add_subplot(212)
+    ETA.scatter(-flow1,fc.EFF,label="Efficiency",color="green",edgecolors='k')
+    ETA.axvline(x=fc.MinPower,color='tab:blue',linestyle=':',label= 'Lower Functioning Boundary', zorder=3, linewidth = 2)   
+    ETA.set_title("Efficiency vs Power")
+    ETA.grid()
+    ETA.set_xlabel("Power Output [kW]")
+    ETA.set_ylabel("Efficiency [-]")
+    ETA.legend(fontsize=15)
+    
+    plt.tight_layout()
+    plt.show()
+    
+    
+    fig=plt.figure(figsize=(8,8),dpi=1000)
+    fig.suptitle("{} ({} kW) performance".format(inp_test['stack model'],round(fc.FC_NominalPower,1)))
+    
+    PI=fig.add_subplot(211)
+    PI.plot(-flow1,-hyd_used)
+    PI.set_title("H$_{2}$ Consumption vs Power")
+    PI.grid()
+    PI.set_xlabel("Power Output [kW]")
+    PI.set_ylabel("Hydrogen consumption [kg/h]")
+    # PI.legend(fontsize=15)
+    
+    ETA=fig.add_subplot(212)
+    ETA.scatter(-flow1,fc.EFF,label="Efficiency",color="green",edgecolors='k',zorder =3)
+    ETA.axvline(x=fc.MinPower,color='tab:blue',linestyle=':',label= 'Lower Functioning Boundary', zorder=3, linewidth = 2)   
+    ETA.set_title("Efficiency vs Power")
+    ETA.grid()
+    ETA.set_xlabel("Power Output [kW]")
+    ETA.set_ylabel("Efficiency [-]")
+    ETA.legend(fontsize=15)
+    
+    plt.tight_layout()
+    plt.show()
+    
+    fig, ax = plt.subplots(dpi=600)
+    ax.scatter(-flow1,fc.EFF, edgecolors='k', zorder = 3)
+    ax.set_title("Fuel Cell Module Efficiency")
+    textstr = '\n'.join((
+        r'$CellArea=%.1f$ $cm^{2}$' % (fc.FC_CellArea,),
+        r'$P_{nom}= %.1f$ kW' % (fc.Npower,),
+        r'$i_{max}= %.1f$ A $cm^{-2}$' % (fc.FC_MaxCurrDens,),
+        r'$n_{cell}= %.0f$' % (fc.nc,)))
+    props = dict(boxstyle='round', facecolor='wheat', alpha=0.8)
+    ax.text(fc.Npower/2,0.2,textstr,fontsize=10,va='bottom',backgroundcolor='none', bbox=props)
+    ax.grid()
+    ax.set_xlabel('Power Output [kW]')
+    ax.set_ylabel('$\\eta$') 
 
-    fig=plt.figure(figsize=(8,8),dpi=1000)
-    fig.suptitle("{} ({} kW) performance".format(inp_test['stack model'],round(fc.FC_NominalPower,1)))
-    
-    PI=fig.add_subplot(211)
-    PI.plot(I,P_el,label="P_el",color="blue")
-    PI.plot(I,P_th,label="P_th",color="red")
-    PI.set_title("P vs I")
-    PI.grid()
-    PI.set_xlabel("I [A]")
-    PI.set_ylabel("P [kW]")
-    PI.legend(fontsize=15)
-    
-    ETA=fig.add_subplot(212)
-    ETA.plot(I,fc.EFF,label="Eta",color="green")
-    ETA.set_title("ETA vs I")
-    ETA.grid()
-    ETA.set_xlabel("I [A]")
-    ETA.set_ylabel("Eta")
-    ETA.legend(fontsize=15)
-    
-    plt.tight_layout()
-    plt.show()
-    
-    'Behaviour over time'
-    
-    P_el=[]
-    P_th=[]
-    I=[]
+   
     for h in range(len(flow)):
-        P_el.append(fc.use(h,fd[h],100)[1])
-        P_th.append(fc.use(h,fd[h],100)[2])
-        I.append(fc.use(h,fd[h],100)[3])
+        hyd_used[h],P_el[h],P_th[h] = fc.use(h,flow[h],available_hydrogen)
+        
+    fig, ax = plt.subplots(dpi=600)
+    ax.bar(-flow,fc.n_modules_used,color='tab:green',width=60,zorder=3)
+    ax.set_xlabel('Required Power [kW]')
+    ax.set_ylabel('Active modules [-]')
+    ax.grid()
+    ax.set_title('Fuel Cell Stack - Nr of working modules')
+  
     
-    fig=plt.figure(figsize=(8,8),dpi=1000)
-    fig.suptitle("{} ({} kW) performance".format(inp_test['stack model'],round(fc.FC_NominalPower,1)))
+    'Test 2 - Random power input'
+
+    fd   = -np.random.uniform(0.08*fc.Npower,5.2*fc.Npower,sim_hours)   # [kW] power required from the Fuel Cell - random values
     
-    PI=fig.add_subplot(211)
-    PI.plot(time,P_el,label="P_el",color="blue")
-    PI.plot(time,P_th,label="P_th",color="red")
-    PI.set_title("P over time")
-    PI.grid()
-    PI.set_xlabel("Time [h]")
-    PI.set_ylabel("P [kW]")
-    PI.legend(fontsize=15)
+    for h in range(len(fd)):
+        hyd_used[h],P_el[h],P_th[h] = fc.use(h,fd[h],available_hydrogen)
+        
+    fig, ax = plt.subplots(dpi=1000)
+    ax2 = ax.twinx() 
+    ax.bar(np.arange(sim_hours)-0.2,fc.EFF,width=0.35,zorder=3,edgecolor='k',label='$1^{st}$ module efficiency', alpha =0.8)
+    ax.bar(np.arange(sim_hours)+0.,fc.EFF_last_module,width=0.35,zorder=3, edgecolor = 'k',align='edge',label='Last module efficiency',alpha =0.8)
+    ax2.scatter(np.arange(sim_hours),-fd,color ='limegreen',s=25,edgecolors='k',label='Required Power')
+    h1, l1 = ax.get_legend_handles_labels()
+    h2, l2 = ax2.get_legend_handles_labels()
+    ax.legend(h1+h2, l1+l2, loc='lower center',bbox_to_anchor=(0.5, 1.08), ncol =3, fontsize ='small')
+    ax.set_xlabel('Time [h]')
+    ax.set_ylabel('Efficiency [-]')
+    ax2.set_ylabel('Power Output [kW]')
+    ax.grid()
+    ax.set_title('Fuel Cell Stack functioning behaviour')
     
-    ETA=fig.add_subplot(212)
-    ETA.plot(time,fc.EFF,label="Eta",color="green")
-    ETA.set_title("ETA over time")
-    ETA.grid()
-    ETA.set_xlabel("Time [h]")
-    ETA.set_ylabel("Eta")
-    ETA.legend(fontsize=15)
+    num = 24   # number of hours to be represented in the plot below
     
-    plt.tight_layout()
-    plt.show()
-    
+    fig, ax = plt.subplots(dpi=1000)
+    ax.bar(np.arange(num)-0.2,P_el[:num],width=0.35,zorder=3,color='lightseagreen',edgecolor='k',label='Electric output', alpha =0.8)
+    ax.bar(np.arange(num)+0.,P_th[:num],width=0.35,zorder=3,color='indianred',edgecolor='k',align='edge',label='Thermal output',alpha =0.8)
+    ax.legend(loc='lower center',bbox_to_anchor=(0.5, 1.08), ncol =3, fontsize ='small')
+    ax.set_xlabel('Time [h]')
+    ax.set_ylabel('Power [kW]')
+    ax2.set_ylabel('Power Output [kW]')
+    ax.grid()
+    ax.set_title('Fuel Cell Stack functioning behaviour')
