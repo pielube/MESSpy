@@ -41,7 +41,7 @@ import preprocess_test as pre
 # Instead of modify the original input files.json we suggest to modify the dictionary variables 
 # structure, structure0, general and economic_data using specific functions that you can define in preprocess_dev. 
 # here an example:
-structure = pre.change_peakP(structure, 'p1', 5) 
+# structure = pre.change_peakP(structure, 'p1', 5) 
 
 #%% ###########################################################################
 """
