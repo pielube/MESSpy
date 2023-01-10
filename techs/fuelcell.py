@@ -866,14 +866,14 @@ class fuel_cell:
               
                 FC_Heat = ((1.481*self.nc)/FC_Vstack-1)*p_required*self.timestep               # [kWh] --> equivalent to kW for the considered timestep of 1h
                 
-                hydrogen = -hyd
+                hydrogen = -hyd   # [kg] check value to be implemented in use function
                 
                 if hyd > available_hyd: # if not enough hydrogen is available to meet demand (H tank is nearly empty)
                     
                     # defining the electric load that can be covered with the available hydrogen
                     hyd,p_required,FC_Heat,etaFC = fuel_cell.h2power(self,available_hyd)
 
-            return (-hyd,p_required,FC_Heat,etaFC,hydrogen)#Current) # return hydrogen absorbed [kg] electricity required [kWh] and heat as a co-product [kWh]
+            return (-hyd,p_required,FC_Heat,etaFC,hydrogen)  # return hydrogen absorbed [kg] electricity required [kWh] and heat as a co-product [kWh]
 
 
         if self.model == 'SOFC':
@@ -929,7 +929,7 @@ class fuel_cell:
                 'Hydrogen demand'
                 
                 FC_HydroCons     = ((Current*self.nc*3600)/(c.FARADAY*1000))/(self.rhoStdh2*self.timestep)     # [Sm^3] volumetric hydrogen consumption in the timestep
-                hyd              =FC_HydroCons*self.rhoStdh2/self.timestep                                     # [kg/h] hourly hydrogen consumption
+                hyd              = FC_HydroCons*self.rhoStdh2/self.timestep                                    # [kg/h] hourly hydrogen consumption
                 FC_deltaHydrogen = - FC_HydroCons*self.rhoStdh2*self.HHVh2*1000/3600                           # [kWh]
                 
                 z = Current/(2*c.FARADAY)   # [mol/s]
@@ -938,14 +938,14 @@ class fuel_cell:
                 
                 FC_Heat = (((z*self.FC_OperatingTemp*DeltaS + Current*TotalLoss)*self.timestep)*self.nc)/1000   # [kWh] --> equivalent to kW for the considered timestep of 1h
             
-                hydrogen = -hyd
+                hydrogen = -hyd          # [kg] check value to be implemented in use function
                 
                 if hyd > available_hyd: # if not enough hydrogen is available to meet demand (H tank is nearly empty)
                     
                     # defining the electric load that can be covered with the available hydrogen
                     hyd,p_required,FC_Heat,etaFC = fuel_cell.h2power(self,available_hyd)
 
-            return (-hyd,p_required,FC_Heat,etaFC,hydrogen)#Current) # return hydrogen absorbed [kg] electricity required [kWh] and heat as a co-product [kWh]
+            return (-hyd,p_required,FC_Heat,etaFC,hydrogen)  # return hydrogen absorbed [kg] electricity required [kWh] and heat as a co-product [kWh]
 
 #%%##########################################################################################
 
@@ -960,7 +960,7 @@ if __name__ == "__main__":
                 'stack model':'SOFC',
                 }
     
-    sim_hours=48                               # [h] simulated period of time - usually it's 1 year minimum
+    sim_hours=60                               # [h] simulated period of time - usually it's 1 year minimum
     time=np.arange(sim_hours)
     
     fc = fuel_cell(inp_test,sim_hours)         # creating fuel cell object
@@ -1016,7 +1016,7 @@ if __name__ == "__main__":
     fig.suptitle("{} ({} kW) performance".format(inp_test['stack model'],round(fc.FC_NominalPower,1)))
     
     PI=fig.add_subplot(211)
-    PI.plot(P_el,-hyd_used)
+    PI.plot(-flow1,-hyd_used)
     PI.set_title("H$_{2}$ Consumption vs Power")
     PI.grid()
     PI.set_xlabel("Power Output [kW]")
