@@ -57,12 +57,14 @@
     "electrolyzer":
 	              {
 				  "Npower": 2,
-                  "stack model": "Enapter 2.1"
+				  "number of modules":1,
+                  "stack model": "PEM General"
 				  },
     "fuel cell":
 	           {
 				"Npower": 1,
-				"stack model": "FCS-C5000"
+				"number of modules":1,
+				"stack model": "PEM General"
 			   },
     "H tank":
             {
