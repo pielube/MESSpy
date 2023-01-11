@@ -108,7 +108,7 @@ def LOC_plot(simulation_name):
     with open('results/LOC_'+simulation_name+'.pkl', 'rb') as f:
         LOC = pickle.load(f)
            
-    unit = {'H tank': '[kg]', 'battery': '[kWh]'}
+    unit = {'H tank': '[kg]', 'battery': '[kWh]', 'inertial TES': '[°C]'}
     
     for location_name in LOC:
         for tech in LOC[location_name]:

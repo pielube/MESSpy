@@ -1,14 +1,10 @@
 import numpy as np
-import matplotlib.pyplot as plt
-from hplib import hplib as hpl # https://github.com/RE-Lab-Projects/hplib
-import os
-import sys 
-sys.path.append(os.path.abspath(os.path.join(os.getcwd(),os.path.pardir)))   # temorarily adding constants module path 
-import constants as c
+from scipy.interpolate import interp1d
 
 class heatpump:
     
-        def __init__(self,parameters):
+        def __init__(self,parameters,simulation_hours):
+            
             """
             Create heat-pump object
             
@@ -19,107 +15,152 @@ class heatpump:
                 "type": 1 = air-water (other types not yet implemented...)
                 
                 "usage": 1 = heat
-                         2 = heat and dhw
-                         3 = heat and cool
-                         4 = dhw NB you can also create both heatpump (usage=1,3) and boiler_hp (usage=4)
-                         5 = heat, coll and dhw (still under development)
+                         2 = heat and dhw 
+                         3 = heat and cool # under developement ...
+                         4 = dhw 
+                         5 = heat, coll and dhw # under developement ...
                          
-                "nom Pth": float [kW]
-                "nom Tamb": float [C°]
-                "nom Tout" float [C°]
+                "nom Pth": float [kW] nominal condition: t_amb=5° t_out=35° 6000 rpm
                 
-                "t max hp": float [C°]
-                "t min hp": float [C°]
+                "t rad heat": float [C°] temperature radiant system in heating mode
+                "t rad cool": float [C°] temperatura radiant system in cooling mode
                 
-                "t min rad heat": float [C°]
-                "t max rad cool": float [C°]
-                
-                "tank volume": float [lt]
-                "tank dispersion": float [W/m2K]
-                
-                "set point": float [C°] 
-                
-                "regulation": bool (developing...)
-                "PV surplus": False or float [C°] set point when there is REC PV surplus that could be used to raise collecetive-self-consumption
+                "inertial TES volume": thermal energy storage float [lt]
+                "inertial TES dispersion": float [W/m2K]
+                                         
+                "REC surplus": bool use REC PV surplus to charge inertial_TES and to raise collecetive-self-consumption
+                "PV surplus": bool # under developement ...
                 
             Returns
             -------
             Air-water HP object able to:
-                supply (heating) or extract (cooling) thermal energy abrosrbing electricity .use()
+                ...
+                
     
             """
+        
+            self.type = parameters['type']
+            self.usage = parameters['usage']        
             
-            # create a new hp object based on hplib database
+            self.nom_Pth = parameters['nom Pth']
             
-            par = hpl.get_parameters(model='Generic',  # generic model created on the basis of a database of real models
-                                     group_id=parameters['type'],       # air-water
-                                     t_in=parameters["nom Tamb"],
-                                     t_out=parameters["nom Tout"], 
-                                     p_th=parameters["nom Pth"]*1000) # kW -> W
+            self.t_rad_h = parameters['t rad heat']
+            self.t_rad_c = parameters['t rad cool']
+                    
+            self.REC_surplus = parameters['REC surplus'] # bool
+            self.PV_surplus = parameters['PV surplus'] # boole
             
-            self.hp = hpl.HeatPump(par)       
-            self.usage = parameters['usage']
             self.mode = 1 # 1 = "heat" initial mode, during MESS simulation it is changed to 2 = "cool" when cooling is required
-            self.switch = "stand by" # on / off / standy by
             
-            self.t_max_hp = parameters['t max hp']
-            self.t_max_res = parameters['t max res']
-            self.t_min_hp = parameters['t min hp']
-            self.t_min_rad_h = parameters['t min rad heat']
-            self.t_max_rad_c = parameters['t max rad cool']
+            #### inertial tank#################################################
+            self.i_TES_volume = parameters['inertial TES volume'] # [lt]
+            self.i_TES_dispersion = parameters['inertial TES dispersion'] # [W/m2K]
+            self.i_TES_mass = self.i_TES_volume # lt -> kg
+            self.i_TES_surface = 6 * (self.i_TES_volume/1000)**(2/3) # cube surface [m2]
+            self.cp = 4187  # J/kgK     
+            self.cp_kWh = self.cp/3600000 # kWh/kgK        
+            self.i_TES_t = self.t_rad_h # initial temperature C°
             
-            self.regulation = parameters['regulation']
-            self.set_point = parameters['set point']*np.ones(8760)
-            self.start_point = self.t_min_rad_h*np.ones(8760)
-            self.PV_surplus = parameters['PV surplus'] # False or float °C
+            ### stories #######################################################
+            self.i_TES_story = np.zeros(simulation_hours) # T_inertial_TES
+            self.satisfaction_story = np.zeros(simulation_hours) # 0 no demand, 1 demand satisfied by iTES, 2 demand satisfied, 3 demand satisfied and iTES_T raised, 4 damand satisfied and iTES_T reaches maximum, -1 unsatisfied demand, -2 unsatisfied demand and iTES under minimum
+            self.cop_story = np.zeros(simulation_hours) # cop
+            self.surplus_story = np.zeros(simulation_hours) #
             
-            ######### partial load regulation https://www.rehva.eu/rehva-journal/chapter/capacity-control-of-heat-pumps-full-version
-            if self.regulation:
-                # modern
-                #x=np.array([0.1 , 0.2,  0.5, 0.735,  1])
-                #y=np.array([4.85 , 5.3,  4.9,  4  ,  3.1])
-                
-                # state of art
-                x=np.array([0.1 , 0.2, 0.4,  0.5, 0.6, 0.8, 1]) # sperimental profiles
-                y=np.array([2.45, 3.2 , 4 ,  4.1, 4 ,  3.65, 3.1]) # sperimental profiles
-                
-                p = np.polyfit(x, y/3.1, 4)
-                self.regulate = np.poly1d(p)
+            #### HP MODEL GU' #################################################
+            # danfoss coolselector software available at https://www.danfoss.com/it-it/service-and-support/downloads/dcs/coolselector-2/
+            # name='VZH028CH' fluid='R410A
+            
+            # 6000 rpm. Polynomial model coefficients (electrical and cooling power coefficients)
+            self.C_Pele6000 = [0.559950351	,-0.100388322,	0.112208669	,-0.002576625	,0.003712633	,-0.001175774	,-1.77E-05	,3.70E-05	,-2.81E-05	,1.13E-05]
+            self.C_Pq6000 = [18.13823604	,0.646313462,	-0.12747235,	0.008771572,	-0.003863774	,-3.45E-05	,4.25E-05	,-5.80E-05	,-1.48E-05	,-5.46E-06]
+            #self.C_p3000 = [1.726798023	,-74.34272731	,74.46650928	,-2.079362567	,2.915533504,	-0.934003915,	-0.018207035,	0.036409513,	-0.024701877,	0.008844176]
+            #self.C_q3000 = [10442.69118	,374.0860539,	-71.42510762,	4.970490623	,-2.285688038,	-0.161289545	,0.023442599	,-0.029741993	,-0.005992321,	-0.000337462]
+
+            self.tc_max=interp1d([-32,-25,-8,21,27],[35,47,65,65,60]) # t_amb and t_water_out working range
         
-            ######################################################## inertial tank
-            self.tank_volume = parameters['tank volume'] # lt
-            self.tank_dispersion = parameters['tank dispersion']
-            self.tank_mass = self.tank_volume # lt -> kg
-            self.tank_surface = 6 * (self.tank_volume/1000)**(2/3) # cube surface [m2]
-            self.cp = c.CP_WATER # J/kgK                    
-            self.tank_t = self.t_min_rad_h # initial temperature C°
-                      
-            self.hp_story = [] # P_th
-            self.tank_story = [] # T_tank
-            self.satisfied_control = []
-        
-        def partial_load_graph(self):
-            """
-            This function is not used in MESS simulations
-    
-            Returns
-            -------
-            Graph of COP variation at partial loads
-    
-            """
-            X=np.linspace(0.1,1)
-            Y=self.regulation(X)
-            plt.figure(dpi=200)
-            plt.plot(X,Y)
-            plt.ylim(0,2)
-            plt.grid()
-            plt.xlabel('$ \dfrac{load}{load_{nominal}}$')
-            plt.ylabel('$ \dfrac{COP}{COP_{nominal}}$')
-            plt.title("Partial load regulation")
-            plt.show()
+            self.pinch_air=10  # pinch air
+            self.overH=5       # overheating air
+            self.dT_eva= self.pinch_air+ self.overH # dT evaporator
+            self.pinch_water=3 #pinch water
             
+            self.T_evap=np.array([-32,2,27,27,21,-8,-25,-32]) #?
+            self.T_cond=np.array([5,5,33,60,65,65,47,35]) #?
+            
+            ### Regulation
+            x=np.array([0.15 , 0.2, 0.4,  0.5, 0.6, 0.8, 1])
+            y=np.array([2.87, 3.2 , 4 ,  4.1, 4 ,  3.65, 3.1])
+            p = np.polyfit(x, y/3.1, 4)
+            self.f_regulation_Pele = np.poly1d(p)            
+            X=np.linspace(0.1,1,1000)
+            Y=self.f_regulation_Pele (X)
+            self.f_regulation_Pth  = interp1d(X * Y, Y)            
+            self.Pth_min_regulation= 0.15*self.f_regulation_Pele(0.15)
+            
+            # size factor
+            self.c_t=0.85  # correcting factor to consider less efficiency at 6000 rpm
+            Pth_7_35 = 13.197816888999997*self.c_t #  Pth at nominal condition of the HP used as reference model
+            self.size_factor=  self.nom_Pth/ Pth_7_35 
+            
+            
+        def output(self,C,Te,Tc):
+            # polynomial model
+            Y = C[0] + C[1]*Te + C[2]*Tc + C[3]*Te**2 + C[4]*Te*Tc + C[5]*Tc**2 + C[6]*Te**3 + C[7]*Tc*Te**2 + C[8]*Te*Tc**2 + C[9]*Tc**3
+            return Y
         
-        def use(self,t_amb,e_th,h):
+        def nominal_performance(self,t_amb,t_w):    
+            t_w_eff = t_w # t water out
+            Te = t_amb - self.dT_eva # evaporator temperature
+            Tc = t_w + self.pinch_water # condenser temperature
+            Tc_max = self.tc_max(Te) # max condenser temperature
+            if Tc > Tc_max:
+                Tc = Tc_max
+                t_w_eff = Tc_max - self.pinch_water
+            Pele= self.output(self.C_Pele6000,Te,Tc)
+            Pth= self.output(self.C_Pq6000,Te,Tc) + Pele
+            Pth=Pth*self.c_t  # correcting factor to consider less efficiency at 6000 rpm
+            cop=Pth/Pele
+            # size factor
+            Pele= Pele*self.size_factor
+            Pth= Pth*self.size_factor
+            return cop,Pth,Pele, t_w_eff
+        
+        def HP_follows_thermal(self,t_amb,t_w,e_th):
+            # heatpump follows thermal demand
+            
+            cop,Pth,Pele,t_w_eff = self.nominal_performance(t_amb,t_w) # nominal working
+            rf = e_th / Pth # regulation factor
+            if rf<1:
+                if rf<self.Pth_min_regulation:
+                    rf = self.Pth_min_regulation
+                    Pth= Pth*rf
+                else:
+                    Pth = e_th
+                cop = cop * self.f_regulation_Pth(rf)
+                Pele = Pth/cop
+            #else nominal            
+            
+            return cop,Pth,Pele,t_w_eff  
+        
+        def HP_follows_electricity(self,t_amb,t_w,e_ele):
+            # electricity available: heatpump follows electricyty available insted of thermal demand
+            
+            cop,Pth,Pele, t_w_eff = self.nominal_performance(t_amb,t_w)
+            rf = e_ele / Pele # regulation factor
+            if rf<1:
+                if rf<0.15:
+                    rf = 0.15
+                    Pele = Pele*rf
+                else:
+                    Pele = e_ele
+                cop = cop * self.f_regulation_Pth(rf)
+                Pth = Pele*cop
+            #else nominal       
+            
+            return cop,Pth,Pele,t_w_eff
+        
+             
+        def use(self,t_amb,e_th,e_ele,h):
             """
             heat (e_th<0) or cool (e_th>0) required by radiation system to heatpump system
 
@@ -129,133 +170,177 @@ class heatpump:
             e_th : float [kWh]
                 <0 heat
                 >0 cool
+            e_ele: float [kWh]
+                if e_ele > 0 and PV_surplus or REC_surplus == True the HP can use the suprlus of electicity to heats the inertial_TES
 
             Returns
             -------
-            electricity used (-), heat supply (+) or absorbed (-) by the tank, heat supply (+) or absorbed (-) by the hp, 
+            electricity used (-), heat supply (+) or absorbed (-) by the inertial_TES, heat supply (+) or absorbed (-) by the hp, 
 
             """
             
             # check mode
             if e_th < 0:
                 self.mode = 1 # heat
-                if self.switch == "off": 
-                    self.switch = "stand by" # ready to be used after tank temperature control
                 
             if e_th > 0:
                 self.mode = 2 # cool  
-                if self.switch == "off":
-                    self.switch = "stand by" # ready to be used after tank temperature control
                 
-            # after 24 hours of inactivity, the machine shuts down until heat or cool is again required from the radiant system
-            if e_th == 0 and self.hp_story[len(self.hp_story)-24*60:len(self.hp_story)] == list(np.zeros(24*60)):
-                self.switch = "off" 
- 
-            e_th = e_th*3600000 # kWh/h -> J/h
-            p_th = e_th/60 # J/h = J/min
-                           
-            # initialise hourly balances    
-            e_ele_tot = 0
-            e_th_hp_tot = 0
-            e_th_tank_tot = 0
-            
-            # satisfaction control
-            if e_th != 0: # if energy is required
-                if self.t_max_rad_c+5 < self.tank_t < self.t_min_rad_h-5:
-                    self.satisfied_control.append(1)
-                else: 
-                    self.satisfied_control.append(0)
-            else:
-                self.satisfied_control.append(0)
-            
-            # time step 1 minute   
-            for ts in np.arange(60):
+            if e_th == 0 and self.mode != 0:
+                if np.count_nonzero(self.satisfaction_story[h-48:h]== 0) == 48: 
+                    self.mode = 0 # off after 24 hours of inactivity
                 
-                # tank dispersion Q = UAdT
-                self.tank_t += self.tank_dispersion * self.tank_surface * (20-self.tank_t) * 60 / (self.tank_mass*self.cp)
-                                             
-                # hp heats/cools tank
-                if self.switch == "on":         
-                    res = self.hp.simulate(t_in_primary=t_amb, t_in_secondary=self.tank_t, t_amb=t_amb, mode=self.mode)
-                    cop = res['COP']
-                    eer = res['EER']
-                    e_th_hp = res['P_th']*60 # J/min heat (+) cool (-)
-                    e_el_hp = res['P_el']*60 # J/min (+)
+            # initialise
+            e_th_i_TES = 0
+            e_ele_hp = 0
+            e_th_hp = 0
+        
+            # inertial_TES dispersion (one hour)
+            self.i_TES_story[h] = self.i_TES_t
+            self.i_TES_t += self.i_TES_dispersion * self.i_TES_surface * (20-self.i_TES_t) * 3600 / (self.i_TES_mass*self.cp)
+                
+            e_overcharging_tot = 0 # parameter used in PV_surplus working
+            e_charging = 0 # parameter that have to be initialise = 0 to be used in PV_surplus working
+            ### normal working: heatpump follows thermal demand
+            
+            if e_th < 0:
+                
+                # inertial_TES heats radiation system
+                if self.i_TES_t > self.t_rad_h:
+                    e_th_i_TES = min(-e_th, self.i_TES_mass*self.cp_kWh*(self.i_TES_t-self.t_rad_h))
+                    self.i_TES_t += - e_th_i_TES/(self.i_TES_mass*self.cp_kWh)
+                    e_th += e_th_i_TES  
+                    self.satisfaction_story[h] = 1
                     
-                    # regulation (cannot adjust immediately after starting and when the tank temperature is at the limit)
-                    # 0.5 is the point of max cop
-                    if self.regulation and self.tank_t > self.t_min_rad_h+5:
-                        cop = cop*self.regulate(0.5) 
-                        e_el_hp = e_el_hp*0.5
-                        e_th_hp = e_el_hp * cop
+                    
+                if e_th < 0: # energy inside i_TES is not enough
+       
+                    ### HP switch-on     
+                    
+                    ### heat to recharge the i_TES
+                    e_charging = self.i_TES_mass*self.cp_kWh*(self.t_rad_h-self.i_TES_t)      
+                    cop,Pth,Pele,t_w_eff = self.HP_follows_thermal(t_amb, self.t_rad_h, e_charging)
+                                     
+                    if Pth < e_charging: # i_TES can't be charged less than one hour
+                        self.satisfaction_story[h] = -2 
+                        self.i_TES_t += Pth/(self.i_TES_mass*self.cp_kWh)
+                        e_th_i_TES += - Pth
+                        e_th_hp = Pth
+                        e_ele_hp = Pele
                         
-                    self.tank_t += e_th_hp / (self.tank_mass*self.cp) # J / kg * (J / kg K)
                     
-                else:
-                    e_th_hp = 0
-                    e_el_hp = 0
+                    else: # i_TES is charge, HP can heats the radiation system
                     
-                # tank heats/cools radiation system
-                if (e_th < 0 and self.mode == 1 and self.tank_t > self.t_min_rad_h-5) or (e_th > 0 and self.mode == 2 and self.tank_t < self.t_max_rad_c+5): 
-                    self.tank_t += p_th / (self.tank_mass*self.cp)
-                    e_th += - p_th
+                        self.i_TES_t = self.t_rad_h
+                        e_th_i_TES += -e_charging
+                        e_th += - e_charging
                     
-                # save balances (W)
-                self.hp_story.append(e_th_hp/60)
-                e_ele_tot += e_el_hp
-                e_th_hp_tot += e_th_hp
-                e_th_tank_tot += - p_th
-                
-                # tank temperature control
-                if self.switch != "off":
-                    if self.mode == 1: # heating
-                        if self.tank_t <= self.start_point[h]:
-                            self.switch = "on"
-                        if self.tank_t >= self.set_point[h]:
-                            self.switch = "stand by"
+                        cop,Pth,Pele,t_w_eff = self.HP_follows_thermal(t_amb, self.i_TES_t, -e_th)
+                        
+                        if Pth < -e_th:
+                            self.satisfaction_story[h] = -1
+                            e_th_hp = Pth
+                            e_ele_hp = Pele
                             
-                    if self.mode == 2: # cooling
-                        if self.tank_t >= self.t_max_rad_c:
-                            self.switch = "on"
-                        if self.tank_t <= self.t_min_hp:
-                            self.switch = "stand by"  
-            
-            # J -> kWh
-            self.tank_story.append(self.tank_t)
-            e_ele_tot = e_ele_tot/3600000
-            e_th_hp_tot = e_th_hp_tot/3600000
-            e_th_tank_tot = e_th_tank_tot/3600000
-            
-            return(-e_ele_tot, e_th_hp_tot, e_th_tank_tot)
+                        if Pth == -e_th:
+                            self.satisfaction_story[h] = 2
+                            e_th_hp = Pth
+                            e_ele_hp = Pele
+                            
+                        if Pth > -e_th:
+                            
+                            # HP heats i_TES   
+                            self.satisfaction_story[h] = 3
+                            j = 0 # used to calculate number of switch on number
+                            e_th_r = e_th # demand ramained to satisfied, used for the while cycle
+                            while e_th_r < -0.00000001:
+                                
+                                cop,Pth,Pele,t_w_eff = self.HP_follows_thermal(t_amb, self.i_TES_t, -e_th)
+                                
+                                if t_w_eff == self.i_TES_t: # maximum temperature not still reached 
+                                    
+                                    e_th_hp += Pth/60
+                                    e_ele_hp += Pele/60
+                                    e_overcharging = (Pth+e_th)/60
+                                    e_th_r += -e_th/60
+                                
+                                    if e_overcharging > 0: # charge iTES if there is energy to do it
+                                        e_th_i_TES += -e_overcharging
+                                        e_overcharging_tot += e_overcharging # used in PV_surplus working
+                                        self.i_TES_t += e_overcharging/(self.i_TES_mass*self.cp_kWh)
+                                                       
+                                else: # maximum temperaeture reached: used energy inside iTES to satisfied demand
+                                    self.satisfaction_story[h] = 4+j 
+                                    j += 1
+                                    e_th_available = min(-e_th_r, self.i_TES_mass*self.cp_kWh*(self.i_TES_t-self.t_rad_h))
+                                    e_th_i_TES += e_th_available
+                                    self.i_TES_t += - e_th_available/(self.i_TES_mass*self.cp_kWh) 
+                                    e_th_r += e_th_available
+                                    if e_th_r < 0:
+                                        self.satisfaction_story[h] = 4+j
+                                        e_th = e_th_r
+                        
+            ### PV_surplus working: heatpump follows available electricity insted of thermal demand
+            if self.PV_surplus and e_ele > e_ele_hp and self.satisfaction_story[h] in [0,1,2,3] and self.mode != 0:
+                
+                self.surplus_story[h] = 1
+                
+                # reinitialise balances                
+                e_ele_hp = 0
+                e_th_hp = 0
+                e_th_i_TES += e_overcharging_tot
+                self.i_TES_t += - e_overcharging_tot/(self.i_TES_mass*self.cp_kWh)
+                
+                # HP heats i_TES more than the noral working
+                
+                if e_th < 0: # demand
+                    j = 0 # used to calculate number of switch on number
+                    e_th_r = e_th # demand ramained to satisfied, used for the while cycle
+                    while e_th_r < -0.00000001:
+                        
+                        cop,Pth,Pele,t_w_eff = self.HP_follows_electricity(t_amb, self.i_TES_t, e_ele)
+                        
+                        if t_w_eff == self.i_TES_t: # maximum temperature not still reached 
+                            
+                            e_th_hp += Pth/60
+                            e_ele_hp += Pele/60
+                            e_overcharging = (Pth+e_th)/60
+                            e_th_r += -e_th/60
+                        
+                            if e_overcharging > 0: # charge iTES if there is energy to do it
+                                e_th_i_TES += -e_overcharging
+                                self.i_TES_t += e_overcharging/(self.i_TES_mass*self.cp_kWh)
+                                               
+                        else: # maximum temperaeture reached: used energy inside iTES to satisfied demand
+                            self.satisfaction_story[h] = 4+j 
+                            j += 1
+                            e_th_available = min(-e_th_r, self.i_TES_mass*self.cp_kWh*(self.i_TES_t-self.t_rad_h))
+                            e_th_i_TES += e_th_available
+                            self.i_TES_t += - e_th_available/(self.i_TES_mass*self.cp_kWh) 
+                            e_th_r += e_th_available
+                            if e_th_r < 0:
+                                self.satisfaction_story[h] = 4+j
+                                e_th = e_th_r
+                                
+                elif e_th == 0:
+                    for m in np.arange(60):
+                        cop,Pth,Pele,t_w_eff = self.HP_follows_electricity(t_amb, self.i_TES_t, e_ele)
+                        
+                        if t_w_eff == self.i_TES_t: # maximum temperature not still reached 
+                            
+                            e_th_hp += Pth/60
+                            e_ele_hp += Pele/60
+                            e_overcharging = (Pth+e_th)/60
+                        
+                            if e_overcharging > 0: # charge iTES if there is energy to do it
+                                e_th_i_TES += -e_overcharging
+                                self.i_TES_t += e_overcharging/(self.i_TES_mass*self.cp_kWh)
+                                               
+                        else: # maximum temperaeture reached: used energy inside iTES to satisfied demand
+                            break
+                             
+            if e_th_hp > 0:
+                self.cop_story[h] = e_th_hp/e_ele_hp
+                            
+            return(-e_ele_hp, e_th_hp, e_th_i_TES)
                                         
-            
-        def use_surplus(self,t_amb,e_th,h):
-            #print('surplus switch')
-            # clean hystory
-            self.tank_story = self.tank_story[:-1]
-            self.tank_t = self.tank_story[-1]
-            self.hp_story = self.hp_story[:-60]
-            self.satisfied_control = self.satisfied_control[:-1]
-            
-            # change set point 
-            self.set_point[h] = self.PV_surplus
-            #self.switch = "on"
-            
-            # resimulate
-            a = self.use(t_amb,e_th,h)
-            return(a)
-                
-                
-                
-            
-            
-#%% ##########################################################################################################################################################
-
-if __name__ == "__main__":
-    
-    """
-    Functional test
-    """
-    
-
-    

@@ -78,6 +78,12 @@ pp.total_balances(study_case,'prosumer_1','electricity')
 pp.total_balances(study_case,'prosumer_2','electricity')
 pp.total_balances(study_case,'prosumer_2','hydrogen')
 pp.total_balances(study_case,'consumer_1','electricity')
+#pp.total_balances(reference_case,'consumer_2','electricity')
+#pp.total_balances(reference_case,'consumer_2','heat')
+#pp.total_balances(reference_case,'consumer_2','gas')
+pp.total_balances(study_case,'consumer_2','electricity')
+pp.total_balances(study_case,'consumer_2','heat')
+
 
 pp.REC_electricity_balance(study_case)
 
@@ -87,7 +93,8 @@ pp.NPV_plot(study_case)
 
 pp.hourly_balances_electricity(study_case,'prosumer_1', 2, 3)
 pp.hourly_balances_electricity(study_case,'prosumer_2', 2, 3)
-pp.hourly_balances_electricity(study_case,'consumer_1', 2, 3)
+#pp.hourly_balances_electricity(study_case,'consumer_1', 2, 3)
+#pp.hourly_balances_electricity(study_case,'consumer_2', 2, 3)
 
 #pp.csc_allocation_sum(study_case)
 #pp.storage_control(study_case)
@@ -96,44 +103,47 @@ pp.hourly_balances_electricity(study_case,'consumer_1', 2, 3)
 
 #%% ##########################################################################
 "Sensitivity analysis - practical example"
+# click on the following code and press Ctrl+5 to discomment all together
 
-import numpy as np
-import pickle
-import matplotlib.pyplot as plt
-
-pv_size = np.arange(1,11)
-npv = []
-sc = [] # self-consumption
-ss = [] # self-sufficiency
-
-for pv in pv_size:
-    study_case = f"PV size = {pv}"
-    new_structure = pre.change_peakP(structure, 'prosumer_1', pv)
-    rec = REC(new_structure,general,path) # create REC object
-    rec.REC_energy_simulation() # simulate REC enegy balances
-    rec.save(study_case) # save results in 'study_case.pkl'
-    
-    with open('results/balances_'+study_case+'.pkl', 'rb') as f: balances = pickle.load(f)
-    demand = -balances['prosumer_1']['electricity']['demand'].sum() # read from saved results .pkl
-    production = balances['prosumer_1']['electricity']['PV'].sum()
-    into_grid = balances['prosumer_1']['electricity']['grid'].sum(where=balances['prosumer_1']['electricity']['grid']<0)
-    from_grid = balances['prosumer_1']['electricity']['grid'].sum(where=balances['prosumer_1']['electricity']['grid']>0)
-    
-    # you can also read values from the python object rec. (in this case you do not need rec.save)
-    # demand = -rec.locations['prosumer_1'].energy_balance['electricity']['demand'].sum() # read from python 
-    
-    sc.append((production+into_grid)/production*100)
-    ss.append((demand-from_grid)/demand*100)
-    
-plt.figure(dpi=1000)
-plt.plot(pv_size,sc,label='Self-consumption')
-plt.plot(pv_size,ss,label='Self-suficiency')
-plt.xlabel("PV peak power [kWp]")
-plt.ylabel("[%]")
-plt.grid()
-plt.legend()
-plt.title('prosumer_1')
-plt.show()
+# =============================================================================
+# import numpy as np
+# import pickle
+# import matplotlib.pyplot as plt
+# 
+# pv_size = np.arange(1,11)
+# npv = []
+# sc = [] # self-consumption
+# ss = [] # self-sufficiency
+# 
+# for pv in pv_size:
+#     study_case = f"PV size = {pv}"
+#     new_structure = pre.change_peakP(structure, 'prosumer_1', pv)
+#     rec = REC(new_structure,general,path) # create REC object
+#     rec.REC_energy_simulation() # simulate REC enegy balances
+#     rec.save(study_case) # save results in 'study_case.pkl'
+#     
+#     with open('results/balances_'+study_case+'.pkl', 'rb') as f: balances = pickle.load(f)
+#     demand = -balances['prosumer_1']['electricity']['demand'].sum() # read from saved results .pkl
+#     production = balances['prosumer_1']['electricity']['PV'].sum()
+#     into_grid = balances['prosumer_1']['electricity']['grid'].sum(where=balances['prosumer_1']['electricity']['grid']<0)
+#     from_grid = balances['prosumer_1']['electricity']['grid'].sum(where=balances['prosumer_1']['electricity']['grid']>0)
+#     
+#     # you can also read values from the python object rec. (in this case you do not need rec.save)
+#     # demand = -rec.locations['prosumer_1'].energy_balance['electricity']['demand'].sum() # read from python 
+#     
+#     sc.append((production+into_grid)/production*100)
+#     ss.append((demand-from_grid)/demand*100)
+#     
+# plt.figure(dpi=1000)
+# plt.plot(pv_size,sc,label='Self-consumption')
+# plt.plot(pv_size,ss,label='Self-suficiency')
+# plt.xlabel("PV peak power [kWp]")
+# plt.ylabel("[%]")
+# plt.grid()
+# plt.legend()
+# plt.title('prosumer_1')
+# plt.show()
+# =============================================================================
 
 
 

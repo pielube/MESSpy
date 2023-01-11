@@ -18,7 +18,11 @@
 "fuel cell": {"total installation cost": 1500,
                "OeM": 0, 
                "lifetime": 15},
-			   
+               
+"heatpump": {"total installation cost": 1200,
+               "OeM": 0, 
+               "lifetime": 30},
+               
 "refund": { "rate": 50,
 			"time": 0},
 			 
@@ -35,13 +39,13 @@
 "hydrogen": {"purchase": 0, 
              "sale": 0},
 			  
-"gas": {"purchase": 0, 
+"gas": {"purchase": 0.15, 
         "sale": 0}, 
 		 
 "heat": {"purchase": 0, 
          "sale": 0},	  
 		  
-"interest rate": 0.05,
+"interest rate": 0.03,
  
 "investment years": 30
 }
