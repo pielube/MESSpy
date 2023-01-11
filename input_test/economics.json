@@ -1,63 +1,47 @@
 {
-"battery": {
-            "total installation cost": 600, 
+"battery": {"total installation cost": 800, 
             "OeM": 0, 
-            "lifetime": "ageing"
-            }, 
-"PV": {
-       "total installation cost": 1250, 
+            "lifetime": "ageing"}, 
+			
+"PV": {"total installation cost": 1600, 
        "OeM": 10, 
-       "lifetime": 20
-	   }, 
-"electrolyzer": {
-                 "total installation cost": 1500, 
+       "lifetime": 20}, 
+	   
+"electrolyzer": {"total installation cost": 1500, 
                  "OeM": 0, 
-                 "lifetime": 15
-				 }, 
-"H tank": {
-	        "total installation cost": 400,
+                 "lifetime": 15}, 
+				 
+"H tank": {"total installation cost": 400,
            "OeM": 0,
-           "lifetime": 30
-		   }, 
- "fuel cell": {
-	           "total installation cost": 1500,
+           "lifetime": 30}, 
+		   
+"fuel cell": {"total installation cost": 1500,
                "OeM": 0, 
-               "lifetime": 15
-			   },
- "refund": {
-	         "rate": 50,
-             "time": 0
-			 },
- "REC": {
-	     "collective self consumption incentives": 0.118,
-	     "incentives redistribution": {
-                                	   "producers": 40,
-                                	   "consumers": 40,
-                                	   "operator": 20
-                                	   },
-         "costitution cost": 0,
-         "OeM": 0
-		 },
- "electricity": {
-	             "purchase": "electricity_price.csv", 
-                 "sale": 0.06
-				 }, 
- "hydrogen": {
-		      "purchase": 0, 
-              "sale": 0
-			  },
- "gas": {
-	     "purchase": 0, 
-         "sale": 0
-		 }, 
- "heat": {
-	      "purchase": 0, 
-          "sale": 0
-		  },
-"cool": {
-	      "purchase": 0, 
-          "sale": 0
-		  },		  
- "interest rate": 0.05,
- "investment years": 30
+               "lifetime": 15},
+			   
+"refund": { "rate": 50,
+			"time": 0},
+			 
+"REC": {"collective self consumption incentives": 0.118,
+		"incentives redistribution": {	"producers": 40,
+										"consumers": 40,
+										"operator": 20},
+		"costitution cost": 0,
+        "OeM": 0},
+		 
+"electricity": {"purchase": "electricity_price.csv", 
+                "sale": 0.08}, 
+				 
+"hydrogen": {"purchase": 0, 
+             "sale": 0},
+			  
+"gas": {"purchase": 0, 
+        "sale": 0}, 
+		 
+"heat": {"purchase": 0, 
+         "sale": 0},	  
+		  
+"interest rate": 0.05,
+ 
+"investment years": 30
 }

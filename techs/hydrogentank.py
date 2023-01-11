@@ -61,7 +61,6 @@ class H_tank:
                 discharge = min(-hyd,self.LOC[h]+self.max_capacity-self.used_capacity) # how much hydrogen can H tank supply?
                 self.LOC[h+1] = self.LOC[h]-discharge                                  # discharge H tank
                 if self.LOC[h+1] < 0:                                                  # if the level of charge has become negative
-                    print(self.LOC)
                     self.used_capacity += - self.LOC[h+1]                              # incrase the used capacity
                     self.LOC[:h+2] += - self.LOC[h+1]                                  # traslate the past LOC array
                     

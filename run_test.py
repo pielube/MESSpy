@@ -2,7 +2,7 @@
 MESSpy - Run_test
 
 don't work on this script:
-    you should create your own run_dev.py and input_dev/ 
+    you should create your own run_dev.py, input_dev/, postprocess_dev.py and preprocess_dev.py
 """
 
 #%% ###########################################################################
@@ -13,6 +13,11 @@ PRE PROCESSING
 
 # Import modules
 from rec import REC
+from economics import NPV
+import postprocess_test as pp
+import preprocess_test as pre
+#import postprocess_dev as pp
+#import preprocess_dev as pp
 import os
 import json
 
@@ -35,14 +40,6 @@ with open(os.path.join(path,file_general),'r') as f: general = json.load(f)
 with open(os.path.join(path,file_eco),'r') as f: economic_data = json.load(f)
 with open(os.path.join(path,file_refcase),'r') as f: structure0 = json.load(f)
 
-# Edit input files:
-import preprocess_test as pre
-#import preprocess_dev as pre
-# Instead of modify the original input files.json we suggest to modify the dictionary variables 
-# structure, structure0, general and economic_data using specific functions that you can define in preprocess_dev. 
-# here an example:
-# structure = pre.change_peakP(structure, 'p1', 5) 
-
 #%% ###########################################################################
 """
 SOLVER
@@ -59,8 +56,6 @@ POST PROCESS - ECONOMIC ANALYSIS
 ================================
 """
 
-from economics import NPV
-    
 # Reference case simulation (run only if changed)
 rec0 = REC(structure0,general,path) # create REC
 rec0.REC_energy_simulation() # simulate REC 
@@ -74,46 +69,77 @@ NPV(structure,structure0,study_case,reference_case,economic_data,general['simula
 """
 POST PROCESS - PLOTTING
 ================================
-"""
 
-import postprocess_test as pp
-#import postprocess_dev as pp
-
-"""
 some post-process are alredy avaiable as examples in postprocess_test
 you should create your own postprocess_dev.py
 """
 
-pp.total_balances(study_case,'p1','electricity')
-pp.total_balances(study_case,'p2','electricity')
-pp.total_balances(study_case,'p2','hydrogen')
-pp.total_balances(study_case,'c1','electricity')
+pp.total_balances(study_case,'prosumer_1','electricity')
+pp.total_balances(study_case,'prosumer_2','electricity')
+pp.total_balances(study_case,'prosumer_2','hydrogen')
+pp.total_balances(study_case,'consumer_1','electricity')
 
 pp.REC_electricity_balance(study_case)
 
 pp.LOC_plot(study_case)
-#pp.storage_control(study_case)
 
 pp.NPV_plot(study_case)
 
-pp.hourly_balances_electricity(study_case,'p1', 2, 3)
-pp.hourly_balances_electricity(study_case,'p2', 2, 3)
-pp.hourly_balances_electricity(study_case,'c1', 2, 3)
+pp.hourly_balances_electricity(study_case,'prosumer_1', 2, 3)
+pp.hourly_balances_electricity(study_case,'prosumer_2', 2, 3)
+pp.hourly_balances_electricity(study_case,'consumer_1', 2, 3)
 
 #pp.csc_allocation_sum(study_case)
+#pp.storage_control(study_case)
+#pp.ele_param(study_case, 2, 3)
+#pp.fc_param(study_case, 2, 3)
 
 #%% ##########################################################################
-"Parametric analysis - workflow example"
+"Sensitivity analysis - practical example"
 
-# for parameter in list of values:
-    # open input files
-    # edit input files using parameter and function you can define in preprocess_test 
-    # create and simulate rec
-    # if you need it, run the economic analysis (remember that you need to create and simulate rec0 just ones)
-    # save the results
-# use results to make what you want 
+import numpy as np
+import pickle
+import matplotlib.pyplot as plt
 
-# enjoy ;)
+pv_size = np.arange(1,11)
+npv = []
+sc = [] # self-consumption
+ss = [] # self-sufficiency
+
+for pv in pv_size:
+    study_case = f"PV size = {pv}"
+    new_structure = pre.change_peakP(structure, 'prosumer_1', pv)
+    rec = REC(new_structure,general,path) # create REC object
+    rec.REC_energy_simulation() # simulate REC enegy balances
+    rec.save(study_case) # save results in 'study_case.pkl'
+    
+    with open('results/balances_'+study_case+'.pkl', 'rb') as f: balances = pickle.load(f)
+    demand = -balances['prosumer_1']['electricity']['demand'].sum() # read from saved results .pkl
+    production = balances['prosumer_1']['electricity']['PV'].sum()
+    into_grid = balances['prosumer_1']['electricity']['grid'].sum(where=balances['prosumer_1']['electricity']['grid']<0)
+    from_grid = balances['prosumer_1']['electricity']['grid'].sum(where=balances['prosumer_1']['electricity']['grid']>0)
+    
+    # you can also read values from the python object rec. (in this case you do not need rec.save)
+    # demand = -rec.locations['prosumer_1'].energy_balance['electricity']['demand'].sum() # read from python 
+    
+    sc.append((production+into_grid)/production*100)
+    ss.append((demand-from_grid)/demand*100)
+    
+plt.figure(dpi=1000)
+plt.plot(pv_size,sc,label='Self-consumption')
+plt.plot(pv_size,ss,label='Self-suficiency')
+plt.xlabel("PV peak power [kWp]")
+plt.ylabel("[%]")
+plt.grid()
+plt.legend()
+plt.title('prosumer_1')
+plt.show()
+
+
+
+
+
+    
 
 
 
