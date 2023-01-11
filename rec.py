@@ -58,6 +58,8 @@ class REC:
         self.energy_balance['electricity']['into grid'] = np.zeros(self.simulation_hours) # array of electricity withdrawn from the grid
         self.energy_balance['electricity']['collective self consumption'] = np.zeros(self.simulation_hours) # array of collective self consumed electricity from the whole rec
         self.count = []
+        
+        ### simulation core
         for h in range(self.simulation_hours): # h: hour to simulate from 0 to simulation_hours 
             for location_name in self.locations: # each locations 
                 self.locations[location_name].loc_energy_simulation(h,self.weather) # simulate a single location updating its energy balances
@@ -70,46 +72,44 @@ class REC:
                         self.energy_balance['electricity']['from grid'][h] += self.locations[location_name].energy_balance['electricity']['grid'][h] # electricity withdrawn from the grid the whole rec at hour h
                 
                 
-            ### solve smart heatpumps (relation with batteries?)
-            locations_on = {} # locations on to which the set point could be raised , initialise
-            
-            if - self.energy_balance['electricity']['into grid'][h] - self.energy_balance['electricity']['from grid'][h] > 0: # if there is surplus
-            
-                # find the locations_on to which the set point could be raised 
-                for location_name in self.locations:
-                    if 'heatpump' in self.locations[location_name].technologies:
-                            if self.locations[location_name].technologies['heatpump'].PV_surplus != False:
-                                if self.locations[location_name].technologies['heatpump'].hp_story[-61] > 0: # if the hp was on at h-1           
-                                    if self.locations[location_name].technologies['heatpump'].switch == 'stand by': # and has been switched in stand by before h (because reached the set point)
-                                        locations_on[location_name] = self.locations[location_name].technologies['heatpump'].tank_story[-2]
+                ### solve smart heatpumps (REC_surplus == True)
+                HPs_available = []
+                TESs_temperature = []            
+                if - self.energy_balance['electricity']['into grid'][h] - self.energy_balance['electricity']['from grid'][h] > 0: # if there is surplus
                 
-                # order locations according to tank temperature 
-                locations_on = sorted(locations_on.items(), key=lambda x: x[1])              
-             
-            while - self.energy_balance['electricity']['into grid'][h] - self.energy_balance['electricity']['from grid'][h] > 0: # while there is surplus
-
-                location_to_switch = 'no one'
-                # select the one with the lower tank_temperature
-                for a in locations_on:
-                    location_to_switch = a[0]
-                    locations_on.remove(a)
-                    break
-                if location_to_switch == 'no one':  
-                    break
-                else:         
+                    # find the HPs available
+                    for location_name in self.locations:
+                        if 'heatpump' in self.locations[location_name].technologies:
+                                if self.locations[location_name].technologies['heatpump'].REC_surplus:
+                                    if self.locations[location_name].technologies['heatpump'].mode == 1:
+                                        if self.locations[location_name].technologies['heatpump'].satisfaction_story[h] in [0,1,2,3]:   
+                                            HPs_available.append(location_name)
+                                            TESs_temperature.append(self.locations[location_name].technologies['heatpump'].i_TES_t)
+                                
+                    # order locations according to iTES temperature 
+                    HPs_available = [HPs_available for _,HPs_available in sorted(zip(TESs_temperature,HPs_available))]
+                 
+                while - self.energy_balance['electricity']['into grid'][h] - self.energy_balance['electricity']['from grid'][h] > 0: # while there is surplus
+                    surplus = - self.energy_balance['electricity']['into grid'][h] - self.energy_balance['electricity']['from grid'][h]
+                    if HPs_available == []:
+                            break
+                    location_name = HPs_available[0]
+                    HPs_available = HPs_available[1:]
+     
                     # clean balance
-                    self.locations[location_to_switch].energy_balance['electricity']['demand'][h] += - self.locations[location_to_switch].energy_balance['electricity']['heatpump'][h]
-                    self.locations[location_to_switch].energy_balance['electricity']['grid'][h] += self.locations[location_to_switch].energy_balance['electricity']['heatpump'][h]
-                    self.energy_balance['electricity']['from grid'][h] += self.locations[location_to_switch].energy_balance['electricity']['heatpump'][h] # electricity fed into the grid from the whole rec at hour h
+                    self.locations[location_name].energy_balance['electricity']['demand'][h] += - self.locations[location_name].energy_balance['electricity']['heatpump'][h]
+                    self.locations[location_name].energy_balance['electricity']['grid'][h] += self.locations[location_name].energy_balance['electricity']['heatpump'][h]
+                    self.energy_balance['electricity']['from grid'][h] += self.locations[location_name].energy_balance['electricity']['heatpump'][h] # electricity fed into the grid from the whole rec at hour h
 
-                    # resimulate (cleaning hystory)
-                    self.locations[location_to_switch].energy_balance['electricity']['heatpump'][h], self.locations[location_to_switch].energy_balance['heat']['heatpump'][h], self.locations[location_to_switch].energy_balance['heat']['inertialtank'][h] = self.locations[location_to_switch].technologies['heatpump'].use_surplus(self.weather['temp_air'][h],self.locations[location_to_switch].energy_balance['heat']['demand'][h],h)
-                    
+                    # resimulate 
+                    self.locations[location_name].technologies['heatpump'].i_TES_t = self.locations[location_name].technologies['heatpump'].i_TES_story[h]
+                    self.locations[location_name].energy_balance['electricity']['heatpump'][h], self.locations[location_name].energy_balance['heat']['heatpump'][h], self.locations[location_name].energy_balance['heat']['inertial TES'][h] = self.locations[location_name].technologies['heatpump'].use(self.weather['temp_air'][h],self.locations[location_name].energy_balance['heat']['demand'][h],surplus,h) 
+      
                     # updata balance
-                    self.locations[location_to_switch].energy_balance['electricity']['demand'][h] += self.locations[location_to_switch].energy_balance['electricity']['heatpump'][h]
-                    self.locations[location_to_switch].energy_balance['electricity']['grid'][h] += - self.locations[location_to_switch].energy_balance['electricity']['heatpump'][h]
-                    self.energy_balance['electricity']['from grid'][h] += - self.locations[location_to_switch].energy_balance['electricity']['heatpump'][h] # electricity fed into the grid from the whole rec at hour h
-                
+                    self.locations[location_name].energy_balance['electricity']['demand'][h] += self.locations[location_name].energy_balance['electricity']['heatpump'][h]
+                    self.locations[location_name].energy_balance['electricity']['grid'][h] += - self.locations[location_name].energy_balance['electricity']['heatpump'][h]
+                    self.energy_balance['electricity']['from grid'][h] += - self.locations[location_name].energy_balance['electricity']['heatpump'][h] # electricity fed into the grid from the whole rec at hour h
+                 
                 
             ### calculate collective self consumption and who contributed to it
             self.energy_balance['electricity']['collective self consumption'][h] = min(-self.energy_balance['electricity']['into grid'][h],self.energy_balance['electricity']['from grid'][h]) # calculate REC collective self consumption how regulation establishes      
@@ -179,8 +179,8 @@ class REC:
                 
             tech_name = 'heatpump'
             if tech_name in self.locations[location_name].technologies:
-                LOC[location_name]['inertial tank'] = self.locations[location_name].technologies[tech_name].tank_story
-            
+                LOC[location_name]['inertial TES'] = self.locations[location_name].technologies[tech_name].i_TES_story
+        
             tech_name = 'electrolyzer'
             if tech_name in self.locations[location_name].technologies:
                 parameters[location_name][tech_name] = {}      
@@ -250,7 +250,7 @@ class REC:
         if os.path.exists('previous_simulation/general_w.pkl'):
             with open('previous_simulation/general_w.pkl', 'rb') as f:
                 ps_general = pickle.load(f) # previous simulation general
-            par_to_check = ['latitude','longitude','UTC time zone']
+            par_to_check = ['latitude','longitude','UTC time zone','DST']
             for par in par_to_check:
                 if ps_general[par] != general[par]:
                     check = False  
@@ -282,8 +282,30 @@ class REC:
                 we2.index = reindex   
                 
                 weather = pd.concat([we2,weather])
+                weather['Local time']=weather.index
+                weather.set_index('Local time',inplace=True)
+
+            # Daily saving time (DST) correction 
+            # Is CEST (Central European Summertime) observed? if yes it means that State is applying DST
+            # DST lasts between last sunday of march at 00:00:00+UTC+1 and last sunday of october at 00:00:00+UTC+2
+            # For example in Italy DST in 2022 starts in March 27th at 02:00:00 and finishes in October 30th at 03:00:00
+            if general['DST']==True:
+
+                zzz_in = weather[weather.index.month==3]
+                zzz_in = zzz_in[zzz_in.index.weekday==6]
+                zzz_in = zzz_in[zzz_in.index.hour==1+general['UTC time zone']]
+                zzz_in = pd.Series(zzz_in.index).unique()[-1]
+              
+                zzz_end = weather[weather.index.month==10]
+                zzz_end = zzz_end[zzz_end.index.weekday==6]
+                zzz_end = zzz_end[zzz_end.index.hour==1+general['UTC time zone']]
+                zzz_end = pd.Series(zzz_end.index).unique()[-1]
                 
-            
+                weather.loc[zzz_in:zzz_end] = weather.loc[zzz_in:zzz_end].shift(60,'T')
+                weather = weather.interpolate(method='linear')
+
+                weather['Local time - DST'] = weather.index
+                weather.set_index('Local time - DST',inplace=True)                                               
             weather.to_csv(path+'/weather/weather_TMY.csv')
             
             # save new parameters in previous_simulation            

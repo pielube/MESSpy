@@ -54,7 +54,7 @@ class PV:
             if os.path.exists('previous_simulation/general.pkl'):
                 with open('previous_simulation/general.pkl', 'rb') as f:
                     ps_general = pickle.load(f) # previous simulation general
-                par_to_check = ['latitude','longitude','UTC time zone']
+                par_to_check = ['latitude','longitude','UTC time zone','DST']
                 for par in par_to_check:
                     if ps_general[par] != general[par]:
                         check = False  
@@ -82,28 +82,54 @@ class PV:
                 
                 
                 # Index to select TMY relevant data points
-                pv = res[0]['P'] 
-                pv_index = pv.index
-                pv_index = pv_index.shift(general['UTC time zone']*60,'T')
-                pv.index = pv_index
+                pv = res[0]['P']
                 refindex = weather.index
                 shift_minutes = int(str(pv.index[0])[14:16])
                 refindex = refindex.shift(shift_minutes,'T')
-                refindex = refindex.shift(general['UTC time zone']*60,'T')
                 pv = pv[refindex]
+                pv = pd.DataFrame(pv)
                 
                 # time zone correction
                 if general['UTC time zone'] > 0:
+                    pv_index = pv.index
+                    pv_index = pv_index.shift(general['UTC time zone']*60,'T')
+                    pv.index = pv_index
+                    
+                    pv2 = pd.DataFrame(data=pv[-general['UTC time zone']:], index=None, columns=pv.columns)
                     pv = pv[:-general['UTC time zone']]
-                    pv2 = pd.Series(np.zeros(general['UTC time zone']),name='P')
+                    
                     reindex = pv.index[:general['UTC time zone']]
                     reindex = reindex.shift(-general['UTC time zone']*60,'T')
-                    pv2.index = reindex        
-                    pv = pv2.append(pv)
+                    pv2.index = reindex  
+                    pv = pd.concat([pv2,pv])
+                    
+                    pv['Local time']=pv.index
+                    pv.set_index('Local time',inplace=True)
+                    
+                # Daily saving time (DST) correction
+                # Is CEST (Central European Summertime) observed? if yes it means that State is applying DST
+                # DST lasts between last sunday of march at 00:00:00+UTC+1 and last sunday of october at 00:00:00+UTC+2
+                # For example in Italy DST in 2022 starts in March 27th at 02:00:00 and finishes in October 30th at 03:00:00
+                if general['DST']==True:
+                
+                    zzz_in=pv[pv.index.month==3]
+                    zzz_in=zzz_in[zzz_in.index.weekday==6]
+                    zzz_in=zzz_in[zzz_in.index.hour==1+general['UTC time zone']]
+                    zzz_in = pd.Series(zzz_in.index).unique()[-1]
+                  
+                    zzz_end=pv[pv.index.month==10]
+                    zzz_end=zzz_end[zzz_end.index.weekday==6]
+                    zzz_end=zzz_end[zzz_end.index.hour==1+general['UTC time zone']]
+                    zzz_end = pd.Series(zzz_end.index).unique()[-1]
+                    
+                    pv.loc[zzz_in:zzz_end] = pv.loc[zzz_in:zzz_end].shift(60,'T')
+                    pv=pv.interpolate(method='linear')
+                
+                    pv['Local time - DST']=pv.index
+                    pv.set_index('Local time - DST',inplace=True)
                 
                 # save series .csv
-                series_frame = pd.DataFrame(pv)
-                series_frame.to_csv(path+'/production/'+name_serie)
+                pv.to_csv(path+'/production/'+name_serie)
             
                 # save new parameters in previous_simulation
                 with open('previous_simulation/parameters_'+location_name+'.pkl', 'wb') as f:

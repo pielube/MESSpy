@@ -6,11 +6,6 @@ Created on Fri Apr  1 15:46:34 2022
 """
 
 import numpy as np
-import os
-import sys 
-sys.path.append(os.path.abspath(os.path.join(os.getcwd(),os.path.pardir)))   # temorarily adding constants module path 
-import constants as c
-
 
 class boiler_el:    
     
@@ -24,7 +19,7 @@ class boiler_el:
             
 
         outputs : boiler object able to:
-            consume electricity and produce heat .use(demand,timestep)
+            consume fuel or electricity and produce heat .use(demand,timestep)
         """
         
         self.Ppeak = parameters['Ppeak']
@@ -44,11 +39,10 @@ class boiler_el:
             heatprod float heat produced [kWh] 
         """
         
-        heatprod = min(demand,self.Ppeak*timestep) # [kWh]
-        consumption = - heatprod/self.efficiency   # [kWh]
+        heatprod = min(demand,self.Ppeak*timestep)
+        consumption = - heatprod/self.efficiency #
         
         return(consumption,heatprod)
-
     
 class boiler_ng:    
     
@@ -62,7 +56,7 @@ class boiler_ng:
             
 
         outputs : boiler object able to:
-            consume natural gas and produce heat .use(demand,timestep)
+            consume fuel or electricity and produce heat .use(demand,timestep)
         """
         
         self.Ppeak = parameters['Ppeak']
@@ -90,7 +84,8 @@ class boiler_ng:
             return(consumption,heatprod)
         
         else:
-            return(0,0)   
+            return(0,0)       
+        
 
         
 class boiler_h2:    

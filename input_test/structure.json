@@ -1,96 +1,51 @@
 {
-"p1":
-    {
-    "demand":
-            {
-            "electricity": "load_test_1.csv"
-            },
-	"grid":
-			{
-			"electricity": true,
-			"hydrogen": false,
-			"gas": false,
-			"heat": false,
-			"cool": false
-			},		
-    "PV":
-        {
-        "tilt": 30,
-        "azimuth": 0,
-        "losses": 20,
-        "peakP": 3,
-        "serie": "TMY"
-		},
-	"battery":
-	         {
-            "nominal capacity": 3,
-         	"max E-rate": 0.5,
-    		"efficiency": 0.9,
-            "ageing": true,
-    		"life cycles": 6000,
-    		"end life capacity": 80,
-    	 	"collective": 0 
-             }
-    },
-"p2":
-    {
-    "demand":
-	        {
-			"electricity": "load_test_2.csv"
-			},
-	"grid":
-			{
-			"electricity": true,
-			"hydrogen": false,
-			"gas": false,
-			"heat": false,
-			"cool": false
-			},	
-    "wind":  {
-                "model": "detailed",
-                "area":  39.6 ,
-                "efficiency": 0.45,
-                "Prated": 10.0,
-                "WSrated": 11.0,
-                "WScutin": 2.5,
-                "WScutout": 32.0,
-                "beta": 0.0,
-                "idx": 5,
-                "z_i": 40.0,
-                "z_hub": 30.0,
-                "alpha": 0.25,
-                "Vu": 0.5,
-                "Nbands": 10
-                },
-    "electrolyzer":
-	              {
-				  "Npower": false,
-                  "stack model": "PEM General"
-				  },
-    "fuel cell":
-	           {
-				"Npower": false,
-				"stack model": "PEM General"
-			   },
-    "H tank":
-            {
-		    "max capacity": 2.5,
-            "pressure": 30
-			}
-    },
-"c1":
-    {
-	"demand":
-	        {
-		    "electricity": "load_test_3.csv"
-			},
-	"grid":
-			{
-			"electricity": true,
-			"hydrogen": false,
-			"gas": true,
-			"heat": false,
-			"cool": false
-			}
-	}
-}
+"prosumer_1": {	"demand": {	"electricity": "load_test_1.csv"},
+				"grid": {	"electricity": true},
+				"PV": 	{	"tilt": 30,
+							"azimuth": 0,
+							"losses": 20,
+							"peakP": 3,
+							"serie": "TMY"},
+				"battery": {"nominal capacity": 3,
+							"max E-rate": 0.5,
+							"efficiency": 0.9,
+							"ageing": true,
+							"life cycles": 6000,
+							"end life capacity": 80,
+							"collective": 0 }},
+		
+"prosumer_2": { "demand": {	"electricity": "load_test_2.csv"},
+				"grid":	{	"electricity": true,
+							"hydrogen": true},
+				"PV": {		"tilt": 30,
+							"azimuth": 0,
+							"losses": 10,
+							"peakP": 2,
+							"serie": "TMY"},							
+				"electrolyzer": {	"Npower": 2,
+									"number of modules":1,
+									"stack model": "PEM General"},
+				"fuel cell": {	"Npower": 1,
+								"number of modules":1,
+								"stack model": "PEM General"},
+				"H tank": {		"max capacity": 2.5,
+								"pressure": 30 }},
+							
+"consumer_1": { "demand": { "electricity": "load_test_3.csv"},
+				"grid": {	"electricity": true}},
+				
+"consumer_2": { "demand": { "electricity": "load_test_4.csv",
+                            "heat": "heat_test.csv",
+                            "dhw":  "dhw_test.csv"},
+                "grid": {   "electricity": true},
+                
+                "heatpump": {  "type":1,
+                               "usage": 2,
+                               "nom Pth": 8,
+                               "t rad heat": 45,
+                               "t rad cool": 10,
+                               "inertial TES volume": 200, 
+                               "inertial TES dispersion": 0.36, 
+                               "PV surplus": false,
+                               "REC surplus": false}}
+}   

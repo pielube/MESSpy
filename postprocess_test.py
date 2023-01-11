@@ -15,12 +15,11 @@ def total_balances(simulation_name,loc,var=None):
     
     simulationa_name : str 
     loc : str 
-    var :str -> possibility of specifying a single energy carrier
+    var : str -> possibility of specifying a single energy carrier
     
     """
     
-    with open('results/balances_'+simulation_name+'.pkl', 'rb') as f:
-        balances = pickle.load(f)
+    with open('results/balances_'+simulation_name+'.pkl', 'rb') as f: balances = pickle.load(f)
     
     ###### load analysis
     
@@ -35,8 +34,7 @@ def total_balances(simulation_name,loc,var=None):
         units    = {var : units[var]}
 
     for carrier in carriers:
-        print('\nTotal '+carrier+' balances:\n')
-        print('\n'+loc)   
+        print('\nTotal '+carrier+' balances '+loc+':\n') 
         for b in balances[loc][carrier]:
             
             positiv=round(balances[loc][carrier][b][balances[loc][carrier][b]>0].sum(),1)
@@ -53,9 +51,7 @@ def total_balances(simulation_name,loc,var=None):
     
 def NPV_plot(study_case):
     ##### economic
-    simulation_name = 'economic_assessment_'
-    with open('results/'+simulation_name+study_case+'.pkl', 'rb') as f:
-        economic = pickle.load(f)
+    with open('results/economic_assessment_'+study_case+'.pkl', 'rb') as f: economic = pickle.load(f)
     
     plt.figure(dpi=1000)
     
@@ -112,7 +108,7 @@ def LOC_plot(simulation_name):
     with open('results/LOC_'+simulation_name+'.pkl', 'rb') as f:
         LOC = pickle.load(f)
            
-    unit = {'H tank': '[kg]', 'battery': '[kWh]'}
+    unit = {'H tank': '[kg]', 'battery': '[kWh]', 'inertial TES': '[°C]'}
     
     for location_name in LOC:
         for tech in LOC[location_name]:
@@ -197,8 +193,7 @@ def hourly_balances_electricity(simulation_name,location_name,first_day,last_day
             else:
                 to_csc[i] = e 
             
-        x = np.linspace(first_day*24+1,(last_day+1)*24,(last_day-first_day+1)*24)
-        x = np.arange((last_day-first_day+1)*24)
+        x = np.arange(first_day*24,(last_day+1)*24)
         
         fig = plt.figure(dpi=1000)
         from mpl_toolkits.axisartist.axislines import SubplotZero
@@ -283,7 +278,7 @@ def hourly_balances_electricity(simulation_name,location_name,first_day,last_day
         
         plt.title(location_name+' days '+str(first_day)+'-'+str(last_day))
         plt.plot(x,load,'k',label='load')     
-        plt.legend(ncol=2, bbox_to_anchor=(1.2, 0))
+        plt.legend(ncol=2)
         plt.ylabel("Hourly energy [kWh/h] ")
         #plt.xticks([0,6,12,18,24],['0','6','12','18','24'],fontsize=10,color='g')
         #plt.xticks([0,6,12,18,24,30,36,42,48],['0','6','12','18','24','30','36','42','48'],fontsize=10,color='g')
@@ -538,6 +533,7 @@ def Flows(simulation_name,carrier='electricity'):
         
 def ele_param(simulation_name,first_day,last_day):              # functioning parameter of the electrolyzer over the simulation period
     
+      last_day = last_day+1
       with open('results/tech_params_'+simulation_name+'.pkl', 'rb') as f:
           param = pickle.load(f)
       
@@ -556,35 +552,9 @@ def ele_param(simulation_name,first_day,last_day):              # functioning pa
                  plt.title(location_name+' electrolyzer')
                  plt.show() 
             
-
-#     with open('results/tech_params_'+simulation_name+'.pkl', 'rb') as f:
-#         balances = pickle.load(f)
-        
-#     curr_FC = balances[location_name]['current density']['fuel cell'][first_day*24:last_day*24+24]
-#     x = np.arange(first_day*24,last_day*24) 
-
-#     plt.figure(dpi=1000)
-#     y = curr_FC
-#     # x = np.linspace(first_day*24+1,(last_day+1)*24,(last_day-first_day+1)*24)   
-#     plt.plot(x,y)
-#     plt.grid()
-#     plt.ylabel('Current [A]')
-#     plt.xlabel('Time [hours]')
-#     plt.title(location_name+' '+'FC load profile')
-#     plt.show()    
-    
-#     volt_FC = balances[location_name]['cell voltage']['fuel cell'][first_day*24:last_day*24+24]
-    
-#     plt.figure(dpi=1000)
-#     y = volt_FC  
-#     plt.plot(x,y)
-#     plt.grid()
-#     plt.ylabel('Current [A]')
-#     plt.xlabel('Time [hours]')
-#     plt.title(location_name+' '+'FC load profile')
-#     plt.show()
     
 def fc_param(simulation_name,first_day,last_day):
+    last_day = last_day+1
 
     with open('results/tech_params_'+simulation_name+'.pkl', 'rb') as f:
         param = pickle.load(f)

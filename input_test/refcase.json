@@ -1,41 +1,18 @@
 {
-"p1": {
-	   "demand": {
-		          "electricity": "load_test_1.csv"
-				  },
-		"grid":
-				{
-				"electricity": true,
-				"hydrogen": false,
-				"gas": false,
-				"heat": false,
-				"cool": false
-				}	
-	   },
-"p2": {
-	   "demand": {
-		          "electricity": "load_test_2.csv"
-				  },
-		"grid":
-				{
-				"electricity": true,
-				"hydrogen": false,
-				"gas": false,
-				"heat": false,
-				"cool": false
-		}	
-	   },
-"c1": {
-	   "demand": {
-		          "electricity": "load_test_3.csv"
-				  },
-		"grid":
-				{
-				"electricity": true,
-				"hydrogen": false,
-				"gas": false,
-				"heat": false,
-				"cool": false
-				}  
-	   }
-}   
+"prosumer_1": {	"demand": {	"electricity": "load_test_1.csv"},
+				"grid": {	"electricity": true}},
+		
+"prosumer_2": { "demand": {	"electricity": "load_test_2.csv"},
+				"grid":	{	"electricity": true}},
+							
+"consumer_1": { "demand": { "electricity": "load_test_3.csv"},
+				"grid": {	"electricity": true}},
+				
+"consumer_2": { "demand": { "electricity": "load_test_4.csv",
+                            "heat": "heat_test.csv",
+                            "dhw":  "dhw_test.csv"},
+                "grid": {   "electricity": true,
+                            "gas": true},
+                "boiler_ng": {  "Ppeak": 24,
+                                "efficiency": 0.95}}                        
+}
