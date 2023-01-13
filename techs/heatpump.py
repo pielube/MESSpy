@@ -47,8 +47,10 @@ class heatpump:
             self.t_rad_h = parameters['t rad heat']
             self.t_rad_c = parameters['t rad cool']
                     
-            self.REC_surplus = parameters['REC surplus'] # bool
             self.PV_surplus = parameters['PV surplus'] # boole
+            self.REC_surplus = parameters['REC surplus'] # bool
+            if self.REC_surplus:
+                self.PV_surplus = True
             
             self.mode = 1 # 1 = "heat" initial mode, during MESS simulation it is changed to 2 = "cool" when cooling is required
             
