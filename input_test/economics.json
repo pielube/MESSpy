@@ -1,31 +1,34 @@
 {
 "battery": {"total installation cost": 800, 
             "OeM": 0, 
-            "lifetime": "ageing"}, 
+            "lifetime": "ageing",
+            "refund": { "rate": 50, "years": 10}}, 
 			
 "PV": {"total installation cost": 1600, 
        "OeM": 10, 
-       "lifetime": 20}, 
+       "lifetime": 20,
+       "refund": { "rate": 50, "years": 10}},  
 	   
 "electrolyzer": {"total installation cost": 1500, 
                  "OeM": 0, 
-                 "lifetime": 15}, 
+                 "lifetime": 15,
+                 "refund": { "rate": 50, "years": 0}}, 
 				 
 "H tank": {"total installation cost": 400,
            "OeM": 0,
-           "lifetime": 30}, 
+           "lifetime": 30,
+           "refund": { "rate": 50, "years": 0}},  
 		   
 "fuel cell": {"total installation cost": 1500,
-               "OeM": 0, 
-               "lifetime": 15},
+              "OeM": 0, 
+              "lifetime": 15,
+              "refund": { "rate": 50, "years": 0}}, 
                
 "heatpump": {"total installation cost": 1200,
                "OeM": 0, 
-               "lifetime": 30},
-               
-"refund": { "rate": 50,
-			"time": 0},
-			 
+               "lifetime": 30,
+               "refund": { "rate": 65, "years": 0}}, 
+					 
 "REC": {"collective self consumption incentives": 0.118,
 		"incentives redistribution": {	"producers": 40,
 										"consumers": 40,
@@ -40,10 +43,7 @@
              "sale": 0},
 			  
 "gas": {"purchase": 0.15, 
-        "sale": 0}, 
-		 
-"heat": {"purchase": 0, 
-         "sale": 0},	  
+        "sale": 0}, 	  
 		  
 "interest rate": 0.03,
  
