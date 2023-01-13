@@ -11,17 +11,18 @@ def NPV(structure,structure0,study_case,reference_case,economic_data,simulation_
             'total installation cost': tech_name cost + installation costs [€]
             'OeM': operations and maintenance costs [€/kW/y]
             'lifetime': time after which the tech_name must be replaced [years]            
-        'refund': dictionary incentives definition
-            'rate': rate of initial investemt that will be refunded [%]
-            'time': refunding time [years]
-        'CER': dictionary REC economic parameters definition
+            'refund': dictionary incentives definition
+                'rate': rate of initial investemt that will be refunded [%]
+                'time': refunding time [years]
+        'REC': dictionary REC economic parameters definition
             'collective self consumption incentives': [€/kWh]
-            'constitution cost': [€]
-            'OeM': [€/y]
-        'carrier_name': dictionary (repeat for reach considered carrier: electricity, hydrogen, gas, heat)
-            'purchase': [€/kWh] or [€/kg] 
-            'sales': [€/kWh] or [€/kg]   
-        'interest rate': [%]
+            'incentives redistribution': 0-100 how the incentives are redistributed between prosumers, consumers and REC manger
+        'carrier_name': dictionary (repeat for reach considered carrier: electricity, hydrogen, gas)
+            'purchase': [€/kWh] (electricity and gas) or [€/kg] (hydrogen)
+            'sales': [€/kWh] (electricity and gas) or [€/kg] (hydrogen)
+        'interest rate': 0-1
+        'inflation rate': 0-1
+        'investment year': time horizon for which to evaluate the economic analysis (must be a multiple of simulation_year in general.json)
         
     study_case: str name of study case results file.pkl
     reference_case: str name of reference case results file.pkl
@@ -183,15 +184,17 @@ def NPV(structure,structure0,study_case,reference_case,economic_data,simulation_
         results[location_name]['NPV'] = np.zeros(economic_data['investment years']+1) # array initialise Net Present Value
         results[location_name]['NPV'][0] = -I0 # NPV at time 0 is - the initial investment
         i = economic_data['interest rate'] # interest rate [%]
+        f = economic_data['inflation rate'] # inflation rate [%]
         for y in range(1,economic_data['investment years']+1): # for each year
-            results[location_name]['NPV'][y] = results[location_name]['NPV'][y-1] + CF[y-1]/(1+i)**y # calculate NPV 
+            results[location_name]['NPV'][y] = results[location_name]['NPV'][y-1] + CF[y-1]*(1+f)**y/(1+i)**y # calculate NPV 
                              
             
         results[location_name]['CF_tot'] = CF
-    
+
     # save results in Results/economic_assesment.pkl
     with open(f"Results/economic_assessment_{study_case}.pkl", 'wb') as f:
         pickle.dump(results,f) 
+        
         
     
             
