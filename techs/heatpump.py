@@ -1,4 +1,5 @@
 import numpy as np
+import constants as c
 from scipy.interpolate import interp1d
 
 class heatpump:
@@ -27,9 +28,10 @@ class heatpump:
                 
                 "inertial TES volume": thermal energy storage float [lt]
                 "inertial TES dispersion": float [W/m2K]
-                                         
-                "REC surplus": bool use REC PV surplus to charge inertial_TES and to raise collecetive-self-consumption
-                "PV surplus": bool # under developement ...
+                               
+                "PV surplus": bool # allow to use PV surplus to charge inertial_TES
+                "REC surplus": bool # allow to use REC PV surplus to charhe intertial_TES
+
                 
             Returns
             -------
@@ -47,19 +49,19 @@ class heatpump:
             self.t_rad_h = parameters['t rad heat']
             self.t_rad_c = parameters['t rad cool']
                     
-            self.PV_surplus = parameters['PV surplus'] # boole
-            self.REC_surplus = parameters['REC surplus'] # bool
+            self.PV_surplus = parameters['PV surplus']
+            self.REC_surplus = parameters['REC surplus']
             if self.REC_surplus:
                 self.PV_surplus = True
             
             self.mode = 1 # 1 = "heat" initial mode, during MESS simulation it is changed to 2 = "cool" when cooling is required
             
-            #### inertial tank#################################################
-            self.i_TES_volume = parameters['inertial TES volume'] # [lt]
-            self.i_TES_dispersion = parameters['inertial TES dispersion'] # [W/m2K]
+            #### inertial TES#################################################
+            self.i_TES_volume = parameters['inertial TES volume']
+            self.i_TES_dispersion = parameters['inertial TES dispersion'] 
             self.i_TES_mass = self.i_TES_volume # lt -> kg
-            self.i_TES_surface = 6 * (self.i_TES_volume/1000)**(2/3) # cube surface [m2]
-            self.cp = 4187  # J/kgK     
+            self.i_TES_surface = 6 * (self.i_TES_volume/c.H2OADENSITY)**(2/3) # cube surface [m2]
+            self.cp = c.CP_WATER  # J/kgK     
             self.cp_kWh = self.cp/3600000 # kWh/kgK        
             self.i_TES_t = self.t_rad_h # initial temperature C°
             

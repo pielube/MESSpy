@@ -10,7 +10,7 @@ COSTANTS MODULE
 """
 #%%
 
-from CoolProp.CoolProp import PropsSI
+#from CoolProp.CoolProp import PropsSI
 
 #%%
 
@@ -51,6 +51,7 @@ H2MOL_S_E    =  130.7                      # [J/K*mol]    Hydrogen Standard Entr
 H2OMOLMASS   =  0.01801528                 # [kg/mol]     Water molar mass
 H2ONDENSITY  =  999.8437620819061          # [kg/Nm^3]    Water density at Normal conditions (T = 0°C, P = 101325 Pa) -> PropsSI('D', 'T', 273.16, 'P', 101325, 'Water') 
 H2OSDENSITY  =  999.1026214670995          # [kg/Sm^3]    Water density at Standard conditions (T = 15°C, P = 101325 Pa) -> PropsSI('D', 'T', 288.15, 'P', 101325, 'Water') 
+H2OADENSITY  =  998.2071504679284          # [kg/Sm^3]    Water density at 20°C (T = 20°C, P = 101325 Pa) -> PropsSI('D', 'T', 293.15, 'P', 101325, 'Water') 
 CP_WATER     =  4188.460622611614          # [J/kgK]      Water Mass specific constant pressure specific heat
 H2OMOL_S_E   =  188.8                      # [J/K*mol]    Water Standard Entropy - gaseous phase
 
