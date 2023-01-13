@@ -68,8 +68,8 @@ class heatpump:
             ### stories #######################################################
             self.i_TES_story = np.zeros(simulation_hours) # T_inertial_TES
             self.satisfaction_story = np.zeros(simulation_hours) # 0 no demand, 1 demand satisfied by iTES, 2 demand satisfied, 3 demand satisfied and iTES_T raised, 4 damand satisfied and iTES_T reaches maximum, -1 unsatisfied demand, -2 unsatisfied demand and iTES under minimum
-            self.cop_story = np.zeros(simulation_hours) # cop
-            self.surplus_story = np.zeros(simulation_hours) #
+            self.cop_story = np.zeros(simulation_hours) # coefficient of performance
+            self.surplus_story = np.zeros(simulation_hours) # 0 no surplus is used by HP. 1 HP use PV surplus to charge iTES.
             
             #### HP MODEL GU' #################################################
             # danfoss coolselector software available at https://www.danfoss.com/it-it/service-and-support/downloads/dcs/coolselector-2/
@@ -88,10 +88,7 @@ class heatpump:
             self.dT_eva= self.pinch_air+ self.overH # dT evaporator
             self.pinch_water=3 #pinch water
             
-            self.T_evap=np.array([-32,2,27,27,21,-8,-25,-32]) #?
-            self.T_cond=np.array([5,5,33,60,65,65,47,35]) #?
-            
-            ### Regulation
+            ### Regulation [Fahlén P. Capacity control of heat pumps. REHVA J 2012:28–31.]
             x=np.array([0.15 , 0.2, 0.4,  0.5, 0.6, 0.8, 1])
             y=np.array([2.87, 3.2 , 4 ,  4.1, 4 ,  3.65, 3.1])
             p = np.polyfit(x, y/3.1, 4)
@@ -105,7 +102,6 @@ class heatpump:
             self.c_t=0.85  # correcting factor to consider less efficiency at 6000 rpm
             Pth_7_35 = 13.197816888999997*self.c_t #  Pth at nominal condition of the HP used as reference model
             self.size_factor=  self.nom_Pth/ Pth_7_35 
-            
             
         def output(self,C,Te,Tc):
             # polynomial model
@@ -124,7 +120,6 @@ class heatpump:
             Pth= self.output(self.C_Pq6000,Te,Tc) + Pele
             Pth=Pth*self.c_t  # correcting factor to consider less efficiency at 6000 rpm
             cop=Pth/Pele
-            # size factor
             Pele= Pele*self.size_factor
             Pth= Pth*self.size_factor
             return cop,Pth,Pele, t_w_eff
@@ -147,7 +142,7 @@ class heatpump:
             return cop,Pth,Pele,t_w_eff  
         
         def HP_follows_electricity(self,t_amb,t_w,e_ele):
-            # electricity available: heatpump follows electricyty available insted of thermal demand
+            # heatpump follows electricyty available insted of thermal demand
             
             cop,Pth,Pele, t_w_eff = self.nominal_performance(t_amb,t_w)
             rf = e_ele / Pele # regulation factor
@@ -179,7 +174,7 @@ class heatpump:
 
             Returns
             -------
-            electricity used (-), heat supply (+) or absorbed (-) by the inertial_TES, heat supply (+) or absorbed (-) by the hp, 
+            electricity used (-), heat supply (+) or absorbed (-) by the HP, heat supply (+) or absorbed (-) by the inertial_TES
 
             """
             
