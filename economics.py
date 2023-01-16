@@ -9,11 +9,13 @@ def NPV(structure,structure0,study_case,reference_case,economic_data,simulation_
     economic_data: dictionary
         'tech_name': dictionary (repeat for each installed technologies: PV, battery, electrolyzer, H tank, fuel cell)
             'total installation cost': tech_name cost + installation costs [€]
-            'OeM': operations and maintenance costs [€/kW/y]
-            'lifetime': time after which the tech_name must be replaced [years]            
+            'OeM': operations and maintenance costs [€/kW/y]        
             'refund': dictionary incentives definition
                 'rate': rate of initial investemt that will be refunded [%]
                 'time': refunding time [years]
+            'replacement': dictionary replacement definition
+                'rate': rate of initial investemt that will be payed to replace teh technology [%]
+                'time': replacement time [years]
         'REC': dictionary REC economic parameters definition
             'collective self consumption incentives': [€/kWh]
             'incentives redistribution': 0-100 how the incentives are redistributed between prosumers, consumers and REC manger
@@ -89,7 +91,7 @@ def NPV(structure,structure0,study_case,reference_case,economic_data,simulation_
                 results[location_name]['CF_studycase']['OeM'][:] += - system[tech_name][size[tech_name]]*economic_data[tech_name]['OeM']  # add technology OeM to location OeM
 
                 # replacements 
-                if economic_data[tech_name]['lifetime'] == "ageing": # if replacement time is calculated according to ageing
+                if economic_data[tech_name]['replacement']['years'] == "ageing": # if replacement year is calculated according to ageing
                     with open('Results/ageing_'+study_case+'.pkl', 'rb') as f:
                         age = pickle.load(f)     
                         age = age[location_name][tech_name][0]
@@ -97,9 +99,9 @@ def NPV(structure,structure0,study_case,reference_case,economic_data,simulation_
                             rep_time = int(a/8760)
                             results[location_name]['CF_studycase']['OeM'][rep_time] += - system[tech_name][size[tech_name]]*economic_data[tech_name]['total installation cost'] # subtract technology replacement to location Cash Flow
                 else: # if replacement time is given
-                    rep_time = economic_data[tech_name]['lifetime']
+                    rep_time = economic_data[tech_name]['replacement']['years']
                     while rep_time < economic_data['investment years']: # if tech_name replacement happens before the end of the simulation
-                        results[location_name]['CF_studycase']['OeM'][rep_time] += - system[tech_name][size[tech_name]]*economic_data[tech_name]['total installation cost'] # subtract technology replacement to location Cash Flow
+                        results[location_name]['CF_studycase']['OeM'][rep_time] += - system[tech_name][size[tech_name]]*economic_data[tech_name]['total installation cost']*economic_data[tech_name]['replacement']['rate']/100 # subtract technology replacement to location Cash Flow
                         rep_time += rep_time
                 # NB no refund considered for replacements
                         
@@ -119,8 +121,8 @@ def NPV(structure,structure0,study_case,reference_case,economic_data,simulation_
                 
         # Replacements in the reference case (must be add to CF if a technology is no longer present)
                 if tech_name not in system: # if the tech_name is no longer present in the study case
-                    if economic_data[tech_name]['lifetime'] < economic_data['investment years']: # if tech_name replacement happens before the end of the simulation
-                        results[location_name]['CF_refcase']['OeM'][economic_data[tech_name]['lifetime']] += - system[tech_name][size[tech_name]]*economic_data[tech_name]['total installation cost'] # add technology replacement to location Cash Flow
+                    if economic_data[tech_name]['replacement']['years'] < economic_data['investment years']: # if tech_name replacement happens before the end of the simulation
+                        results[location_name]['CF_refcase']['OeM'][economic_data[tech_name]['replacement']['years']] += - system[tech_name][size[tech_name]]*economic_data[tech_name]['total installation cost']*economic_data[tech_name]['replacement']['rate']/100 # add technology replacement to location Cash Flow
         
         # energy sold and purchased in study case 
         for carrier in balances[location_name]:                           # for each carrier (electricity, hydrogen, gas, heat)
