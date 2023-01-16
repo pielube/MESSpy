@@ -101,6 +101,7 @@ pp.hourly_balances_electricity(study_case,'prosumer_2', 2, 3)
 #pp.ele_param(study_case, 2, 3)
 #pp.fc_param(study_case, 2, 3)
 
+
 #%% ##########################################################################
 "Sensitivity analysis - practical example"
 # click on the following code and press Ctrl+5 to discomment all together

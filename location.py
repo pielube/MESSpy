@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from techs import heatpump,boiler_el,boiler_ng,boiler_h2,PV,wind,battery,H_tank,fuel_cell,electrolyzer
+from techs import heatpump,boiler_el,boiler_ng,boiler_h2,PV,wind,battery,H_tank,fuel_cell,electrolyzer,inverter
 
 
 class location:
@@ -18,6 +18,7 @@ class location:
                 'hydrogen':    str 'file_name.csv' hourly time series of hydrogen demand 8760 values [kg/hr]
                 'gas':         str 'file_name.csv' hourly time series of gas demand 8760 values [kWh]
             'PV':           dictionary parameters needed to create PV object (see PV.py)
+            'inverter':     dictionary parameters needed to create inverter object (see inverter.py)
             'wind':         dictionary parameters needed to create wind object (see wind.py)
             'battery':      dictionary parameters needed to create battery object (see Battery.py)
             'electrolyzer': dictionary parameters needed to create electrolyzer object (see electrolyzer.py)
@@ -89,6 +90,10 @@ class location:
             self.technologies['PV'] = PV(self.system['PV'],general,self.simulation_hours,self.name,path) # PV object created and add to 'technologies' dictionary
             self.energy_balance['electricity']['PV'] = np.zeros(self.simulation_hours) # array PV electricity balance
            
+        if 'inverter' in self.system:
+            self.technologies['inverter'] = inverter(self.system['inverter'],self.simulation_hours) # inverter object created and add to 'technologies' dictionary
+            self.energy_balance['electricity']['inverter'] = np.zeros(self.simulation_hours) # array inverter electricity balance
+            
         if 'wind' in self.system:
             self.technologies['wind'] = wind(self.system['wind']) # wind object created and add to 'technologies' dictionary
             self.energy_balance['electricity']['wind'] = np.zeros(self.simulation_hours) # array wind electricity balance 
@@ -131,10 +136,28 @@ class location:
         
         eb = {'electricity': 0, 'heat': 0, 'dhw':0, 'hydrogen': 0, 'gas': 0} # initialise Energy Balances     
         
+        ### production (pv, wind, inverter)
+        
+        if 'PV' in self.technologies: 
+            self.energy_balance['electricity']['PV'][h] = self.technologies['PV'].use(h) # electricity produced from PV
+            eb['electricity'] += self.energy_balance['electricity']['PV'][h] # elecricity balance update: + electricity produced from PV
+            
+        if 'wind' in self.technologies: 
+            self.energy_balance['electricity']['wind'][h] = self.technologies['wind'].use(h,weather['wind_speed'][h]) # electricity produced from wind
+            eb['electricity'] += self.energy_balance['electricity']['wind'][h] # elecricity balance update: + electricity produced from wind
+    
+        if 'inverter' in self.technologies:
+            self.energy_balance['electricity']['inverter'][h] = self.technologies['inverter'].use(h,eb['electricity']) # electricity lost in conversion by the inverter
+            eb['electricity'] += self.energy_balance['electricity']['inverter'][h] # electricity balance update: - electricity lost in conversion by the invertert
+        
+        ### demand
+        
         for carrier in eb: # for each energy carrier
             if 'demand' in self.energy_balance[carrier]:                
                 eb[carrier] += self.energy_balance[carrier]['demand'][h] # energy balance update: energy demand(-) # n.b cooling demand (+)
                         
+        ### other techologies (boiler_el, boiler_ng, heatpump, battery, electrolyzer, fuel cell, boiler_H2, H tank)
+        
         if 'boiler_el' in self.technologies: 
             self.energy_balance['electricity']['boiler_el'][h], self.energy_balance['heat']['boiler_el'][h] = self.technologies['boiler_el'].use(eb['heat'],1) # el consumed and heat produced from boiler_el
             eb['electricity'] += self.energy_balance['electricity']['boiler_el'][h] # elecricity balance update: - electricity consumed by boiler_el
@@ -144,14 +167,6 @@ class location:
             self.energy_balance['gas']['boiler_ng'][h], self.energy_balance['heat']['boiler_ng'][h] = self.technologies['boiler_ng'].use(eb['heat'],1) # ng consumed and heat produced from boiler_ng
             eb['gas'] += self.energy_balance['gas']['boiler_ng'][h] # gas balance update: - gas consumed by boiler_ng
             eb['heat'] += self.energy_balance['heat']['boiler_ng'][h] # heat balance update: + heat produced by boiler_ng
-
-        if 'PV' in self.technologies: 
-            self.energy_balance['electricity']['PV'][h] = self.technologies['PV'].use(h) # electricity produced from PV
-            eb['electricity'] += self.energy_balance['electricity']['PV'][h] # elecricity balance update: + electricity produced from PV
-            
-        if 'wind' in self.technologies: 
-            self.energy_balance['electricity']['wind'][h] = self.technologies['wind'].use(h,weather['wind_speed'][h]) # electricity produced from wind
-            eb['electricity'] += self.energy_balance['electricity']['wind'][h] # elecricity balance update: + electricity produced from wind
     
         if 'heatpump' in self.technologies:     
             self.energy_balance['electricity']['heatpump'][h], self.energy_balance['heat']['heatpump'][h], self.energy_balance['heat']['inertial TES'][h] = self.technologies['heatpump'].use(weather['temp_air'][h],eb['heat'],eb['electricity'],h) 

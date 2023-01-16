@@ -76,7 +76,7 @@ def REC_electricity_balance(simulation_name):
         balances = pickle.load(f)
         
     df = pd.DataFrame(0.00,columns=["Value [kWh]","Value / production [%]","Value / demand [%]"],
-                      index=["SC","CSC","Into grid","From grid","Production","Demand"])
+                      index=["SC","CSC","Into grid","From grid","Losses","Production","Demand"])
     
     df.loc['CSC']['Value [kWh]'] = sum(balances['REC']['electricity']['collective self consumption'])
     df.loc['Into grid']['Value [kWh]'] = -sum(balances['REC']['electricity']['into grid'])  -df.loc['CSC']['Value [kWh]']
@@ -92,6 +92,7 @@ def REC_electricity_balance(simulation_name):
                 df.loc['Production']['Value [kWh]'] += sum(balance['wind'])
                 
     df.loc['SC']['Value [kWh]'] = df.loc['Demand']['Value [kWh]'] - df.loc['From grid']['Value [kWh]'] - df.loc['CSC']['Value [kWh]']
+    df.loc['Losses']['Value [kWh]'] = df.loc['Production']['Value [kWh]'] - df.loc['SC']['Value [kWh]'] - df.loc['Into grid']['Value [kWh]'] - df.loc['CSC']['Value [kWh]']
     
     for b in df.index:
         df.loc[b]['Value / production [%]'] = df.loc[b]['Value [kWh]'] / df.loc['Production']['Value [kWh]'] *100

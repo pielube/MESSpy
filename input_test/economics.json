@@ -4,11 +4,16 @@
             "lifetime": "ageing",
             "refund": { "rate": 50, "years": 10}}, 
 			
-"PV": {"total installation cost": 1600, 
+"PV": {"total installation cost": 1300, 
        "OeM": 10, 
        "lifetime": 20,
        "refund": { "rate": 50, "years": 10}},  
-	   
+ 
+"inverter":{   "total installation cost": 500, 
+               "OeM": 0, 
+               "lifetime": 10,
+               "refund": { "rate": 50, "years": 10}},  
+    	   
 "electrolyzer": {"total installation cost": 1500, 
                  "OeM": 0, 
                  "lifetime": 15,

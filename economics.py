@@ -57,7 +57,7 @@ def NPV(structure,structure0,study_case,reference_case,economic_data,simulation_
         OeM = 0                                           # initialise OeM        
         
         # each tech has a different sizing parameter:
-        size = {'PV': 'peakP', 'battery': 'nominal capacity', 'electrolyzer': 'Npower', 'fuel cell': 'Npower', 'H tank': 'max capacity', 'heatpump': 'nom Pth'} 
+        size = {'PV': 'peakP', 'inverter': 'peakP', 'battery': 'nominal capacity', 'electrolyzer': 'Npower', 'fuel cell': 'Npower', 'H tank': 'max capacity', 'heatpump': 'nom Pth'} 
         
         for tech_name in system:              # considering each techonlogiy in the location
             if tech_name in economic_data:    # to avoid considering 'electricity demand' as a technology and thus avoiding errors
