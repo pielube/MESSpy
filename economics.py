@@ -9,7 +9,7 @@ def NPV(structure,structure0,study_case,reference_case,economic_data,simulation_
     economic_data: dictionary
         'tech_name': dictionary (repeat for each installed technologies: PV, battery, electrolyzer, H tank, fuel cell)
             'total installation cost': tech_name cost + installation costs [€]
-            'OeM': operations and maintenance costs [€/kW/y]        
+            'OeM': operations and maintenance costs [%I0/y]        
             'refund': dictionary incentives definition
                 'rate': rate of initial investemt that will be refunded [%]
                 'time': refunding time [years]
@@ -71,24 +71,33 @@ def NPV(structure,structure0,study_case,reference_case,economic_data,simulation_
                                           'CSC': np.zeros(economic_data['investment years']),
                                           'Tot': np.zeros(economic_data['investment years'])} 
 
-        I0 = 0 # initialise initial investment           
+        results[location_name]['I0'] = {} # initialise initial investment           
         
-        # each tech has a different sizing parameter:
-        size = {'PV': 'peakP', 'inverter': 'peakP', 'battery': 'nominal capacity', 'electrolyzer': 'Npower', 'fuel cell': 'Npower', 'H tank': 'max capacity', 'heatpump': 'nom Pth'} 
+        # each tech has different cost correlation
         
         for tech_name in system:              # considering each techonlogiy in the location
             if tech_name in economic_data:    # to avoid considering 'electricity demand' as a technology and thus avoiding errors
                 
-                # Calculate I0 and OeM 
-                if tech_name in ['electrolyzer','fuel cell']:
-                    I0 += system[tech_name][size[tech_name]]*system[tech_name]['number of modules']*economic_data[tech_name]['total installation cost']  # add technology total installation cost to location I0
-                elif tech_name == 'inverter':
-                    I0 += system[tech_name][size[tech_name]]*system[tech_name]['number']*economic_data[tech_name]['total installation cost']  # add technology total installation cost to location I0
-                else:
-                    I0 += system[tech_name][size[tech_name]]*economic_data[tech_name]['total installation cost']  # add technology total installation cost to location I0
-
-
-                results[location_name]['CF_studycase']['OeM'][:] += - system[tech_name][size[tech_name]]*economic_data[tech_name]['OeM']  # add technology OeM to location OeM
+                # Calculate I0 
+                if tech_name == 'electrolyzer':
+                    results[location_name]['I0'][tech_name] = system[tech_name]['Npower']*system[tech_name]['number of modules']*economic_data[tech_name]['total installation cost']  # add technology total installation cost to location I0
+                if tech_name == 'fuel cell':
+                    results[location_name]['I0'][tech_name] = system[tech_name]['Npower']*system[tech_name]['number of modules']*economic_data[tech_name]['total installation cost']  # add technology total installation cost to location I0
+                if tech_name == 'PV':
+                    results[location_name]['I0'][tech_name] = system[tech_name]['peakP']*economic_data[tech_name]['total installation cost']  # add technology total installation cost to location I0
+                if tech_name == 'electrolyzer':
+                    results[location_name]['I0'][tech_name] = system[tech_name]['Npower']*system[tech_name]['number of modules']*economic_data[tech_name]['total installation cost']  # add technology total installation cost to location I0
+                if tech_name == 'inverter':
+                    results[location_name]['I0'][tech_name] = system[tech_name]['peakP']*economic_data[tech_name]['total installation cost']  # add technology total installation cost to location I0
+                if tech_name == 'battery':
+                    results[location_name]['I0'][tech_name] = system[tech_name]['nominal capacity']*economic_data[tech_name]['total installation cost']  # add technology total installation cost to location I0
+                if tech_name == 'H tank':
+                    results[location_name]['I0'][tech_name] = system[tech_name]['max capacity']*economic_data[tech_name]['total installation cost']  # add technology total installation cost to location I0
+                if tech_name == 'heatpump':
+                    results[location_name]['I0'][tech_name] = system[tech_name]['nom Pth']*economic_data[tech_name]['total installation cost']  # add technology total installation cost to location I0
+                   
+                # Calculate OeM
+                results[location_name]['CF_studycase']['OeM'][:] += - results[location_name]['I0'][tech_name]*economic_data[tech_name]['OeM']/100  # add technology OeM to location OeM
 
                 # replacements 
                 if economic_data[tech_name]['replacement']['years'] == "ageing": # if replacement year is calculated according to ageing
@@ -97,33 +106,30 @@ def NPV(structure,structure0,study_case,reference_case,economic_data,simulation_
                         age = age[location_name][tech_name][0]
                         for a in age:
                             rep_time = int(a/8760)
-                            results[location_name]['CF_studycase']['OeM'][rep_time] += - system[tech_name][size[tech_name]]*economic_data[tech_name]['total installation cost'] # subtract technology replacement to location Cash Flow
+                            results[location_name]['CF_studycase']['OeM'][rep_time] += - results[location_name]['I0'][tech_name]*economic_data[tech_name]['replacement']['rate']/100 # subtract technology replacement to location Cash Flow
                 else: # if replacement time is given
                     rep_time = economic_data[tech_name]['replacement']['years']
                     while rep_time < economic_data['investment years']: # if tech_name replacement happens before the end of the simulation
-                        results[location_name]['CF_studycase']['OeM'][rep_time] += - system[tech_name][size[tech_name]]*economic_data[tech_name]['total installation cost']*economic_data[tech_name]['replacement']['rate']/100 # subtract technology replacement to location Cash Flow
+                        results[location_name]['CF_studycase']['OeM'][rep_time] += - results[location_name]['I0'][tech_name]*economic_data[tech_name]['replacement']['rate']/100 # subtract technology replacement to location Cash Flow
                         rep_time += rep_time
                 # NB no refund considered for replacements
                         
                 # refund
                 if economic_data[tech_name]['refund']['years'] == 0:
-                    I0 += - system[tech_name][size[tech_name]]*economic_data[tech_name]['total installation cost']*economic_data[tech_name]['refund']['rate']/100
+                    results[location_name]['I0'][tech_name] = results[location_name]['I0'][tech_name]*(100-economic_data[tech_name]['refund']['rate'])/100
                 else:
-                    yearly_refund = system[tech_name][size[tech_name]]*economic_data[tech_name]['total installation cost']*(economic_data[tech_name]['refund']['rate']/100)/economic_data[tech_name]['refund']['years'] # yearly refund [€]
+                    yearly_refund = results[location_name]['I0'][tech_name]*economic_data[tech_name]['refund']['rate']/100 / economic_data[tech_name]['refund']['years'] # yearly refund [€]
                     refunds = np.zeros(economic_data['investment years']) # array initialise
                     refunds[:min(economic_data['investment years'],economic_data[tech_name]['refund']['years'])] = yearly_refund # array repet yearly refond 
                     results[location_name]['CF_studycase']['Refund'] += refunds # add refund to Cash Flow
                 
-        # OeM in the reference case (must be subtracted)
-        for tech_name in system0: # considering each techonlogies in the locations (reference_case)
-            if tech_name in economic_data: # to not consider 'electricity demand' as a technology and avoid bugs
-                results[location_name]['CF_refcase']['OeM'][:] += - system0[tech_name][size[tech_name]]*economic_data[tech_name]['OeM']  # add technology OeM to location OeM
-                
-        # Replacements in the reference case (must be add to CF if a technology is no longer present)
-                if tech_name not in system: # if the tech_name is no longer present in the study case
-                    if economic_data[tech_name]['replacement']['years'] < economic_data['investment years']: # if tech_name replacement happens before the end of the simulation
-                        results[location_name]['CF_refcase']['OeM'][economic_data[tech_name]['replacement']['years']] += - system[tech_name][size[tech_name]]*economic_data[tech_name]['total installation cost']*economic_data[tech_name]['replacement']['rate']/100 # add technology replacement to location Cash Flow
-        
+        # OeM and replacements in the reference case not considered yet
+# =============================================================================
+#         for tech_name in system0: # considering each techonlogies in the locations (reference_case)
+#             if tech_name in economic_data: # to not consider 'electricity demand' as a technology and avoid bugs
+#                 results[location_name]['CF_refcase']['OeM'][:] += 
+# =============================================================================
+
         # energy sold and purchased in study case 
         for carrier in balances[location_name]:                           # for each carrier (electricity, hydrogen, gas, heat)
             if 'grid' in balances[location_name][carrier]:  
@@ -241,9 +247,15 @@ def NPV(structure,structure0,study_case,reference_case,economic_data,simulation_
         results[location_name]['CF']['Tot'] = results[location_name]['CF_studycase']['Tot'] - results[location_name]['CF_refcase']['Tot']
         
     
+        # calculate I0
+        results[location_name]['I0']['Tot'] = 0
+        for tech_name in results[location_name]['I0']:
+            if tech_name != 'Tot':
+                results[location_name]['I0']['Tot'] += results[location_name]['I0'][tech_name]
+            
         # calculate NPV
         results[location_name]['NPV'] = np.zeros(economic_data['investment years']+1) # array initialise Net Present Value
-        results[location_name]['NPV'][0] = -I0 # NPV at time 0 is - the initial investment
+        results[location_name]['NPV'][0] = -results[location_name]['I0']['Tot'] # NPV at time 0 is - the initial investment
         i = economic_data['interest rate'] # interest rate [%]
 
         for y in range(1,economic_data['investment years']+1): # for each year
