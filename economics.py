@@ -20,8 +20,8 @@ def NPV(structure,structure0,study_case,reference_case,economic_data,simulation_
         'carrier_name': dictionary (repeat for reach considered carrier: electricity, hydrogen, gas)
             'purchase': [€/kWh] (electricity and gas) or [€/kg] (hydrogen)
             'sales': [€/kWh] (electricity and gas) or [€/kg] (hydrogen)
-        'interest rate': 0-1
-        'inflation rate': 0-1
+        'interest rate': 0-1 [rate/year]
+        'inflation rate': -1-1 [rate/year] cost evolution of each carrier
         'investment year': time horizon for which to evaluate the economic analysis (must be a multiple of simulation_year in general.json)
         
     study_case: str name of study case results file.pkl
@@ -175,7 +175,6 @@ def NPV(structure,structure0,study_case,reference_case,economic_data,simulation_
                       
                 
         # REC incentives redistribution
-
         csc = balances[location_name]['electricity']['collective self consumption']
         inc_pro = - csc * economic_data['REC']['incentives redistribution']['producers']/100 * economic_data['REC']['collective self consumption incentives']
         inc_pro = np.tile(inc_pro,years_factor)
@@ -187,10 +186,28 @@ def NPV(structure,structure0,study_case,reference_case,economic_data,simulation_
         inc_con = np.reshape(inc_con,(-1,8760))
         results[location_name]['CF_studycase']['CSC'] += inc_con.sum(axis=1,where=inc_con>0)   
         
-        
-        # inflation calculation for each carrier
-        
-        
+
+        # CF update considering inflation on each carrier
+        for carrier in economic_data['inflation rate']:
+            f = economic_data['inflation rate'][carrier]
+            
+            if carrier in results[location_name]['CF_studycase']['Purchase']:
+                for y in range(economic_data['investment years']):
+                    results[location_name]['CF_studycase']['Purchase'][carrier][y] = results[location_name]['CF_studycase']['Purchase'][carrier][y]*(1+f)**y
+                    
+            if carrier in results[location_name]['CF_studycase']['Sale']:
+                for y in range(economic_data['investment years']):
+                    results[location_name]['CF_studycase']['Sale'][carrier][y] = results[location_name]['CF_studycase']['Sale'][carrier][y]*(1+f)**y
+                    
+            if carrier in results[location_name]['CF_refcase']['Purchase']:
+                for y in range(economic_data['investment years']):
+                    results[location_name]['CF_refcase']['Purchase'][carrier][y] = results[location_name]['CF_refcase']['Purchase'][carrier][y]*(1+f)**y
+                    
+            if carrier in results[location_name]['CF_refcase']['Sale']:
+                for y in range(economic_data['investment years']):
+                    results[location_name]['CF_refcase']['Sale'][carrier][y] = results[location_name]['CF_refcase']['Sale'][carrier][y]*(1+f)**y
+            
+            
         # Calculate CF comparing CF_studycase and CF_refcase and total cash flow calculation
         results[location_name]['CF']['OeM'] += results[location_name]['CF_studycase']['OeM'] -results[location_name]['CF_refcase']['OeM'] 
         results[location_name]['CF']['Refund'] += results[location_name]['CF_studycase']['Refund'] -results[location_name]['CF_refcase']['Refund']
@@ -226,9 +243,9 @@ def NPV(structure,structure0,study_case,reference_case,economic_data,simulation_
         results[location_name]['NPV'] = np.zeros(economic_data['investment years']+1) # array initialise Net Present Value
         results[location_name]['NPV'][0] = -I0 # NPV at time 0 is - the initial investment
         i = economic_data['interest rate'] # interest rate [%]
-        f = economic_data['inflation rate'] # inflation rate [%]
+
         for y in range(1,economic_data['investment years']+1): # for each year
-            results[location_name]['NPV'][y] = results[location_name]['NPV'][y-1] + results[location_name]['CF']['Tot'][y-1]*(1+f)**y/(1+i)**y # calculate NPV 
+            results[location_name]['NPV'][y] = results[location_name]['NPV'][y-1] + results[location_name]['CF']['Tot'][y-1]/(1+i)**y # calculate NPV 
 
     # save results in Results/economic_assesment.pkl
     with open(f"Results/economic_assessment_{study_case}.pkl", 'wb') as f:  pickle.dump(results,f) 

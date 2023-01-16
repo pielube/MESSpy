@@ -29,7 +29,7 @@
               "lifetime": 15,
               "refund": { "rate": 50, "years": 0}}, 
                
-"heatpump": {"total installation cost": 1200,
+"heatpump": {"total installation cost": 1500,
                "OeM": 0, 
                "lifetime": 30,
                "refund": { "rate": 65, "years": 0}}, 
@@ -52,7 +52,9 @@
 		  
 "interest rate": 0.05,
 
-"inflation rate": 0.02,
- 
+"inflation rate": {  "electricity": 0.02,
+                    "gas": 0.04,
+                    "hydrogen": -0.10},
+                
 "investment years": 30
 }
