@@ -15,12 +15,6 @@ class heatpump:
             
                 "type": 1 = air-water (other types not yet implemented...)
                 
-                "usage": 1 = heat
-                         2 = heat and dhw 
-                         3 = heat and cool # under developement ...
-                         4 = dhw 
-                         5 = heat, coll and dhw # under developement ...
-                         
                 "nom Pth": float [kW] nominal condition: t_amb=5° t_out=35° 6000 rpm
                 
                 "t rad heat": float [C°] temperature radiant system in heating mode

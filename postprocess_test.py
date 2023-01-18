@@ -25,8 +25,8 @@ def total_balances(simulation_name,loc,var=None):
     
     ###### total energy balances
     
-    carriers = ['electricity','heat','gas','hydrogen']
-    units    = {'electricity': 'kWh', 'hydrogen': 'kg', 'gas':'kWh', 'heat':'kWh'}
+    carriers = ['electricity','heating water','gas','hydrogen']
+    units    = {'electricity': 'kWh', 'hydrogen': 'kg', 'gas':'kWh', 'heating water':'kWh'}
     
     if var: 
         

@@ -82,7 +82,7 @@ pp.total_balances(study_case,'consumer_1','electricity')
 #pp.total_balances(reference_case,'consumer_2','heat')
 #pp.total_balances(reference_case,'consumer_2','gas')
 pp.total_balances(study_case,'consumer_2','electricity')
-pp.total_balances(study_case,'consumer_2','heat')
+pp.total_balances(study_case,'consumer_2','heating water')
 
 
 pp.REC_electricity_balance(study_case)
