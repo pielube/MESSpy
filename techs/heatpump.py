@@ -1,4 +1,5 @@
 import numpy as np
+import constants as c
 from scipy.interpolate import interp1d
 
 class heatpump:
@@ -14,12 +15,6 @@ class heatpump:
             
                 "type": 1 = air-water (other types not yet implemented...)
                 
-                "usage": 1 = heat
-                         2 = heat and dhw 
-                         3 = heat and cool # under developement ...
-                         4 = dhw 
-                         5 = heat, coll and dhw # under developement ...
-                         
                 "nom Pth": float [kW] nominal condition: t_amb=5° t_out=35° 6000 rpm
                 
                 "t rad heat": float [C°] temperature radiant system in heating mode
@@ -27,9 +22,10 @@ class heatpump:
                 
                 "inertial TES volume": thermal energy storage float [lt]
                 "inertial TES dispersion": float [W/m2K]
-                                         
-                "REC surplus": bool use REC PV surplus to charge inertial_TES and to raise collecetive-self-consumption
-                "PV surplus": bool # under developement ...
+                               
+                "PV surplus": bool # allow to use PV surplus to charge inertial_TES
+                "REC surplus": bool # allow to use REC PV surplus to charhe intertial_TES
+
                 
             Returns
             -------
@@ -47,25 +43,27 @@ class heatpump:
             self.t_rad_h = parameters['t rad heat']
             self.t_rad_c = parameters['t rad cool']
                     
-            self.REC_surplus = parameters['REC surplus'] # bool
-            self.PV_surplus = parameters['PV surplus'] # boole
+            self.PV_surplus = parameters['PV surplus']
+            self.REC_surplus = parameters['REC surplus']
+            if self.REC_surplus:
+                self.PV_surplus = True
             
             self.mode = 1 # 1 = "heat" initial mode, during MESS simulation it is changed to 2 = "cool" when cooling is required
             
-            #### inertial tank#################################################
-            self.i_TES_volume = parameters['inertial TES volume'] # [lt]
-            self.i_TES_dispersion = parameters['inertial TES dispersion'] # [W/m2K]
+            #### inertial TES#################################################
+            self.i_TES_volume = parameters['inertial TES volume']
+            self.i_TES_dispersion = parameters['inertial TES dispersion'] 
             self.i_TES_mass = self.i_TES_volume # lt -> kg
-            self.i_TES_surface = 6 * (self.i_TES_volume/1000)**(2/3) # cube surface [m2]
-            self.cp = 4187  # J/kgK     
+            self.i_TES_surface = 6 * (self.i_TES_volume/c.H2OADENSITY)**(2/3) # cube surface [m2]
+            self.cp = c.CP_WATER  # J/kgK     
             self.cp_kWh = self.cp/3600000 # kWh/kgK        
             self.i_TES_t = self.t_rad_h # initial temperature C°
             
             ### stories #######################################################
             self.i_TES_story = np.zeros(simulation_hours) # T_inertial_TES
             self.satisfaction_story = np.zeros(simulation_hours) # 0 no demand, 1 demand satisfied by iTES, 2 demand satisfied, 3 demand satisfied and iTES_T raised, 4 damand satisfied and iTES_T reaches maximum, -1 unsatisfied demand, -2 unsatisfied demand and iTES under minimum
-            self.cop_story = np.zeros(simulation_hours) # cop
-            self.surplus_story = np.zeros(simulation_hours) #
+            self.cop_story = np.zeros(simulation_hours) # coefficient of performance
+            self.surplus_story = np.zeros(simulation_hours) # 0 no surplus is used by HP. 1 HP use PV surplus to charge iTES.
             
             #### HP MODEL GU' #################################################
             # danfoss coolselector software available at https://www.danfoss.com/it-it/service-and-support/downloads/dcs/coolselector-2/
@@ -84,10 +82,7 @@ class heatpump:
             self.dT_eva= self.pinch_air+ self.overH # dT evaporator
             self.pinch_water=3 #pinch water
             
-            self.T_evap=np.array([-32,2,27,27,21,-8,-25,-32]) #?
-            self.T_cond=np.array([5,5,33,60,65,65,47,35]) #?
-            
-            ### Regulation
+            ### Regulation [Fahlén P. Capacity control of heat pumps. REHVA J 2012:28–31.]
             x=np.array([0.15 , 0.2, 0.4,  0.5, 0.6, 0.8, 1])
             y=np.array([2.87, 3.2 , 4 ,  4.1, 4 ,  3.65, 3.1])
             p = np.polyfit(x, y/3.1, 4)
@@ -101,7 +96,6 @@ class heatpump:
             self.c_t=0.85  # correcting factor to consider less efficiency at 6000 rpm
             Pth_7_35 = 13.197816888999997*self.c_t #  Pth at nominal condition of the HP used as reference model
             self.size_factor=  self.nom_Pth/ Pth_7_35 
-            
             
         def output(self,C,Te,Tc):
             # polynomial model
@@ -120,7 +114,6 @@ class heatpump:
             Pth= self.output(self.C_Pq6000,Te,Tc) + Pele
             Pth=Pth*self.c_t  # correcting factor to consider less efficiency at 6000 rpm
             cop=Pth/Pele
-            # size factor
             Pele= Pele*self.size_factor
             Pth= Pth*self.size_factor
             return cop,Pth,Pele, t_w_eff
@@ -143,7 +136,7 @@ class heatpump:
             return cop,Pth,Pele,t_w_eff  
         
         def HP_follows_electricity(self,t_amb,t_w,e_ele):
-            # electricity available: heatpump follows electricyty available insted of thermal demand
+            # heatpump follows electricyty available insted of thermal demand
             
             cop,Pth,Pele, t_w_eff = self.nominal_performance(t_amb,t_w)
             rf = e_ele / Pele # regulation factor
@@ -175,7 +168,7 @@ class heatpump:
 
             Returns
             -------
-            electricity used (-), heat supply (+) or absorbed (-) by the inertial_TES, heat supply (+) or absorbed (-) by the hp, 
+            electricity used (-), heat supply (+) or absorbed (-) by the HP, heat supply (+) or absorbed (-) by the inertial_TES
 
             """
             

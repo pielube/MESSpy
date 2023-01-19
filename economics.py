@@ -9,19 +9,22 @@ def NPV(structure,structure0,study_case,reference_case,economic_data,simulation_
     economic_data: dictionary
         'tech_name': dictionary (repeat for each installed technologies: PV, battery, electrolyzer, H tank, fuel cell)
             'total installation cost': tech_name cost + installation costs [€]
-            'OeM': operations and maintenance costs [€/kW/y]
-            'lifetime': time after which the tech_name must be replaced [years]            
-        'refund': dictionary incentives definition
-            'rate': rate of initial investemt that will be refunded [%]
-            'time': refunding time [years]
-        'CER': dictionary REC economic parameters definition
+            'OeM': operations and maintenance costs [%I0/y]        
+            'refund': dictionary incentives definition
+                'rate': rate of initial investemt that will be refunded [%]
+                'time': refunding time [years]
+            'replacement': dictionary replacement definition
+                'rate': rate of initial investemt that will be payed to replace teh technology [%]
+                'time': replacement time [years]
+        'REC': dictionary REC economic parameters definition
             'collective self consumption incentives': [€/kWh]
-            'constitution cost': [€]
-            'OeM': [€/y]
-        'carrier_name': dictionary (repeat for reach considered carrier: electricity, hydrogen, gas, heat)
-            'purchase': [€/kWh] or [€/kg] 
-            'sales': [€/kWh] or [€/kg]   
-        'interest rate': [%]
+            'incentives redistribution': 0-100 how the incentives are redistributed between prosumers, consumers and REC manger
+        'carrier_name': dictionary (repeat for reach considered carrier: electricity, hydrogen, gas)
+            'purchase': [€/kWh] (electricity and gas) or [€/kg] (hydrogen)
+            'sales': [€/kWh] (electricity and gas) or [€/kg] (hydrogen)
+        'interest rate': 0-1 [rate/year]
+        'inflation rate': -1-1 [rate/year] cost evolution of each carrier
+        'investment year': time horizon for which to evaluate the economic analysis (must be a multiple of simulation_year in general.json)
         
     study_case: str name of study case results file.pkl
     reference_case: str name of reference case results file.pkl
@@ -36,162 +39,231 @@ def NPV(structure,structure0,study_case,reference_case,economic_data,simulation_
     years_factor = int(economic_data['investment years'] / simulation_years) # this factor is useful to match the length of the energy simulation with the length of the economic investment
     
     # open energy balances of study and reference case
-    with open('Results/balances_'+study_case+'.pkl', 'rb') as f:
-        rec = pickle.load(f)        
-    with open('Results/balances_'+reference_case+'.pkl', 'rb') as f:
-        rec0 = pickle.load(f)
+    with open('Results/balances_'+study_case+'.pkl', 'rb') as f:        balances = pickle.load(f)        
+    with open('Results/balances_'+reference_case+'.pkl', 'rb') as f:        balances0 = pickle.load(f)
         
     results = {}                              # dictionary initialise economic results of each locations
     
     for location_name in structure:           # for reach location
         
-        results[location_name] = {}           # dictionary initialise economic results
         system = structure[location_name]     # location system (see Location.py)
         system0 = structure0[location_name]   # same for reference case
         
-        results[location_name]['Annual cash flow'] = {}   # dictionary initialise annual cash flow
-                
-        CF = np.zeros(economic_data['investment years'])  # array initialize Casch Flow
-        I0 = 0                                            # initialise initial investment     
-        OeM = 0                                           # initialise OeM        
+        results[location_name] = {}           # dictionary initialise economic results
+       
+        # initialise cash flow:
+        results[location_name]['CF_refcase'] = {  'OeM': np.zeros(economic_data['investment years']),
+                                                  'Purchase': {},
+                                                  'Sale': {},
+                                                  'Refund': np.zeros(economic_data['investment years']),
+                                                  'CSC': np.zeros(economic_data['investment years']),
+                                                  'Tot': np.zeros(economic_data['investment years'])}        
+        results[location_name]['CF_studycase'] = {'OeM': np.zeros(economic_data['investment years']),
+                                                  'Purchase': {},
+                                                  'Sale': {},
+                                                  'Refund': np.zeros(economic_data['investment years']),
+                                                  'CSC': np.zeros(economic_data['investment years']),
+                                                  'Tot': np.zeros(economic_data['investment years'])}       
+        results[location_name]['CF'] = {  'OeM': np.zeros(economic_data['investment years']),
+                                          'Purchase': {},
+                                          'Sale': {},
+                                          'Refund': np.zeros(economic_data['investment years']),
+                                          'CSC': np.zeros(economic_data['investment years']),
+                                          'Tot': np.zeros(economic_data['investment years'])} 
+
+        results[location_name]['I0'] = {} # initialise initial investment           
         
-        # each tech has a different sizing parameter:
-        size = {'PV': 'peakP', 'battery': 'nominal capacity', 'electrolyzer': 'Npower', 'fuel cell': 'Npower', 'H tank': 'max capacity', 'heatpump': 'nom Pth'} 
+        # each tech has different cost correlation
         
         for tech_name in system:              # considering each techonlogiy in the location
             if tech_name in economic_data:    # to avoid considering 'electricity demand' as a technology and thus avoiding errors
                 
-                # Calculate I0 and OeM 
-                I0 += system[tech_name][size[tech_name]]*economic_data[tech_name]['total installation cost']  # add technology total installation cost to location I0
-                OeM += system[tech_name][size[tech_name]]*economic_data[tech_name]['OeM']                     # add technology OeM to location OeM
-               
+                # Calculate I0 
+                if tech_name == 'electrolyzer':
+                    results[location_name]['I0'][tech_name] = system[tech_name]['Npower']*system[tech_name]['number of modules']*economic_data[tech_name]['total installation cost']  # add technology total installation cost to location I0
+                if tech_name == 'fuel cell':
+                    results[location_name]['I0'][tech_name] = system[tech_name]['Npower']*system[tech_name]['number of modules']*economic_data[tech_name]['total installation cost']  # add technology total installation cost to location I0
+                if tech_name == 'PV':
+                    results[location_name]['I0'][tech_name] = system[tech_name]['peakP']*economic_data[tech_name]['total installation cost']  # add technology total installation cost to location I0
+                if tech_name == 'electrolyzer':
+                    results[location_name]['I0'][tech_name] = system[tech_name]['Npower']*system[tech_name]['number of modules']*economic_data[tech_name]['total installation cost']  # add technology total installation cost to location I0
+                if tech_name == 'inverter':
+                    results[location_name]['I0'][tech_name] = system[tech_name]['peakP']*economic_data[tech_name]['total installation cost']  # add technology total installation cost to location I0
+                if tech_name == 'battery':
+                    results[location_name]['I0'][tech_name] = system[tech_name]['nominal capacity']*economic_data[tech_name]['total installation cost']  # add technology total installation cost to location I0
+                if tech_name == 'H tank':
+                    results[location_name]['I0'][tech_name] = system[tech_name]['max capacity']*economic_data[tech_name]['total installation cost']  # add technology total installation cost to location I0
+                if tech_name == 'heatpump':
+                    results[location_name]['I0'][tech_name] = system[tech_name]['nom Pth']*economic_data[tech_name]['total installation cost']  # add technology total installation cost to location I0
+                   
+                # Calculate OeM
+                results[location_name]['CF_studycase']['OeM'][:] += - results[location_name]['I0'][tech_name]*economic_data[tech_name]['OeM']/100  # add technology OeM to location OeM
+
                 # replacements 
-                if economic_data[tech_name]['lifetime'] == "ageing": # if replacement time is calculated according to ageing
+                if economic_data[tech_name]['replacement']['years'] == "ageing": # if replacement year is calculated according to ageing
                     with open('Results/ageing_'+study_case+'.pkl', 'rb') as f:
                         age = pickle.load(f)     
                         age = age[location_name][tech_name][0]
                         for a in age:
                             rep_time = int(a/8760)
-                            CF[rep_time] += - system[tech_name][size[tech_name]]*economic_data[tech_name]['total installation cost'] # subtract technology replacement to location Cash Flow
+                            results[location_name]['CF_studycase']['OeM'][rep_time] += - results[location_name]['I0'][tech_name]*economic_data[tech_name]['replacement']['rate']/100 # subtract technology replacement to location Cash Flow
                 else: # if replacement time is given
-                    rep_time = economic_data[tech_name]['lifetime']
+                    rep_time = economic_data[tech_name]['replacement']['years']
                     while rep_time < economic_data['investment years']: # if tech_name replacement happens before the end of the simulation
-                        CF[rep_time] += - system[tech_name][size[tech_name]]*economic_data[tech_name]['total installation cost'] # subtract technology replacement to location Cash Flow
+                        results[location_name]['CF_studycase']['OeM'][rep_time] += - results[location_name]['I0'][tech_name]*economic_data[tech_name]['replacement']['rate']/100 # subtract technology replacement to location Cash Flow
                         rep_time += rep_time
                 # NB no refund considered for replacements
                         
-        # refund
-        if economic_data['refund']['time'] == 0:
-            I0 += - I0*economic_data['refund']['rate']/100
-        else:
-            yearly_refund = I0*(economic_data['refund']['rate']/100)/economic_data['refund']['time'] # yearly refund [€]
-            refunds = np.zeros(economic_data['investment years']) # array initialise
-            refunds[:min(economic_data['investment years'],economic_data['refund']['time'])] = yearly_refund # array repet yearly refond for 
-            CF = CF + refunds # add refund to Cash Flow
+                # refund
+                if economic_data[tech_name]['refund']['years'] == 0:
+                    results[location_name]['I0'][tech_name] = results[location_name]['I0'][tech_name]*(100-economic_data[tech_name]['refund']['rate'])/100
+                else:
+                    yearly_refund = results[location_name]['I0'][tech_name]*economic_data[tech_name]['refund']['rate']/100 / economic_data[tech_name]['refund']['years'] # yearly refund [€]
+                    refunds = np.zeros(economic_data['investment years']) # array initialise
+                    refunds[:min(economic_data['investment years'],economic_data[tech_name]['refund']['years'])] = yearly_refund # array repet yearly refond 
+                    results[location_name]['CF_studycase']['Refund'] += refunds # add refund to Cash Flow
                 
-        # OeM in the reference case (must be subtracted)
-        for tech_name in system0: # considering each techonlogies in the locations (reference_case)
-            if tech_name in economic_data: # to not consider 'electricity demand' as a technology and avoid bugs
-                OeM += - system[tech_name][size[tech_name]]*economic_data[tech_name]['OeM'] # subtract technology OeM to location OeM
-                
-        # Replacements in the reference case (must be add to CF if a technology is no longer present)
-                if tech_name not in system: # if the tech_name is no longer present in the study case
-                    if economic_data[tech_name]['lifetime'] < economic_data['investment years']: # if tech_name replacement happens before the end of the simulation
-                        CF[economic_data[tech_name]['lifetime']] += + system[tech_name][size[tech_name]]*economic_data[tech_name]['total installation cost'] # add technology replacement to location Cash Flow
+        # OeM and replacements in the reference case not considered yet
+# =============================================================================
+#         for tech_name in system0: # considering each techonlogies in the locations (reference_case)
+#             if tech_name in economic_data: # to not consider 'electricity demand' as a technology and avoid bugs
+#                 results[location_name]['CF_refcase']['OeM'][:] += 
+# =============================================================================
 
-        CF[:] += - OeM   # OeM every year
-        results[location_name]['Annual cash flow']['OeM'] = -OeM     # OeM every year
-        
         # energy sold and purchased in study case 
-        results[location_name]['Annual cash flow']['Sale'] = {}      #initialise
-        results[location_name]['Annual cash flow']['Purchase'] = {}  #initialise
-            
-        for carrier in rec[location_name]:                           # for each carrier (electricity, hydrogen, gas, heat)
-            if 'grid' in rec[location_name][carrier]:  
-                
-                results[location_name]['Annual cash flow']['Sale'][carrier] = 0        #initialise
-                results[location_name]['Annual cash flow']['Purchase'][carrier] = 0    #initialise                
+        for carrier in balances[location_name]:                           # for each carrier (electricity, hydrogen, gas, heat)
+            if 'grid' in balances[location_name][carrier]:  
                 
                 if type(economic_data[carrier]['sale']) == str: # if there is the price serie
                     sale_serie = np.tile(pd.read_csv(path+'/energy_price/'+economic_data[carrier]['sale'])['0'].to_numpy(),int(simulation_years))  
-                    sold = rec[location_name][carrier]['grid'] * sale_serie
+                    sold = balances[location_name][carrier]['grid'] * sale_serie
                 else: # if the price is always the same 
-                    sold = rec[location_name][carrier]['grid']*economic_data[carrier]['sale'] 
+                    sold = balances[location_name][carrier]['grid']*economic_data[carrier]['sale'] 
                
                 sold = np.tile(sold,years_factor)
                 sold = np.reshape(sold,(-1,8760))
-                CF = CF - sold.sum(axis=1,where=sold<0)
-                results[location_name]['Annual cash flow']['Sale'][carrier] += - sold.sum(axis=1,where=sold<0)
-          
+                results[location_name]['CF_studycase']['Sale'][carrier] = - sold.sum(axis=1,where=sold<0)
+                results[location_name]['CF']['Sale'][carrier] = np.zeros(economic_data['investment years'])
+                
                 if type(economic_data[carrier]['purchase']) == str: # if there is the price series
                     purchase_serie = np.tile(pd.read_csv(path+'/energy_price/'+economic_data[carrier]['purchase'])['0'].to_numpy(),int(simulation_years))  
-                    purchase = rec[location_name][carrier]['grid'] * purchase_serie
+                    purchase = balances[location_name][carrier]['grid'] * purchase_serie
                 else: # if the price is always the same 
-                    purchase = rec[location_name][carrier]['grid']*economic_data[carrier]['purchase']
+                    purchase = balances[location_name][carrier]['grid']*economic_data[carrier]['purchase']
                
                 purchase = np.tile(purchase,years_factor)
                 purchase = np.reshape(purchase,(-1,8760))
-                CF = CF - purchase.sum(axis=1,where=purchase>0)
-                results[location_name]['Annual cash flow']['Purchase'][carrier] += - purchase.sum(axis=1,where=purchase>0)
+                results[location_name]['CF_studycase']['Purchase'][carrier] = - purchase.sum(axis=1,where=purchase>0)
+                results[location_name]['CF']['Purchase'][carrier] = np.zeros(economic_data['investment years'])
             
                 
         # energy sold and purchased in reference case 
-        for carrier in rec0[location_name]: # for each carrier (electricity, hydrogen, gas, heat)
-            if 'grid' in rec0[location_name][carrier]: 
+        for carrier in balances0[location_name]: # for each carrier (electricity, hydrogen, gas, heat)
+            if 'grid' in balances0[location_name][carrier]: 
                 
-                if not carrier in results[location_name]['Annual cash flow']['Sale']:
-                    results[location_name]['Annual cash flow']['Sale'][carrier] = 0       #initialise
-                    results[location_name]['Annual cash flow']['Purchase'][carrier] = 0   #initialise 
-               
                 if type(economic_data[carrier]['sale']) == str:                           # if there is the price serie
-                    sold = rec0[location_name][carrier]['grid'] * sale_serie
+                    sold = balances0[location_name][carrier]['grid'] * sale_serie
                 else: # if the price is always the same 
-                    sold = rec0[location_name][carrier]['grid']*economic_data[carrier]['sale'] 
+                    sold = balances0[location_name][carrier]['grid']*economic_data[carrier]['sale'] 
                 
                 sold = np.tile(sold,years_factor)
                 sold = np.reshape(sold,(-1,8760))
-                CF = CF + sold.sum(axis=1,where=sold<0)
-                results[location_name]['Annual cash flow']['Sale'][carrier] += sold.sum(axis=1,where=sold<0)
+                results[location_name]['CF_refcase']['Sale'][carrier] = -sold.sum(axis=1,where=sold<0)
+                results[location_name]['CF']['Sale'][carrier] = np.zeros(economic_data['investment years'])
 
                 if type(economic_data[carrier]['purchase']) == str: # if there is the price serie
-                    purchase = rec0[location_name][carrier]['grid'] * purchase_serie
+                    purchase = balances0[location_name][carrier]['grid'] * purchase_serie
                 else: # if the price is always the same 
-                    purchase = rec0[location_name][carrier]['grid']*economic_data[carrier]['purchase']
+                    purchase = balances0[location_name][carrier]['grid']*economic_data[carrier]['purchase']
               
                 purchase = np.tile(purchase,years_factor)
                 purchase = np.reshape(purchase,(-1,8760))
-                CF = CF + purchase.sum(axis=1,where=purchase>0)
-                results[location_name]['Annual cash flow']['Purchase'][carrier] += purchase.sum(axis=1,where=purchase>0)
+                results[location_name]['CF_refcase']['Purchase'][carrier] = -purchase.sum(axis=1,where=purchase>0)
+                results[location_name]['CF']['Purchase'][carrier] = np.zeros(economic_data['investment years'])
                       
                 
         # REC incentives redistribution
-        results[location_name]['Annual cash flow']['CSC'] = 0 # initialise
-        csc = rec[location_name]['electricity']['collective self consumption']
+        csc = balances[location_name]['electricity']['collective self consumption']
         inc_pro = - csc * economic_data['REC']['incentives redistribution']['producers']/100 * economic_data['REC']['collective self consumption incentives']
         inc_pro = np.tile(inc_pro,years_factor)
-        inc_pro = np.reshape(inc_pro,(-1,8760))
-        CF = CF + inc_pro.sum(axis=1,where=inc_pro>0)       
-        results[location_name]['Annual cash flow']['CSC'] += inc_pro.sum(axis=1,where=inc_pro>0) 
+        inc_pro = np.reshape(inc_pro,(-1,8760))    
+        results[location_name]['CF_studycase']['CSC'] += inc_pro.sum(axis=1,where=inc_pro>0) 
         
         inc_con = csc * economic_data['REC']['incentives redistribution']['consumers']/100 * economic_data['REC']['collective self consumption incentives']
         inc_con= np.tile(inc_con,years_factor)
         inc_con = np.reshape(inc_con,(-1,8760))
-        CF = CF + inc_con.sum(axis=1,where=inc_con>0)   
-        results[location_name]['Annual cash flow']['CSC'] += inc_con.sum(axis=1,where=inc_con>0)   
+        results[location_name]['CF_studycase']['CSC'] += inc_con.sum(axis=1,where=inc_con>0)   
         
+
+        # CF update considering inflation on each carrier
+        for carrier in economic_data['inflation rate']:
+            f = economic_data['inflation rate'][carrier]
+            
+            if carrier in results[location_name]['CF_studycase']['Purchase']:
+                for y in range(economic_data['investment years']):
+                    results[location_name]['CF_studycase']['Purchase'][carrier][y] = results[location_name]['CF_studycase']['Purchase'][carrier][y]*(1+f)**y
+                    
+            if carrier in results[location_name]['CF_studycase']['Sale']:
+                for y in range(economic_data['investment years']):
+                    results[location_name]['CF_studycase']['Sale'][carrier][y] = results[location_name]['CF_studycase']['Sale'][carrier][y]*(1+f)**y
+                    
+            if carrier in results[location_name]['CF_refcase']['Purchase']:
+                for y in range(economic_data['investment years']):
+                    results[location_name]['CF_refcase']['Purchase'][carrier][y] = results[location_name]['CF_refcase']['Purchase'][carrier][y]*(1+f)**y
+                    
+            if carrier in results[location_name]['CF_refcase']['Sale']:
+                for y in range(economic_data['investment years']):
+                    results[location_name]['CF_refcase']['Sale'][carrier][y] = results[location_name]['CF_refcase']['Sale'][carrier][y]*(1+f)**y
+            
+            
+        # Calculate CF comparing CF_studycase and CF_refcase and total cash flow calculation
+        results[location_name]['CF']['OeM'] += results[location_name]['CF_studycase']['OeM'] -results[location_name]['CF_refcase']['OeM'] 
+        results[location_name]['CF']['Refund'] += results[location_name]['CF_studycase']['Refund'] -results[location_name]['CF_refcase']['Refund']
+        results[location_name]['CF']['CSC'] += results[location_name]['CF_studycase']['CSC'] -results[location_name]['CF_refcase']['CSC']
+        
+        results[location_name]['CF_studycase']['Tot'] += results[location_name]['CF_studycase']['OeM']
+        results[location_name]['CF_studycase']['Tot'] += results[location_name]['CF_studycase']['Refund']
+        results[location_name]['CF_studycase']['Tot'] += results[location_name]['CF_studycase']['CSC']
+        results[location_name]['CF_refcase']['Tot'] += results[location_name]['CF_refcase']['OeM']
+        results[location_name]['CF_refcase']['Tot'] += results[location_name]['CF_refcase']['Refund']
+        results[location_name]['CF_refcase']['Tot'] += results[location_name]['CF_refcase']['CSC']
+      
+        for carrier in results[location_name]['CF_studycase']['Purchase']:
+            results[location_name]['CF_studycase']['Tot'] += results[location_name]['CF_studycase']['Purchase'][carrier]
+            results[location_name]['CF']['Purchase'][carrier] += results[location_name]['CF_studycase']['Purchase'][carrier]
+       
+        for carrier in results[location_name]['CF_refcase']['Purchase']:
+            results[location_name]['CF_refcase']['Tot'] += results[location_name]['CF_refcase']['Purchase'][carrier]
+            results[location_name]['CF']['Purchase'][carrier] += - results[location_name]['CF_refcase']['Purchase'][carrier]
+        
+        for carrier in results[location_name]['CF_studycase']['Sale']:
+            results[location_name]['CF_studycase']['Tot'] += results[location_name]['CF_studycase']['Sale'][carrier]
+            results[location_name]['CF']['Sale'][carrier] += results[location_name]['CF_studycase']['Sale'][carrier]
+        
+        for carrier in results[location_name]['CF_refcase']['Sale']:
+            results[location_name]['CF_refcase']['Tot'] += results[location_name]['CF_refcase']['Sale'][carrier]
+            results[location_name]['CF']['Sale'][carrier] += - results[location_name]['CF_refcase']['Sale'][carrier]
+        
+        results[location_name]['CF']['Tot'] = results[location_name]['CF_studycase']['Tot'] - results[location_name]['CF_refcase']['Tot']
+        
+    
+        # calculate I0
+        results[location_name]['I0']['Tot'] = 0
+        for tech_name in results[location_name]['I0']:
+            if tech_name != 'Tot':
+                results[location_name]['I0']['Tot'] += results[location_name]['I0'][tech_name]
+            
         # calculate NPV
         results[location_name]['NPV'] = np.zeros(economic_data['investment years']+1) # array initialise Net Present Value
-        results[location_name]['NPV'][0] = -I0 # NPV at time 0 is - the initial investment
+        results[location_name]['NPV'][0] = -results[location_name]['I0']['Tot'] # NPV at time 0 is - the initial investment
         i = economic_data['interest rate'] # interest rate [%]
+
         for y in range(1,economic_data['investment years']+1): # for each year
-            results[location_name]['NPV'][y] = results[location_name]['NPV'][y-1] + CF[y-1]/(1+i)**y # calculate NPV 
-                             
-            
-        results[location_name]['CF_tot'] = CF
-    
+            results[location_name]['NPV'][y] = results[location_name]['NPV'][y-1] + results[location_name]['CF']['Tot'][y-1]/(1+i)**y # calculate NPV 
+
     # save results in Results/economic_assesment.pkl
-    with open(f"Results/economic_assessment_{study_case}.pkl", 'wb') as f:
-        pickle.dump(results,f) 
+    with open(f"Results/economic_assessment_{study_case}.pkl", 'wb') as f:  pickle.dump(results,f) 
+        
         
     
             

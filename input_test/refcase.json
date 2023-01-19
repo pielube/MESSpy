@@ -9,8 +9,7 @@
 				"grid": {	"electricity": true}},
 				
 "consumer_2": { "demand": { "electricity": "load_test_4.csv",
-                            "heat": "heat_test.csv",
-                            "dhw":  "dhw_test.csv"},
+                            "heating water": "heating-dhw_test.csv"},
                 "grid": {   "electricity": true,
                             "gas": true},
                 "boiler_ng": {  "Ppeak": 24,

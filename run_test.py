@@ -78,11 +78,12 @@ pp.total_balances(study_case,'prosumer_1','electricity')
 pp.total_balances(study_case,'prosumer_2','electricity')
 pp.total_balances(study_case,'prosumer_2','hydrogen')
 pp.total_balances(study_case,'consumer_1','electricity')
+
 #pp.total_balances(reference_case,'consumer_2','electricity')
-#pp.total_balances(reference_case,'consumer_2','heat')
+#pp.total_balances(reference_case,'consumer_2','heating water')
 #pp.total_balances(reference_case,'consumer_2','gas')
 pp.total_balances(study_case,'consumer_2','electricity')
-pp.total_balances(study_case,'consumer_2','heat')
+pp.total_balances(study_case,'consumer_2','heating water')
 
 
 pp.REC_electricity_balance(study_case)
@@ -100,6 +101,7 @@ pp.hourly_balances_electricity(study_case,'prosumer_2', 2, 3)
 #pp.storage_control(study_case)
 #pp.ele_param(study_case, 2, 3)
 #pp.fc_param(study_case, 2, 3)
+
 
 #%% ##########################################################################
 "Sensitivity analysis - practical example"
