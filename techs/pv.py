@@ -139,7 +139,10 @@ class PV:
                     pickle.dump(general, f)             
             
             peakP = parameters['peakP']
-            pv = pv * peakP/1000        
+            pv = pv * peakP/1000 
+            
+            print(sum(pv))
+            
             # electricity produced every hour in the reference_year [kWh]
             self.production = np.tile(pv,int(simulation_hours/8760))
             # electricity produced every hour for the entire simulation [kWh]
