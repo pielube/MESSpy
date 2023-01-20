@@ -21,7 +21,7 @@
 				"grid":	{	"electricity": true,
 							"hydrogen": true},
 				"PV": {		"tilt": 30,
-							"azimuth": 0,
+							"azimuth": 10,
 							"losses": 10,
 							"peakP": 2,
 							"serie": "TMY"},	

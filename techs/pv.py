@@ -10,7 +10,7 @@ import constants as c
 
 class PV:    
     
-    def __init__(self,parameters,general,simulation_hours,location_name,path):
+    def __init__(self,parameters,general,simulation_hours,location_name,path,check,rec_name):
         """
         Create a PV object based on PV production taken from PVGIS data 
     
@@ -35,14 +35,14 @@ class PV:
             ### If PV serie have already been downloaded and saved as file.csv, this file is used
             ### Otherwise new serie is downloaded from PVgis (type meteorological year)
             
-            check = True # True if no PV parameters are changed from the old simulation
+            # check = True # True if no PV parameters are changed from the old simulation
             
             directory = './previous_simulation'
             if not os.path.exists(directory):
                 os.makedirs(directory)
            
-            if os.path.exists('previous_simulation/parameters_'+location_name+'.pkl'):
-                with open('previous_simulation/parameters_'+location_name+'.pkl', 'rb') as f:
+            if os.path.exists('previous_simulation/parameters_'+rec_name+location_name+'.pkl'):
+                with open('previous_simulation/parameters_'+rec_name+location_name+'.pkl', 'rb') as f:
                     ps_parameters = pickle.load(f) # previous simulation location parameters
                 par_to_check = ['tilt','azimuth','losses']
                 for par in par_to_check:
@@ -51,22 +51,22 @@ class PV:
             else:
                 check = False
           
-            if os.path.exists('previous_simulation/general.pkl'):
-                with open('previous_simulation/general.pkl', 'rb') as f:
-                    ps_general = pickle.load(f) # previous simulation general
-                par_to_check = ['latitude','longitude','UTC time zone','DST']
-                for par in par_to_check:
-                    if ps_general[par] != general[par]:
-                        check = False  
-            else:
-                check = False
+            # if os.path.exists('previous_simulation/general.pkl'):
+            #     with open('previous_simulation/general.pkl', 'rb') as f:
+            #         ps_general = pickle.load(f) # previous simulation general
+            #     par_to_check = ['latitude','longitude','UTC time zone','DST']
+            #     for par in par_to_check:
+            #         if ps_general[par] != general[par]:
+            #             check = False  
+            # else:
+            #     check = False
                                     
-            name_serie = location_name + '_PV_TMY.csv'
+            name_serie = rec_name + location_name + '_PV_TMY.csv'
             if check and os.path.exists(path+'/production/'+name_serie): # if the prevoius pv serie can be used
                 pv = pd.read_csv(path+'/production/'+name_serie)['P'].to_numpy()
             
             else: # if a new pv serie must be downoladed from PV gis
-                print('downolading a new PV serie from PVgis for '+location_name)   
+                print('Downolading a new PV serie from PVgis for '+rec_name+location_name)   
                     
                 latitude = general['latitude']
                 longitude = general['longitude']
@@ -78,7 +78,7 @@ class PV:
                 weather = pvlib.iotools.get_pvgis_tmy(latitude, longitude, map_variables=True)[0]
                 
                 # Actual production calculation (extract all available data points)
-                res = pvlib.iotools.get_pvgis_hourly(latitude,longitude,surface_tilt=tilt,surface_azimuth=azimuth,pvcalculation=True,peakpower=1,loss=losses)
+                res = pvlib.iotools.get_pvgis_hourly(latitude,longitude,surface_tilt=tilt,surface_azimuth=azimuth,pvcalculation=True,peakpower=1,loss=losses,optimalangles=False)
                 
                 
                 # Index to select TMY relevant data points
@@ -132,16 +132,14 @@ class PV:
                 pv.to_csv(path+'/production/'+name_serie)
             
                 # save new parameters in previous_simulation
-                with open('previous_simulation/parameters_'+location_name+'.pkl', 'wb') as f:
+                with open('previous_simulation/parameters_'+rec_name+location_name+'.pkl', 'wb') as f:
                     pickle.dump(parameters, f) 
                     
-                with open('previous_simulation/general.pkl', 'wb') as f:
-                    pickle.dump(general, f)             
+                # with open('previous_simulation/general.pkl', 'wb') as f:
+                #     pickle.dump(general, f)             
             
             peakP = parameters['peakP']
-            pv = pv * peakP/1000 
-            
-            print(sum(pv))
+            pv = pv * peakP/1000
             
             # electricity produced every hour in the reference_year [kWh]
             self.production = np.tile(pv,int(simulation_hours/8760))

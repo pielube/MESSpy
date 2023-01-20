@@ -17,9 +17,10 @@ from economics import NPV
 import postprocess_test as pp
 import preprocess_test as pre
 #import postprocess_dev as pp
-#import preprocess_dev as pp
+#import preprocess_dev as pre
 import os
 import json
+import pickle
 
 # Selecting simulation names
 study_case = 'REC_test' # str name for results file.pkl
@@ -40,27 +41,58 @@ with open(os.path.join(path,file_general),'r') as f: general = json.load(f)
 with open(os.path.join(path,file_eco),'r') as f: economic_data = json.load(f)
 with open(os.path.join(path,file_refcase),'r') as f: structure0 = json.load(f)
 
+
+"""
+
+If general.json is the same of the previous simulation, neither the meteorological data nor the PV has to be updated, 
+otherwise they are downloaded from PVgis considering the typical meteorological year.
+
+"""
+
+check = True # True if no general parameters are changed from the old simulation
+
+directory = './previous_simulation'
+if not os.path.exists(directory):
+    os.makedirs(directory)
+   
+if os.path.exists('previous_simulation/general.pkl'):
+    with open('previous_simulation/general.pkl', 'rb') as f:
+        ps_general = pickle.load(f) # previous simulation general
+    par_to_check = ['latitude','longitude','UTC time zone','DST']
+    for par in par_to_check:
+        if ps_general[par] != general[par]:
+            check = False  
+else:
+    check = False
+
+
 #%% ###########################################################################
 """
 SOLVER
 ======
 """
-
-rec = REC(structure,general,path) # create REC object
+rec_name = 'REC_'
+rec = REC(structure,general,path,check,rec_name) # create REC object
 rec.REC_energy_simulation() # simulate REC enegy balances
 rec.save(study_case) # save results in 'study_case.pkl'
-  
+    
 #%% ###########################################################################
 """
 POST PROCESS - ECONOMIC ANALYSIS
 ================================
 """
-
+  
 # Reference case simulation (run only if changed)
-rec0 = REC(structure0,general,path) # create REC
+rec_name = 'REC0_'
+rec0 = REC(structure0,general,path,check,rec_name) # create REC
 rec0.REC_energy_simulation() # simulate REC 
 rec0.save(reference_case) # save results in 'reference_case.pkl'
 
+if check == False:
+    with open('previous_simulation/general.pkl', 'wb') as f:
+        pickle.dump(general, f)
+    check=True
+    
 #%% Actual economic analysis
 NPV(structure,structure0,study_case,reference_case,economic_data,general['simulation years'],path) 
 
