@@ -240,22 +240,6 @@ class REC:
         previous_simulation/files.csv
 
         """
-        
-        # check = True # True if no PV parameters are changed from the old simulation
-        
-        # directory = './previous_simulation'
-        # if not os.path.exists(directory):
-        #     os.makedirs(directory)
-       
-        # if os.path.exists('previous_simulation/general_w.pkl'):
-        #     with open('previous_simulation/general_w.pkl', 'rb') as f:
-        #         ps_general = pickle.load(f) # previous simulation general
-        #     par_to_check = ['latitude','longitude','UTC time zone','DST']
-        #     for par in par_to_check:
-        #         if ps_general[par] != general[par]:
-        #             check = False  
-        # else:
-        #     check = False
                                 
         if check and os.path.exists(path+'/weather/weather_TMY.csv'): # if the prevoius weather series can be used
             weather = pd.read_csv(path+'/weather/weather_TMY.csv')
@@ -306,11 +290,7 @@ class REC:
 
                 weather['Local time - DST'] = weather.index
                 weather.set_index('Local time - DST',inplace=True)                                               
-            weather.to_csv(path+'/weather/weather_TMY.csv')
-            
-            # # save new parameters in previous_simulation            
-            # with open('previous_simulation/general_w.pkl', 'wb') as f:
-            #     pickle.dump(general, f)     
+            weather.to_csv(path+'/weather/weather_TMY.csv')   
 
         return(weather)
    

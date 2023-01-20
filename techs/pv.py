@@ -5,6 +5,7 @@ import os
 import pickle
 import os
 import sys 
+import math as m
 sys.path.append(os.path.abspath(os.path.join(os.getcwd(),os.path.pardir)))   # temorarily adding constants module path 
 import constants as c
 
@@ -50,16 +51,6 @@ class PV:
                         check = False
             else:
                 check = False
-          
-            # if os.path.exists('previous_simulation/general.pkl'):
-            #     with open('previous_simulation/general.pkl', 'rb') as f:
-            #         ps_general = pickle.load(f) # previous simulation general
-            #     par_to_check = ['latitude','longitude','UTC time zone','DST']
-            #     for par in par_to_check:
-            #         if ps_general[par] != general[par]:
-            #             check = False  
-            # else:
-            #     check = False
                                     
             name_serie = rec_name + location_name + '_PV_TMY.csv'
             if check and os.path.exists(path+'/production/'+name_serie): # if the prevoius pv serie can be used
@@ -133,10 +124,7 @@ class PV:
             
                 # save new parameters in previous_simulation
                 with open('previous_simulation/parameters_'+rec_name+location_name+'.pkl', 'wb') as f:
-                    pickle.dump(parameters, f) 
-                    
-                # with open('previous_simulation/general.pkl', 'wb') as f:
-                #     pickle.dump(general, f)             
+                    pickle.dump(parameters, f)            
             
             peakP = parameters['peakP']
             pv = pv * peakP/1000
@@ -152,8 +140,40 @@ class PV:
             pv = pv * (1-parameters['losses'])          # add losses
             pv = pv/1000                             # Wh -> kWh
             self.production = np.tile(pv,int(simulation_hours/8760))
+        
+        if 'Max field width' and 'Max field length' in parameters:   
+            # Covered Surface calculation
+            # Considering modules having size 1m x 1,5m and power 250W it means that, for each kWp, four modules are needed, thus covering 6 m2 of surface (4m width and 1,5m high)
+            # Knowing the maximum field width by input, the number of panel rows can be found as follows
+            module_width = 1 #m
+            module_height = 1.5 #m
+            field_ideal_width = peakP*4*module_width #m                                                  # each kWp is 4m width
+            max_field_width = parameters ['Max field width'] #m
+            self.n_rows = field_ideal_width/max_field_width
+            latitude = general['latitude'] #°
+            sun_angle_winter_solstice_rad = (90-(latitude+23.5))*m.pi/180 #rad                           # https://it.science19.com/how-to-calculate-winter-solstice-sun-angle-1948
+            tilt_rad = (parameters['tilt']*m.pi)/180 #rad
+            rows_distance =  module_height*(m.sin(tilt_rad)/m.tan(sun_angle_winter_solstice_rad))  #m    # d = [sen(β)]/[tg(δ)]·L  https://www.ediltecnico.it/85611/come-calcolare-la-distanza-minima-di-installazione-di-file-di-pannelli-fotovoltaici/
+            row_length = module_height*m.cos(tilt_rad)+rows_distance #m
             
+            if self.n_rows >= 1:
+                self.surfac_cov = max_field_width*row_length*(int(self.n_rows)-1)+max_field_width*module_height*m.cos(tilt_rad)+(self.n_rows-int(self.n_rows))*max_field_width*row_length #m2
+                if self.n_rows-int(self.n_rows) != 0:
+                    field_length = row_length*int(self.n_rows)+module_height*m.cos(tilt_rad) #m
+                else:
+                    field_length = row_length*(int(self.n_rows)-1)+module_height*m.cos(tilt_rad) #m
+                self.surface_cov_rectangular = field_length*max_field_width #m2
+                
+            if 0 < self.n_rows < 1:
+                self.surface = self.n_rows*max_field_width*module_height*m.cos(tilt_rad)
+                field_length = module_height*m.cos(tilt_rad)
+                self.surface_cov_rectangular = self.surface
+                
+            max_field_length = parameters ['Max field length'] #m
+            if field_length > max_field_length:
+                print('Warning!! The surface covered by the '+rec_name+location_name+' PV field is higher than the maximum available one')
             
+        
     def use(self,h):
         """
         Produce electricity

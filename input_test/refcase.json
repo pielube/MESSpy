@@ -4,6 +4,8 @@
 				"PV": {		"tilt": 30,
 							"azimuth": 0,
 							"losses": 10,
+					    	"Max field width": 10,
+							"Max field length": 5,
 							"peakP": 1,
 							"serie": "TMY"}},
 "prosumer_2": { "demand": {	"electricity": "load_test_2.csv"},

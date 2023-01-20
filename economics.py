@@ -257,10 +257,21 @@ def NPV(structure,structure0,study_case,reference_case,economic_data,simulation_
         results[location_name]['NPV'] = np.zeros(economic_data['investment years']+1) # array initialise Net Present Value
         results[location_name]['NPV'][0] = -results[location_name]['I0']['Tot'] # NPV at time 0 is - the initial investment
         i = economic_data['interest rate'] # interest rate [%]
-
+        
+        PBT = -1
         for y in range(1,economic_data['investment years']+1): # for each year
-            results[location_name]['NPV'][y] = results[location_name]['NPV'][y-1] + results[location_name]['CF']['Tot'][y-1]/(1+i)**y # calculate NPV 
-
+            aux_var = results[location_name]['NPV'].sum(where=results[location_name]['NPV']>0)
+            results[location_name]['NPV'][y] = results[location_name]['NPV'][y-1] + results[location_name]['CF']['Tot'][y-1]/(1+i)**y # calculate NPV
+            if aux_var == 0 and results[location_name]['NPV'][y-1] < 0 and results[location_name]['NPV'][y] >= 0:
+                PBT = y-1+(-results[location_name]['NPV'][y-1]/(-results[location_name]['NPV'][y-1]+results[location_name]['NPV'][y]))
+        
+        if PBT > 0:
+            results[location_name]['PBT'] = PBT
+            results[location_name]['PI'] = results[location_name]['NPV'][-1]/results[location_name]['I0']['Tot']
+        else:
+            results[location_name]['PBT'] = np.nan
+            results[location_name]['PI'] = np.nan
+        
     # save results in Results/economic_assesment.pkl
     with open(f"Results/economic_assessment_{study_case}.pkl", 'wb') as f:  pickle.dump(results,f) 
         
