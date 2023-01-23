@@ -8,7 +8,7 @@ from location import location
 
 class REC:
     
-    def __init__(self,structure,general,path):
+    def __init__(self,structure,general,path,rec_name):
         """
         Create a Renewable Energy Comunity object composed of several locations (producers, consumers, prosumers)
     
@@ -32,7 +32,32 @@ class REC:
             record REC energy balances .energy_balance (electricity, heat, gas and hydrogen) 
         """
         
-        self.weather = self.weather_generation(general,path) # check if metereological data have to been downloaded from PVgis or has already been done in a previous simulation
+        
+        """
+        
+        If general.json is the same of the previous simulation, neither the meteorological data nor the PV has to be updated, 
+        otherwise they are downloaded from PVgis considering the typical meteorological year.
+        
+        """
+        
+        check = True # True if no general parameters are changed from the old simulation
+        
+        directory = './previous_simulation'
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+           
+        if os.path.exists('previous_simulation/general_'+rec_name+'.pkl'):
+            with open('previous_simulation/general_'+rec_name+'.pkl', 'rb') as f:
+                ps_general = pickle.load(f) # previous simulation general
+            par_to_check = ['latitude','longitude','UTC time zone','DST']
+            for par in par_to_check:
+                if ps_general[par] != general[par]:
+                    check = False  
+        else:
+            check = False
+
+
+        self.weather = self.weather_generation(general,path,check) # check if metereological data have to been downloaded from PVgis or has already been done in a previous simulation
 
         self.locations = {} # initialise REC locations dictionary
         self.energy_balance = {'electricity': {}, 'heating water': {}, 'cooling water': {}, 'hydrogen': {}, 'gas': {}} # initialise energy balances dictionaries
@@ -42,8 +67,15 @@ class REC:
         
         ### create location objects and add them to the REC locations dictionary
         for location_name in structure: # location_name are the keys of 'structure' dictionary and will be used as keys of REC 'locations' dictionary too
-            self.locations[location_name] = location(structure[location_name],general,location_name,path) # create location object and add it to REC 'locations' dictionary                
-                        
+            self.locations[location_name] = location(structure[location_name],general,location_name,path,check,rec_name) # create location object and add it to REC 'locations' dictionary                
+                     
+            
+        if check == False:
+            with open('previous_simulation/general_'+rec_name+'.pkl', 'wb') as f:
+                pickle.dump(general, f)
+            
+            
+            
     def REC_energy_simulation(self):
         """
         Simulate the REC every hour
@@ -208,8 +240,7 @@ class REC:
             pickle.dump(LOC, f) 
             
         with open('results/ageing_'+simulation_name+".pkl", 'wb') as f:
-            pickle.dump(ageing, f) 
-            
+            pickle.dump(ageing, f)    
             
     def reset(self):
         """
@@ -225,7 +256,7 @@ class REC:
                     self.locations[location_name].technologies[tech_name].LOC = np.zeros(self.simulation_hours+1) # array level of Charge 
                     self.locations[location_name].technologies[tech_name].used_capacity = 0 # used capacity <= max_capacity   
     
-    def weather_generation(self,general,path):
+    def weather_generation(self,general,path,check):
         """
         
         If the meteorological data have not already been downloaded and saved in a previous simulation, 
@@ -240,22 +271,6 @@ class REC:
         previous_simulation/files.csv
 
         """
-        
-        check = True # True if no PV parameters are changed from the old simulation
-        
-        directory = './previous_simulation'
-        if not os.path.exists(directory):
-            os.makedirs(directory)
-       
-        if os.path.exists('previous_simulation/general_w.pkl'):
-            with open('previous_simulation/general_w.pkl', 'rb') as f:
-                ps_general = pickle.load(f) # previous simulation general
-            par_to_check = ['latitude','longitude','UTC time zone','DST']
-            for par in par_to_check:
-                if ps_general[par] != general[par]:
-                    check = False  
-        else:
-            check = False
                                 
         if check and os.path.exists(path+'/weather/weather_TMY.csv'): # if the prevoius weather series can be used
             weather = pd.read_csv(path+'/weather/weather_TMY.csv')
@@ -306,11 +321,7 @@ class REC:
 
                 weather['Local time - DST'] = weather.index
                 weather.set_index('Local time - DST',inplace=True)                                               
-            weather.to_csv(path+'/weather/weather_TMY.csv')
-            
-            # save new parameters in previous_simulation            
-            with open('previous_simulation/general_w.pkl', 'wb') as f:
-                pickle.dump(general, f)     
+            weather.to_csv(path+'/weather/weather_TMY.csv')   
 
         return(weather)
    

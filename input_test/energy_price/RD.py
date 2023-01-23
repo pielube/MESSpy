@@ -12,7 +12,7 @@ https://www.gse.it/servizi-per-te/fotovoltaico/ritiro-dedicato/documenti
 
 def RD(year):
     # Input: year
-    # Output: hourly serie €/kWh
+    # Output: hourly serie €/MWh
    
     if year == 2019:
         #prezzi 2019 Centro-Nord

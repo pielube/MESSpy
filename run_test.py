@@ -17,13 +17,14 @@ from economics import NPV
 import postprocess_test as pp
 import preprocess_test as pre
 #import postprocess_dev as pp
-#import preprocess_dev as pp
+#import preprocess_dev as pre
 import os
 import json
+import pickle
 
 # Selecting simulation names
-study_case = 'REC_test' # str name for results file.pkl
-reference_case = 'buiseness as usual' # str name for results file.pkl
+study_case = 'Rec_' # str name for results file.pkl
+reference_case = 'Rec0_' # str name for results file.pkl
 
 # Selecting input files:
 path = r'./input_test' # change the path with r'./input_dev' if you are working on your own run_dev
@@ -46,21 +47,22 @@ SOLVER
 ======
 """
 
-rec = REC(structure,general,path) # create REC object
+rec = REC(structure,general,path,study_case) # create REC object
 rec.REC_energy_simulation() # simulate REC enegy balances
 rec.save(study_case) # save results in 'study_case.pkl'
-  
+    
 #%% ###########################################################################
 """
 POST PROCESS - ECONOMIC ANALYSIS
 ================================
 """
-
+  
 # Reference case simulation (run only if changed)
-rec0 = REC(structure0,general,path) # create REC
+rec0 = REC(structure0,general,path,reference_case) # create REC
 rec0.REC_energy_simulation() # simulate REC 
 rec0.save(reference_case) # save results in 'reference_case.pkl'
 
+    
 #%% Actual economic analysis
 NPV(structure,structure0,study_case,reference_case,economic_data,general['simulation years'],path) 
 

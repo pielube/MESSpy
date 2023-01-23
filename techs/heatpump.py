@@ -61,7 +61,8 @@ class heatpump:
             
             ### stories #######################################################
             self.i_TES_story = np.zeros(simulation_hours) # T_inertial_TES
-            self.satisfaction_story = np.zeros(simulation_hours) # 0 no demand, 1 demand satisfied by iTES, 2 demand satisfied, 3 demand satisfied and iTES_T raised, 4 damand satisfied and iTES_T reaches maximum, -1 unsatisfied demand, -2 unsatisfied demand and iTES under minimum
+            self.satisfaction_story = np.zeros(simulation_hours) # 0 no demand, 1 demand satisfied by iTES, 2 demand satisfied, 3 demand satisfied and iTES_T raised, 4 damand satisfied and iTES_T reaches maximum, -1 unsatisfied demand, -2 unsatisfied demand and iTES under minimum -3 t_amb too cold
+            
             self.cop_story = np.zeros(simulation_hours) # coefficient of performance
             self.surplus_story = np.zeros(simulation_hours) # 0 no surplus is used by HP. 1 HP use PV surplus to charge iTES.
             
@@ -213,6 +214,10 @@ class heatpump:
                     ### heat to recharge the i_TES
                     e_charging = self.i_TES_mass*self.cp_kWh*(self.t_rad_h-self.i_TES_t)      
                     cop,Pth,Pele,t_w_eff = self.HP_follows_thermal(t_amb, self.t_rad_h, e_charging)
+                    
+                    if t_w_eff < self.t_rad_h: # the air temperature is too low to generate water at the required temperature
+                        self.satisfaction_story[h] = -3
+                        return(0, 0, 0)
                                      
                     if Pth < e_charging: # i_TES can't be charged less than one hour
                         self.satisfaction_story[h] = -2 
@@ -251,7 +256,6 @@ class heatpump:
                                 cop,Pth,Pele,t_w_eff = self.HP_follows_thermal(t_amb, self.i_TES_t, -e_th)
                                 
                                 if t_w_eff == self.i_TES_t: # maximum temperature not still reached 
-                                    
                                     e_th_hp += Pth/60
                                     e_ele_hp += Pele/60
                                     e_overcharging = (Pth+e_th)/60
@@ -261,7 +265,7 @@ class heatpump:
                                         e_th_i_TES += -e_overcharging
                                         e_overcharging_tot += e_overcharging # used in PV_surplus working
                                         self.i_TES_t += e_overcharging/(self.i_TES_mass*self.cp_kWh)
-                                                       
+                                        
                                 else: # maximum temperaeture reached: used energy inside iTES to satisfied demand
                                     self.satisfaction_story[h] = 4+j 
                                     j += 1

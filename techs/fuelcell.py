@@ -955,12 +955,12 @@ if __name__ == "__main__":
     Functional test
     """
     
-    inp_test = {'Npower': 1000,
+    inp_test = {'Npower': 5,
                 "number of modules": 4,
                 'stack model':'SOFC',
                 }
     
-    sim_hours=60                               # [h] simulated period of time - usually it's 1 year minimum
+    sim_hours=36                               # [h] simulated period of time - usually it's 1 year minimum
     time=np.arange(sim_hours)
     
     fc = fuel_cell(inp_test,sim_hours)         # creating fuel cell object
