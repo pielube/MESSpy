@@ -4,7 +4,7 @@ An open-source model for simulating multy-energy systems such as Renewable Energ
 ![image](https://user-images.githubusercontent.com/83342584/177154238-c0e6b9fa-69b4-40c8-9b45-9d16919e079b.png)
 
 ### Authors
-**Pietro Lubello**, **Mattia Pasqui**, **Alessandro Mati** and **Carlo Carcasci**\
+**Pietro Lubello**, **Mattia Pasqui**, **Alessandro Mati**, **Andrea Ademollo** and **Carlo Carcasci**\
 Department of Industrial Engineering (DIEF), University of Florence (UNIFI), Italy
 
 ## Overview
