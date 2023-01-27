@@ -28,6 +28,16 @@ class chp_gt:
             # calculate its own volume (pressure) .volume(pressure)
         """
         
+        self.tech = parameters["Technology"]
+        self.fuel = parameters["Fuel"]
+        
+        if self.tech != "Gas Turbine" or self.fuel != "Hydrogen":
+            raise ValueError(""" 
+                             Only H2 fuelled GT available as cogeneration system (5.6 MW rated power).
+                             Either use "Gas Turbine" and "Hydrogen" keywords for initialization
+                             or remove chp_gt technology from the case study                     
+                             """)
+        
         self.wel=np.zeros(simulation_hours)            # [W]    produced electricity
         self.mH2CHP=np.zeros(simulation_hours)         # [kg/s] hydrogen mass flow rate required by GT + HRSG
         # mH2SG = np.zeros(simulation_hours)        # [kg/s] hydrogen mass flow rate required by SG
@@ -48,14 +58,14 @@ class chp_gt:
                      }
 
         # Specific hydrogen gas turbine parameters 
-        GT_param = {
-                    'Power[MW]': 5.649,
-                    'Gross Efficiency[-]': 0.31135,
-                    'Pressure Ratio[-]': 15.62,
-                    'Exhaust Mass Flow[kg/s]': 20.7645,
-                    'Exhaust temperature[K]': 821.883,
-                    'TIT[K]':1530.07 
-                    }
+        self.GT_param = {
+                        'Power[MW]': 5.649,
+                        'Gross Efficiency[-]': 0.31135,
+                        'Pressure Ratio[-]': 15.62,
+                        'Exhaust Mass Flow[kg/s]': 20.7645,
+                        'Exhaust temperature[K]': 821.883,
+                        'TIT[K]':1530.07 
+                        }
 
 
         'Data Extraction - Operation Maps for Real Working Conditions CHP System'
@@ -92,9 +102,9 @@ class chp_gt:
 
         'Operation Constraints'
     
-        self.Wel_max= GT_param['Power[MW]']*1.2    # [kW] Max Electric Power Output - 120% of Nominal Power
-        self.Wel_min= GT_param['Power[MW]']*0.3    # [kW] Min Electric Power Output - 30% of Nominal Power
-        self.Tmax= GT_param['TIT[K]']              # [K]  Turbine Inlet Temperature/ Max cycle T - 1530.07 K
+        self.Wel_max= self.GT_param['Power[MW]']*1.2    # [kW] Max Electric Power Output - 120% of Nominal Power
+        self.Wel_min= self.GT_param['Power[MW]']*0.3    # [kW] Min Electric Power Output - 30% of Nominal Power
+        self.Tmax= self.GT_param['TIT[K]']              # [K]  Turbine Inlet Temperature/ Max cycle T - 1530.07 K
         self.Ts_min= 90 + 273.15                   # [K]  Min Temperature at Stack
     
         'System Boundaries - Lines'
@@ -305,6 +315,57 @@ class chp_gt:
         revenews = cb*price   # [€/y]
         
         return(Eta_global,PES)
+
+    
+    def costs(self): 
+        
+        # Cost references: https://understandingchp.com/chp-applications-guide/6-8-rules-of-thumb-for-chp-engineering-and-installation-costs/
+
+        costs = {}
+        
+        costs['GT'] = {'total installation costs': (6380*(self.GT_param['Power[MW]']*1000)**0.73),               # € - Impianti di potenza dispense 
+                       'OeM'                     : 0.06*(6380*((self.GT_param['Power[MW]']*1000)**0.73)),        # € 
+                       'lifetime'                : 30} 
+
+        costs['HRSG'] = {'total installation costs': (68679.85 +\
+                                                      182811.26+\
+                                                      211764.99+\
+                                                     (6380*((self.GT_param['Power[MW]']*1000)**0.73))*0.04),     # € - Impianti di potenza dispense
+                          'OeM'                    : 0.06*(68679.85 +\
+                                                     182811.26+\
+                                                     211764.99+\
+                                                     (6380*((self.GT_param['Power[MW]']*1000)**0.73))*0.04),                                     
+                         'lifetime'                : 30} 
+
+        # costs['Pump'] = {'total installation costs': 68679.85/change,       # €
+        #                      'OeM':0.06*(68679.85/change),                  # €
+        #                      'lifetime': 25}                                # y
+
+        # costs['Eco'] = {'total installation costs': 182811.26/change,       # € 
+        #                      'OeM':0.06*(182811.26/change),                 # €
+        #                      'lifetime': 25}                                # y
+
+        # costs['Eva'] = {'total installation costs': 211764.99/change,       # € 
+        #                      'OeM':0.06*(211764.99/change),                 # €
+        #                      'lifetime': 25}                                # y
+
+        # costs['Condenser'] = {'total installation costs': (6380*(5649**0.73))*0.04 ,  # € 
+        #                      'OeM':0.06*((6380*(5649**0.73))*0.04) ,                  # €
+        #                      'lifetime': 25}                                          # y
+
+        costs['Alternator'] = {'total installation costs': 4028*((180/(1.38))**0.58) ,          # € 
+                               'OeM'                     : 0.06*4028*((180/(1.38))**0.58),      # €
+                               'lifetime'                : 30}                                  # y 
+        
+        
+        I0  = []   # [€] initializing CAPEX costs
+        oem = []   # [€] initializing O&M costs
+        
+        for item in costs: 
+            I0.append(costs[item]['total installation costs'])
+            oem.append(costs[item]['OeM'])
+        
+        return (sum(I0),sum(oem))
         
         
 #%%##########################################################################################
@@ -315,10 +376,8 @@ if __name__ == "__main__":
     Functional test
     """
     
-    inp_test = {'Npower': 1000,
-                "number of modules": 4,
-                'stack model':'SOFC',    
-                }       
+    inp_test = {"Technology": "Gas Turbine",
+                "Fuel"      : "Hydrogen"    }       
     
     simulation_hours = 8760                   # 1 year-long simulation
     chp_gt = chp_gt(inp_test,simulation_hours)   # creating chp object
@@ -359,6 +418,7 @@ if __name__ == "__main__":
         plt.show()
      
     chp_gt.pes()
+
         
         # 'System Boundaries - Year-long simulation'
             
