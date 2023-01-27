@@ -60,7 +60,7 @@ class REC:
         self.weather = self.weather_generation(general,path,check) # check if metereological data have to been downloaded from PVgis or has already been done in a previous simulation
 
         self.locations = {} # initialise REC locations dictionary
-        self.energy_balance = {'electricity': {}, 'heating water': {}, 'cooling water': {}, 'hydrogen': {}, 'gas': {}} # initialise energy balances dictionaries
+        self.energy_balance = {'electricity': {}, 'heating water': {}, 'cooling water': {}, 'hydrogen': {}, 'gas': {}, 'process steam': {}} # initialise energy balances dictionaries
                                                                                                         
         
         self.simulation_hours = int(general['simulation years']*8760) # hourly timestep  

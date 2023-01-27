@@ -140,7 +140,7 @@ pp.hourly_balances_electricity(study_case,'prosumer_2', 2, 3)
 #     
 # plt.figure(dpi=1000)
 # plt.plot(pv_size,sc,label='Self-consumption')
-# plt.plot(pv_size,ss,label='Self-suficiency')
+# plt.plot(pv_size,ss,label='Self-sufficiency')
 # plt.xlabel("PV peak power [kWp]")
 # plt.ylabel("[%]")
 # plt.grid()
