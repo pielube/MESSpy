@@ -491,7 +491,7 @@ class electrolyzer:
             'Water consumption' 
             
             watCons = hyd_vol*self.rhoNrh2*self.h2oMolMass/self.H2MolMass/etaElectr/self.rhoStdh2o     # [m^3] water used by the electrolyzer - volume calculated @ 15°C & Pamb           
-            
+
             hydrogen = hyd
             
         if hyd > storable_hydrogen:           # if there is not enough space in the H tank to store the hydrogen (H tank is nearly full)

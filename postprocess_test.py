@@ -157,6 +157,9 @@ def hourly_balances_electricity(simulation_name,location_name,first_day,last_day
         
         if 'demand' in balances:
             load = -balances['demand'][first_day*24:last_day*24+24]
+            
+        if 'chp_gt' in balances:
+            chp_gt = balances['chp_gt'][first_day*24:last_day*24+24]    
         
         if 'PV' in balances:
             pv = balances['PV'][first_day*24:last_day*24+24]
@@ -181,7 +184,10 @@ def hourly_balances_electricity(simulation_name,location_name,first_day,last_day
                     discharge_battery[i] = e
                 else:
                     charge_battery[i] = e 
-                    
+        
+        if 'electrolyzer' in balances:
+            ele = balances['electrolyzer'][first_day*24:last_day*24+24]
+        
         if 'electrolyzer' in balances and 'fuel cell' in balances:
             fc = balances['fuel cell'][first_day*24:last_day*24+24]
             ele = balances['electrolyzer'][first_day*24:last_day*24+24]
@@ -201,11 +207,14 @@ def hourly_balances_electricity(simulation_name,location_name,first_day,last_day
         ax = SubplotZero(fig, 1, 1, 1)
         fig.add_subplot(ax)
         ax.axis["xzero"].set_visible(True)
-        for n in ["bottom", "top", "right"]:
-            ax.axis[n].set_visible(False)
-        ax.grid(axis='y')
+        ax.axis["xzero"].label.set_visible(False)
+        ax.axis["xzero"].major_ticklabels.set_visible(False)
+
+        for n in ["bottom","top", "right"]:
+            ax.axis[n].set_visible(True)
+        ax.grid(axis='y', alpha = 0.5)
         
-        if 'PV' in balances:
+        if 'PV' in balances and not 'chp_gt' in balances:
             ax.bar(x, np.minimum(load,pv), width,  label='PV self consumption', color='yellowgreen')
             ax.bar(x, np.maximum(pv-load,np.zeros(len(pv))), width, bottom=load, label='PV surplus', color='cornflowerblue')
             
@@ -240,7 +249,7 @@ def hourly_balances_electricity(simulation_name,location_name,first_day,last_day
             
            # plt.ylim(-4,4)
            
-        elif 'wind' in balances:
+        elif 'wind' in balances and not 'chp_gt' in balances:
             ax.bar(x, np.minimum(load,wind), width,  label='wind self consumption', color='yellowgreen')
             ax.bar(x, np.maximum(wind-load,np.zeros(len(wind))), width, bottom=load, label='wind surplus', color='cornflowerblue')
             
@@ -272,6 +281,53 @@ def hourly_balances_electricity(simulation_name,location_name,first_day,last_day
                 ax.bar(x, np.array(ele), width,  label='to electrolyzer',  color='chocolate')
                 ax.bar(x, fc, width, bottom = wind, label='from fuel cell',  color='peru')
                 ax.bar(x, np.array(to_csc), width, bottom=ele, label='collective self consumption',  color='gold')
+                
+        elif 'chp_gt' in balances:
+            ax.bar(x, np.minimum(load,chp_gt), width,  label='CHP self consumption', color='yellowgreen')
+            ax.bar(x, np.maximum(chp_gt-load,np.zeros(len(pv))), width, bottom=load, label='CHP surplus', color='cornflowerblue')
+            
+            if 'PV' in balances: 
+                ax.bar(x, np.maximum(np.minimum(chp_gt+pv,load)-chp_gt,np.zeros(len(pv))), width, bottom= chp_gt, label='PV self consumption', color='tab:green')
+                ax.bar(x, np.maximum(chp_gt+pv-load,np.zeros(len(pv))), width, bottom=load+np.maximum(chp_gt-load,np.zeros(len(pv))),label='PV surplus', color='tab:blue')
+            
+            if not 'battery' in balances and not 'electrolyzer' in balances:
+                ax.bar(x, from_grid-from_csc, width ,bottom=pv+from_csc, label='from grid', color='tomato')
+                ax.bar(x, np.array(from_csc), width, bottom=pv,  color='gold')
+            
+                ax.bar(x, np.array(into_grid), width, label='into grid', color='orange')
+                ax.bar(x, np.array(to_csc), width, label='collective self consumption',  color='gold')
+                
+            if 'battery' in balances:
+                ax.bar(x, from_grid-from_csc, width, bottom=pv+discharge_battery+from_csc, label='from grid', color='tomato')
+                ax.bar(x, np.array(from_csc), width, bottom=discharge_battery+pv,  color='gold')
+                ax.bar(x, discharge_battery, width, bottom = pv, label='discharge battery',  color='purple')
+                
+                ax.bar(x, np.array(into_grid), width, bottom=charge_battery , label='into grid', color='orange')
+                if collective == 0:
+                    ax.bar(x, np.array(charge_battery), width,  label='charge battery',  color='violet')
+                    ax.bar(x, np.array(to_csc), width, bottom=charge_battery, label='collective self consumption',  color='gold')
+                else:
+                    ax.bar(x, np.array(charge_battery), width, bottom=np.array(to_csc),  label='charge battery',  color='violet')
+                    ax.bar(x, np.array(to_csc), width, label='collective self consumption',  color='gold')
+            
+            if 'electrolyzer' in balances:
+                ax.bar(x, from_grid-from_csc, width ,bottom=chp_gt+pv+from_csc, label='from grid', color='tomato')
+                ax.bar(x, np.array(from_csc), width, bottom=pv,  color='y')
+            
+                ax.bar(x, np.array(into_grid), width,bottom=ele , label='into grid', color='orange')
+                ax.bar(x, np.array(ele), width,  label='to electrolyzer',  color='chocolate')
+                # ax.bar(x, fc, width, bottom = pv, label='from fuel cell',  color='peru')
+                ax.bar(x, np.array(to_csc), width, bottom=ele, label='collective self consumption',  color='gold')  
+                
+                
+            if 'electrolyzer' in balances and 'fuel cell' in balances:
+                ax.bar(x, from_grid-from_csc, width ,bottom=pv+fc+from_csc, label='from grid', color='tomato')
+                ax.bar(x, np.array(from_csc), width, bottom=pv+fc,  color='y')
+            
+                ax.bar(x, np.array(into_grid), width,bottom=ele , label='into grid', color='orange')
+                ax.bar(x, np.array(ele), width,  label='to electrolyzer',  color='chocolate')
+                ax.bar(x, fc, width, bottom = pv, label='from fuel cell',  color='peru')
+                ax.bar(x, np.array(to_csc), width, bottom=ele, label='collective self consumption',  color='gold')    
         else:
             ax.bar(x, from_grid-from_csc, width ,bottom=from_csc, label='from grid', color='tomato')
             ax.bar(x, np.array(from_csc), width, label='collective self consumption',  color='gold')
@@ -279,13 +335,15 @@ def hourly_balances_electricity(simulation_name,location_name,first_day,last_day
         
         plt.title(location_name+' days '+str(first_day)+'-'+str(last_day))
         plt.plot(x,load,'k',label='load')     
-        plt.legend(ncol=2)
+        plt.legend(ncol=2, bbox_to_anchor = (1.01,-0.11))
         plt.ylabel("Hourly energy [kWh/h] ")
+        plt.xlabel( "Time  [h] ")
+        # ax.xaxis.set_tick_params(bottom=True,labelbottom=True)
         #plt.xticks([0,6,12,18,24],['0','6','12','18','24'],fontsize=10,color='g')
         #plt.xticks([0,6,12,18,24,30,36,42,48],['0','6','12','18','24','30','36','42','48'],fontsize=10,color='g')
         #plt.yticks([-2,-1,0,1,2],['-2','-1','0','1','2'])
         plt.show()
-        
+        # print(from_csc)
         
 def hourly_balances_heat(simulation_name,location_name,first_day,last_day,carrier='heat',width=0.9,collective=0):
     
@@ -322,17 +380,18 @@ def hourly_balances_heat(simulation_name,location_name,first_day,last_day,carrie
         else:
             to_csc[i] = e 
         
-    x = np.linspace(first_day*24+1,(last_day+1)*24,(last_day-first_day+1)*24)
-    x = np.arange((last_day-first_day+1)*24)
+    x = np.arange(first_day*24,(last_day+1)*24)
     
     fig = plt.figure(dpi=1000)
     from mpl_toolkits.axisartist.axislines import SubplotZero
     ax = SubplotZero(fig, 1, 1, 1)
     fig.add_subplot(ax)
     ax.axis["xzero"].set_visible(True)
+    ax.axis["xzero"].label.set_visible(False)
+    ax.axis["xzero"].major_ticklabels.set_visible(False)
     for n in ["bottom", "top", "right"]:
-        ax.axis[n].set_visible(False)
-    ax.grid(axis='y')   
+        ax.axis[n].set_visible(True)
+    ax.grid(axis='y', alpha = 0.5) 
     
     
     if 'fuel cell' in balances:
@@ -356,12 +415,95 @@ def hourly_balances_heat(simulation_name,location_name,first_day,last_day,carrie
     plt.plot(x,load,'k',label='load')     
     plt.legend(ncol=2, bbox_to_anchor=(1.2, 0))
     plt.ylabel("Hourly energy [kWh/h] ")
+    plt.xlabel( "Time  [h] ")
     #plt.xticks([0,6,12,18,24],['0','6','12','18','24'],fontsize=10,color='g')
     #plt.xticks([0,6,12,18,24,30,36,42,48],['0','6','12','18','24','30','36','42','48'],fontsize=10,color='g')
     #plt.yticks([-2,-1,0,1,2],['-2','-1','0','1','2'])
     plt.show()
         
+def hourly_balances_steam(simulation_name,location_name,first_day,last_day,carrier='process steam',width=0.9,collective=0):
+    
+    with open('results/balances_'+simulation_name+'.pkl', 'rb') as f:
+        balances = pickle.load(f)
+        
+    balances = balances[location_name][carrier]
+    
+    if 'demand' in balances:
+        load = -balances['demand'][first_day*24:last_day*24+24]
+    else:
+        return(print('Thermal Load not considered in the case study'))
+        
+    if 'grid' in balances:
+        into_grid=balances['grid'][first_day*24:last_day*24+24]
+    else:
+        into_grid=np.zeros(last_day*24+24-first_day*24)
+        
+    if 'chp_gt' in balances:                
+        chp_gt = balances['chp_gt'][first_day*24:last_day*24+24]
+        
+    if 'boiler_ng' in balances:                
+        boiler_ng = balances['boiler_ng'][first_day*24:last_day*24+24]
+    
+    if 'boiler_h2' in balances:                
+        boiler_h2 = balances['boiler_h2'][first_day*24:last_day*24+24]
+        
+    if 'fuel cell' in balances:
+        fuel_cell=balances['fuel cell'][first_day*24:last_day*24+24]
+                
+                 
+    to_csc = np.zeros(24*(last_day-first_day+1))
+    from_csc = np.zeros(24*(last_day-first_day+1))
+    for i,e in enumerate(balances['collective self consumption'][first_day*24:last_day*24+24]):
+        if e > 0:
+            from_csc[i] = e
+        else:
+            to_csc[i] = e 
+        
+    x = np.arange(first_day*24,(last_day+1)*24)
+    
+    fig = plt.figure(dpi=1000)
+    from mpl_toolkits.axisartist.axislines import SubplotZero
+    ax = SubplotZero(fig, 1, 1, 1)
+    fig.add_subplot(ax)
+    ax.axis["xzero"].set_visible(True)
+    ax.axis["xzero"].label.set_visible(False)
+    ax.axis["xzero"].major_ticklabels.set_visible(False)
+    for n in ["bottom", "top", "right"]:
+        ax.axis[n].set_visible(True)
+    ax.grid(axis='y', alpha = 0.5) 
+    
+    if 'chp_gt' in balances: 
+        ax.bar(x,np.minimum(chp_gt, load), width,  label='CHP self consumption', color='yellowgreen')
+        ax.bar(x,np.maximum(chp_gt-load,np.zeros(len(chp_gt))), width, bottom = load, label='CHP self surplus', color='yellowgreen')
+    
+        if 'fuel cell' in balances:
+            ax.bar(x, fuel_cell, width,  label='FC self consumption', color='yellowgreen')
+            ax.bar(x, into_grid, width, bottom=load, label='FC surplus', color='cornflowerblue')
+        
+        if 'boiler_h2' in balances:
+            ax.bar(x, boiler_h2-from_csc, width ,bottom=fuel_cell+from_csc, label='from boiler$_\mathregular{H2}$', color='yellow')
+            ax.bar(x, np.array(from_csc), width, bottom=fuel_cell,  color='gold')
             
+        if 'boiler_ng' in balances:
+            ax.bar(x, boiler_ng-from_csc, width ,bottom=fuel_cell+from_csc, label='from boiler$_\mathregular{NG}$', color='tomato')
+            ax.bar(x, np.array(from_csc), width, bottom=fuel_cell,  color='gold')
+                
+    else:
+        ax.bar(x, boiler_ng-from_csc, width ,bottom=from_csc, label='from boiler$_\mathregular{NG}$', color='tomato')
+        ax.bar(x, np.array(from_csc), width, label='collective self consumption',  color='gold')
+       # plt.ylim(0,3.3)
+    
+    plt.title(location_name+' days '+str(first_day)+'-'+str(last_day)+' heat balance')
+    plt.plot(x,load,'k',label='load')     
+    plt.legend(ncol=2, bbox_to_anchor = (0.90,-0.11))
+    plt.ylabel("Hourly process steam [kg/h] ")
+    plt.xlabel( "Time  [h] ")
+    #plt.xticks([0,6,12,18,24],['0','6','12','18','24'],fontsize=10,color='g')
+    #plt.xticks([0,6,12,18,24,30,36,42,48],['0','6','12','18','24','30','36','42','48'],fontsize=10,color='g')
+    #plt.yticks([-2,-1,0,1,2],['-2','-1','0','1','2'])
+    plt.show()     
+
+       
 def csc_allocation_sum(simulation_name):
     with open('Results/balances_'+simulation_name+'.pkl', 'rb') as f:
         balances = pickle.load(f)

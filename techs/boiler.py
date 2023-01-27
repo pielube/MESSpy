@@ -6,6 +6,10 @@ Created on Fri Apr  1 15:46:34 2022
 """
 
 import numpy as np
+import os
+import sys 
+sys.path.append(os.path.abspath(os.path.join(os.getcwd(),os.path.pardir)))   # temorarily adding constants module path 
+import constants as c
 
 class boiler_el:    
     
