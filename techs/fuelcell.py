@@ -8,6 +8,9 @@ import os
 import sys 
 sys.path.append(os.path.abspath(os.path.join(os.getcwd(),os.path.pardir)))   # temporarily adding constants module path 
 import constants as c
+import pickle
+import scipy.fft
+import scipy.optimize
 
 class fuel_cell:
     
@@ -24,8 +27,11 @@ class fuel_cell:
         
         self.model               = parameters['stack model']  # [-]  Fuel cell model
         self.Npower              = parameters['Npower']       # [kW] Single module nominal power   
+        self.ageing              = parameters['ageing']       # bool - calucate ageing   
         self.timestep = 1                                     # [h]  simulation timestep
-    
+        self.ageing_day = 7     # [days] How often ageing has to bee calculated? 
+        self.check_ageing=0     # ageing calculation check. If already computed or not. 
+        self.pol_curves = []    # list initialization for corrected curves. Aging effects affecting pol curve behaviour
         
         #########################################
         if self.model == 'FCS-C5000':           # this model is based on FCS-C5000 characteristic curves https://www.horizonfuelcell.com/hseries
@@ -114,7 +120,7 @@ class fuel_cell:
          
             self.nc                  = 90 + int((self.Npower/1000)*(250-90))   # For a power range between 0kW and 1000kW the number of cells in the stack varies between 90 and 250 
             self.FC_MaxCurrDens      = 1.2 + (self.Npower/1000)*(1.3-1.2)      # For a power range between 0kW and 1000kW the maximum current density varies between 1.2 and 1.3 A/cm2 
-            self.FC_NominalPower = self.Npower                 # [kW] Max Power - Nominal Power at max current
+            self.FC_NominalPower     = self.Npower                 # [kW] Max Power - Nominal Power at max current
             
             # Varying the number of cells, module efficiency remains unchanged
             # nc = 96 and FC_MaxCurrDens = 1.2 are derived from the above-mentioned datasheet and are specific for the specified size of 13.6 kW 
@@ -491,8 +497,25 @@ class fuel_cell:
             
                 etaFC      = self.etaFuelCell(hyd)  # [-]   FC efficiency
                 FC_Heat    = self.FC_Heat(hyd)      # [kWh] FC produced heat
+                
+        # elif h2 < 0:   #Andrea--->se non metto questo else e h<0 dà errore sul return
+            
+        #     etaFC         = 0       # [-]      fuel cell efficiency
+        #     hyd           = 0       # [kg]     hydrogen used in the considered timestep
+        #     Current       = 0       # [A]      Operational Current
+        #     p_required    = 0       # [kWh]    required energy - when timestep is kept at 1 h kWh = kW
+        #     FC_Heat       = 0       # [kWh]    thermal energy used
+        #     FC_CellCurrDensity = 0  # [A/cm^2] current density
         
-        return(hyd,p_required,FC_Heat,etaFC)
+        # elif h2 > self.maxh2used:   #Andrea--->se non metto questo else e h>hmax dà errore sul return
+            
+        #     hyd                = self.maxh2used                                     # [kg] hydrogen consumption
+        #     p_required         = self.h2P(hyd)                          # [kW] coverable electric power
+        #     FC_CellCurrDensity = self.PI(p_required)/self.FC_CellArea   # [A/cm^2] current density value at which the fuel cell is working 
+        #     etaFC      = self.etaFuelCell(hyd)  # [-]   FC efficiency
+        #     FC_Heat    = self.FC_Heat(hyd)      # [kWh] FC produced heat
+            
+            return(hyd,p_required,FC_Heat,etaFC)
 
 #%%                     
     def plot_polarizationpts(self):
@@ -875,7 +898,6 @@ class fuel_cell:
 
             return (-hyd,p_required,FC_Heat,etaFC,hydrogen)  # return hydrogen absorbed [kg] electricity required [kWh] and heat as a co-product [kWh]
 
-
         if self.model == 'SOFC':
             
             h2oMolMass       = c.H2OMOLMASS   # [kg/mol]     Water molar mass
@@ -947,6 +969,240 @@ class fuel_cell:
 
             return (-hyd,p_required,FC_Heat,etaFC,hydrogen)  # return hydrogen absorbed [kg] electricity required [kWh] and heat as a co-product [kWh]
 
+
+    def calculate_ageing(self,economic_data):
+        
+        # ref. study  https://doi.org/10.1016/j.ijhydene.2017.02.146
+        
+        load_i = self.CURR_DENS[:8760]          # defining fuel cell load profile - current for the 1st year of operation 
+        load_V = self.VOLT[:8760]               # defining fuel cell load profile - voltage for the 1st year of operation 
+        self.i_round=np.round(load_i,3)
+        self.i_pos=np.where(self.i_round!=0)    # non-null values
+        self.v_round=np.around(load_V,3)
+        self.v_pos=np.where(self.v_round>0)[0]
+        h_utilizzo_year=len(self.i_pos[0])      # working hours over 1 year of operations
+        self.replacements=[]
+
+        # Parameters definition
+
+        #current
+
+        k_1=25      # current costant (paper)
+
+        #voltage
+
+        k_2=5       # voltage constant (paper)
+        self.v_0=self.Voltage[-1]/self.nc       #Voltaggio minimo cella
+        self.vol_max=self.Voltage[0]/self.nc    #Voltaggio massimo cella
+        self.v_L=0.6*self.vol_max               #valore minimo range ottimale 
+        self.v_U=0.8*self.vol_max               #valore massimo range ottimale 
+
+        #life time
+
+        self.v_rated=self.vol_max
+
+        v_dot_data=np.array([4,1,2,11,6,50,50,75,200,300,260,400])    #dataset V_dot (paper) "migliore"
+        phi_data=np.array([1,1,1,1,1,3,4.3,5,7,7.5,9.2,9])              #dataset phi (paper) "migliore"
+        polyfit_forced= [4.1353, 0.0925,0]                                # funzione interpolante "migliore"--->mi serve phi=1.121 per avere 20000 h (v_deg=5.3)
+        
+        # v_dot_data=np.array([4,1,2,11,25,30,6,50,50,75,200,300,260,400])    #dataset V_dot (paper)
+        # phi_data=np.array([1,1,1,1,1,1,1,3,4.3,5,7,7.5,9.2,9])              #dataset phi (paper)
+        
+        paper_fit=[40,-46]                                                  #funzione interpolante lineare v_dot(phi) dal paper--->mi serve phi=0.93 (impossibile) per avere 20000 h (v_deg=5.3)
+
+        # polyfit_forced= [3.8913, 2.0875,0]
+        
+        exp_fit=scipy.optimize.curve_fit(lambda t,a,b: a*np.exp(b*t),  phi_data,  v_dot_data)   #funzione interpolante esponenziale v_dot(phi)
+        a=exp_fit[0][0]
+        b=exp_fit[0][1]
+
+        def v_phi_fitting_plot():
+            x=np.arange(11)
+            h=np.poly1d(paper_fit)
+            t=h(x)
+            f=np.poly1d(polyfit_forced)
+            y=f(x)
+            g=a*np.exp(b*x)
+            fig=plt.figure(dpi=1000)
+            ax=fig.add_subplot(111)
+            ax.plot(phi_data,v_dot_data,marker="o",linestyle="",label='data')
+            ax.plot(x,t,label='linear fitting [],R^2=0,8738')
+            ax.plot(x,y,label='polynomial fitting,R^2=0,9132')
+            ax.plot(x,g,label='exponential fitting,R^2=0,7784')
+            ax.set_xlabel('phi [-]')
+            ax.set_ylabel('v_deg_rate [10e-6V/h]')
+            ax.set_title('Fitting of degradation rate')
+            ax.legend(fontsize=9)
+            ax.grid()
+            plt.show()
+
+        v_phi_fitting_plot()
+        
+        ## Load current
+
+        #DFT current
+
+        DFT_i=scipy.fft.fft(load_i)     # Fast Fourier Transorm (Discretized)
+
+        N = len(DFT_i)
+        n = np.arange(N)
+
+        Fs = 1 / (60*60)    # sampling frequency
+        T = N/Fs
+        freq = n/T 
+        
+        if Fs<freq[-1]:
+            f_max=Fs        #paper
+        else:
+            f_max=freq[-1]
+
+        DFT_i=scipy.fft.fft(load_i)     # Fast Fourier Transorm (Discretized)
+        DFT_i_mag=np.abs(DFT_i)/N
+
+        def DFT_current_plot():
+            plt.figure(dpi=1000)      
+            plt.plot(freq[0:int(N/2+1)],2*DFT_i_mag[0:int(N/2+1)])
+            plt.grid()
+            plt.xlim(0,f_max)
+            plt.ylabel('|FFT_i(J)| [A/cm^2]')
+            plt.xlabel('Frequency (Hz)')
+            plt.title('Single-Sided Amplitude Spectrum of J(t)')
+            plt.show() 
+        
+        DFT_current_plot()
+        
+        #weight current
+
+        w_curr=[k_1,1]
+
+        #current value
+
+        grad=3
+        p_Cln=np.polyfit(freq,np.abs(DFT_i),grad)  #costanti della funzione F(omega) di terzo grado trovata col fitting di DFT sulla frequenza
+        prod=np.polyint(np.poly1d(p_Cln)*np.poly1d(w_curr))           #integro il prodotto tra F(omega) e w_curr indefinito
+        I=np.polyval(prod,f_max)-np.polyval(prod,0)    #rendo l'integrale definito tra f_max e 0
+        self.m_curr=1/T*I+1
+        print(self.m_curr)
+
+        ## Load voltage
+
+        # Voltage histogram
+
+        self.bins = np.arange(self.v_0-0.01,self.vol_max+0.01,0.01) # define some self.bins that cover the range of interest
+        self.delta_v=self.bins[1]-self.bins[0]
+        self.v_counts=np.histogram(self.v_round,self.bins)[0]        
+        self.H_v=self.v_counts/len(self.v_pos)
+        self.H_v_tot=self.H_v.sum()
+        
+        def v_count_plot():
+            fig=plt.figure(dpi=1000)
+            #self.v_counts=plt.hist(self.v_round, self.bins, density=False, facecolor='b', alpha=0.75, edgecolor='black',rwidth=0.8)[0]
+            plt.stairs(self.v_counts,self.bins,fill=True,facecolor='b',edgecolor='black')
+            plt.vlines(x=self.v_L,ymin=0,ymax=max(self.v_counts),color="red",linestyle="dashed",label="v_L")
+            plt.vlines(x=self.v_U,ymin=0,ymax=max(self.v_counts),color="red",linestyle="dashed",label="v_U")
+            plt.xlim([self.v_0-0.1 ,self.vol_max+0.1])
+            plt.xlabel('Operation Voltage Range [V]')
+            plt.ylabel('Voltage counts')
+            #plt.xticks([self.v_L,self.v_U],['v_L','v_U'],weight='bold')
+            plt.text(self.v_L,-100,"v_L",weight='bold',horizontalalignment='center')
+            plt.text(self.v_U,-100,"v_U",weight='bold',horizontalalignment='center')
+            plt.grid()
+            plt.show()
+            
+        v_count_plot()
+        
+        def H_v_plot():
+            fig1=plt.figure(dpi=1000)
+            plt.stairs(self.H_v*100,self.bins,fill=True,facecolor="b",edgecolor='black')
+            plt.vlines(x=self.v_L,ymin=0,ymax=max(self.H_v)*100,color="red",linestyle="dashed",label="v_L")
+            plt.vlines(x=self.v_U,ymin=0,ymax=max(self.H_v)*100,color="red",linestyle="dashed",label="v_U")
+            plt.xlim([self.v_0-0.1 ,self.vol_max+0.1])
+            plt.xlabel('Operation Voltage Range [V]')
+            plt.ylabel('Voltage distribution [%]')
+            plt.text(self.v_L,-1,"v_L",weight='bold',horizontalalignment='center')
+            plt.text(self.v_U,-1,"v_U",weight='bold',horizontalalignment='center')
+            plt.grid()
+            plt.show()
+        
+        H_v_plot()
+        
+        self.bins=self.bins[1:]
+        
+        # definition of w_vol function
+
+        w_vol_1= lambda v: (k_2*(v-self.v_L))**2+1   #if v<self.v_L
+
+        w_vol_2=1                               #if self.v_L<v<self.v_U
+
+        w_vol_3= lambda v: (k_2*(v-self.v_U))**2+1   #if v>self.v_U
+        
+        # voltage value (summation method)
+        
+        
+        m=0
+        for indice in range(len(self.bins)):
+            
+            if self.bins[indice]<self.v_L:
+                val=self.H_v[indice]*w_vol_1(self.bins[indice]-self.delta_v/2)
+                
+            elif self.bins[indice]>=self.v_L and self.bins[indice]<=self.v_U:
+                val=self.H_v[indice]*w_vol_2
+                
+            elif self.bins[indice]>self.v_U:
+                val=self.H_v[indice]*w_vol_3(self.bins[indice]-self.delta_v/2)
+                
+            m+=val
+            
+        self.m_vol=m
+        print("m_vol="+str(self.m_vol))
+        
+        ## Characteristic value of load
+
+        self.phi=self.m_curr*self.m_vol
+        print("phi="+str(self.phi))
+
+        ## Life time definition
+
+        v_deg_rate_paper=paper_fit[0]*self.phi+paper_fit[1]
+        self.v_deg_rate_pol=(polyfit_forced[0]*(self.phi**2))+(polyfit_forced[1]*self.phi)+polyfit_forced[2] #[microV/h]
+        v_deg_rate_exp=a*np.exp(self.phi*b)
+        print("v_deg="+str(self.v_deg_rate_pol))
+        
+        T_cell_h_paper=(0.1*self.v_rated)/(v_deg_rate_paper/1e6)   #[h]
+        T_cell_y_paper=T_cell_h_paper/h_utilizzo_year
+
+        self.T_cell_h_pol=(0.1*self.v_rated)/(self.v_deg_rate_pol/1e6)   #[h]
+        self.T_cell_y_pol=self.T_cell_h_pol/h_utilizzo_year
+        print("T_cell="+str(self.T_cell_h_pol))
+
+        T_cell_h_exp=(0.1*self.v_rated)/(v_deg_rate_exp/1e6)   #[h]
+        T_cell_y_exp=T_cell_h_exp/h_utilizzo_year
+
+        n_replacements=int(economic_data['investment years']*(8760/self.T_cell_h_pol))
+        for n in np.arange(n_replacements):
+            self.replacements.append(self.T_cell_h_pol*(1+n))
+        
+        
+        return self.replacements
+    
+    def plot_corrected_polcurves(self,h):
+        
+        fig=plt.figure(figsize=(12,8),dpi=1000)
+        fig.suptitle("Prestazioni FC da {}".format(round(self.FC_NominalPower,1)) +" kW con ageing",fontsize=25)
+        
+        ax_1=fig.add_subplot(111)
+        ax_1.plot(self.CellCurrDensity,self.Voltage,label='BoL', color='b',linewidth=3.0)
+        ax_1.plot(self.x,self.iV1(self.x),label='h='+str(h),color='r',linewidth=3.0)
+        #ax_1.plot(self.x,self.iV1(self.x),label="EoL",color='r',linewidth=3.0) 
+        ax_1.grid()
+        ax_1.legend(fontsize=20)
+        ax_1.set_xlabel('Cell Current Density [A cm$^{-2}$]',fontsize=20)
+        ax_1.set_ylabel('Stak Voltage [V]',fontsize=20)
+        ax_1.set_title('PEMFC Polarization Curve (V-i)',fontsize=20 )
+        
+        plt.tight_layout()
+        plt.show()
+    
 #%%##########################################################################################
 
 if __name__ == "__main__":
@@ -955,12 +1211,13 @@ if __name__ == "__main__":
     Functional test
     """
     
-    inp_test = {'Npower': 5,
+    inp_test = {'Npower': 1000,
                 "number of modules": 4,
                 'stack model':'SOFC',
+                'ageing': True
                 }
     
-    sim_hours=36                               # [h] simulated period of time - usually it's 1 year minimum
+    sim_hours=60                               # [h] simulated period of time - usually it's 1 year minimum
     time=np.arange(sim_hours)
     
     fc = fuel_cell(inp_test,sim_hours)         # creating fuel cell object
