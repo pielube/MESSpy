@@ -21,7 +21,8 @@ Models of different technologies are avialable and still under development to in
 - Fuel Cells
 - Hydrogen tanks
 - Heat pumps
-- Boilers
+- Boilers (ng, ele or H2)
+- CHP (combained heat and power)
 
 ### MESS needs the hourly load profiles as input as a .csv file
 Depending on the type of meter installed, these data is in some cases made available by the electricity/gas supplier, in others it must be requested, while sometimes it cannot be obtained. In the latter case, specific programmes are required to generate such profiles in the specific .csv format needed as one of the program inputs. There are many programmes available online, the authors recommend the following:\
@@ -36,7 +37,6 @@ The model is developed in Python 3.9, and requires the following libraries:
 - pickle (results are saved in .pickle)
 - json (input files are .json)
 - pvlib (used to download PV production series and weather data based on typical meteorological year)
-- hplib (used to model heat pumps)
 - matplotlib (used in post_process)
 
 A less up-to-date but fully functional and documented fortran version is also available:
