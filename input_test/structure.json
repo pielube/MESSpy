@@ -37,7 +37,8 @@
 									"stack model": "PEM General"},
 				"fuel cell": {	"Npower": 1,
 								"number of modules":1,
-								"stack model": "PEM General"},
+								"stack model": "PEM General",
+								"ageing" : false},
 				"H tank": {		"max capacity": 1,
 								"pressure": 30 }},
 							

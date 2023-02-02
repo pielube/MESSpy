@@ -111,7 +111,7 @@ def NPV(structure,structure0,study_case,reference_case,economic_data,simulation_
                     rep_time = economic_data[tech_name]['replacement']['years']
                     while rep_time < economic_data['investment years']: # if tech_name replacement happens before the end of the simulation
                         results[location_name]['CF_studycase']['OeM'][rep_time] += - results[location_name]['I0'][tech_name]*economic_data[tech_name]['replacement']['rate']/100 # subtract technology replacement to location Cash Flow
-                        rep_time += rep_time
+                        rep_time += economic_data[tech_name]['replacement']['years']
                 # NB no refund considered for replacements
                         
                 # refund
