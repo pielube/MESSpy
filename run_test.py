@@ -23,48 +23,54 @@ import json
 import pickle
 
 # Selecting simulation names
-study_case = 'Rec_' # str name for results file.pkl
-reference_case = 'Rec0_' # str name for results file.pkl
+name_studycase = 'Rec_' # str name for results file.pkl
+name_refcase = 'Rec0_' # str name for results file.pkl
 
 # Selecting input files:
 path = r'./input_test' # change the path with r'./input_dev' if you are working on your own run_dev
 #path = r'./input_dev'
 
-file_structure = 'structure.json'
-file_general = 'general.json'
-file_eco = 'economics.json'
+file_studycase = 'studycase.json'
 file_refcase = 'refcase.json'
+file_general = 'general.json'
+file_tech_cost = 'tech_cost.json'
+file_energy_market = 'energy_market.json'
 
 # Opening input files:
-with open(os.path.join(path,file_structure),'r') as f: structure = json.load(f)
+with open(os.path.join(path,file_studycase),'r') as f: studycase = json.load(f)
+with open(os.path.join(path,file_refcase),'r') as f: refcase = json.load(f)
 with open(os.path.join(path,file_general),'r') as f: general = json.load(f)
-with open(os.path.join(path,file_eco),'r') as f: economic_data = json.load(f)
-with open(os.path.join(path,file_refcase),'r') as f: structure0 = json.load(f)
+with open(os.path.join(path,file_tech_cost),'r') as f: tech_cost = json.load(f)
+with open(os.path.join(path,file_energy_market),'r') as f: energy_market = json.load(f)
+
 
 #%% ###########################################################################
 """
-SOLVER
+SOLVER - studycase simulation
 ======
 """
 
-rec = REC(structure,general,path,study_case) # create REC object
+rec = REC(studycase,general,path,name_studycase) # create REC object
 rec.REC_energy_simulation() # simulate REC enegy balances
-rec.save(study_case) # save results in 'study_case.pkl'
+rec.tech_cost(tech_cost) # calculate the cost of all technologies 
+rec.save(name_studycase) # save results in 'name_studycase.pkl'
     
+
 #%% ###########################################################################
 """
-POST PROCESS - ECONOMIC ANALYSIS
+POST PROCESS - refcase simulation and investment assesment
 ================================
 """
   
 # Reference case simulation (run only if changed)
-rec0 = REC(structure0,general,path,reference_case) # create REC
+rec0 = REC(refcase,general,path,name_refcase) # create REC
 rec0.REC_energy_simulation() # simulate REC 
-rec0.save(reference_case) # save results in 'reference_case.pkl'
+rec0.tech_cost(tech_cost) # calculate the cost of all technologies 
+rec0.save(name_refcase) # save results in 'name_refcase.pkl'
 
     
-#%% Actual economic analysis
-NPV(structure,structure0,study_case,reference_case,economic_data,general['simulation years'],path) 
+#%% Net present value calculation to asses the investment comparing refcase and studycase
+NPV(name_studycase,name_refcase,energy_market,general['simulation years'],path) 
 
 
 #%% ###########################################################################
@@ -76,33 +82,37 @@ some post-process are alredy avaiable as examples in postprocess_test
 you should create your own postprocess_dev.py
 """
 
-pp.total_balances(study_case,'prosumer_1','electricity')
-pp.total_balances(study_case,'prosumer_2','electricity')
-pp.total_balances(study_case,'prosumer_2','hydrogen')
-pp.total_balances(study_case,'consumer_1','electricity')
+pp.total_balances(name_studycase,'prosumer_1','electricity')
+pp.total_balances(name_studycase,'prosumer_2','electricity')
+pp.total_balances(name_studycase,'prosumer_2','hydrogen')
+pp.total_balances(name_studycase,'consumer_1','electricity')
 
-#pp.total_balances(reference_case,'consumer_2','electricity')
-#pp.total_balances(reference_case,'consumer_2','heating water')
-#pp.total_balances(reference_case,'consumer_2','gas')
-pp.total_balances(study_case,'consumer_2','electricity')
-pp.total_balances(study_case,'consumer_2','heating water')
+#pp.total_balances(name_refcase,'consumer_2','electricity')
+#pp.total_balances(name_refcase,'consumer_2','heating water')
+#pp.total_balances(name_refcase,'consumer_2','gas')
+pp.total_balances(name_studycase,'consumer_2','electricity')
+pp.total_balances(name_studycase,'consumer_2','heating water')
 
 
-pp.REC_electricity_balance(study_case)
+pp.REC_electricity_balance(name_studycase)
 
-pp.LOC_plot(study_case)
+pp.LOC_plot(name_studycase)
 
-pp.NPV_plot(study_case)
+pp.NPV_plot(name_studycase)
 
-pp.hourly_balances_electricity(study_case,'prosumer_1', 2, 3)
-pp.hourly_balances_electricity(study_case,'prosumer_2', 2, 3)
-#pp.hourly_balances_electricity(study_case,'consumer_1', 2, 3)
-#pp.hourly_balances_electricity(study_case,'consumer_2', 2, 3)
+pp.hourly_balances_electricity(name_studycase,'prosumer_1', 2, 3)
+pp.hourly_balances_electricity(name_studycase,'prosumer_2', 2, 3)
+#pp.hourly_balances_electricity(name_studycase,'consumer_1', 2, 3)
+#pp.hourly_balances_electricity(name_studycase,'consumer_2', 2, 3)
 
-#pp.csc_allocation_sum(study_case)
-#pp.storage_control(study_case)
-#pp.ele_param(study_case, 2, 3)
-#pp.fc_param(study_case, 2, 3)
+#pp.csc_allocation_sum(name_studycase)
+#pp.storage_control(name_studycase)
+#pp.ele_param(name_studycase, 2, 3)
+#pp.fc_param(name_studycase, 2, 3)
+
+# here you can read the main results (balances and economic):
+#with open('results/economic_assessment_'+name_studycase+'.pkl', 'rb') as f: economic = pickle.load(f)
+#with open('results/balances_'+name_studycase+'.pkl', 'rb') as f: balances = pickle.load(f)
 
 
 #%% ##########################################################################
@@ -120,13 +130,13 @@ pp.hourly_balances_electricity(study_case,'prosumer_2', 2, 3)
 # ss = [] # self-sufficiency
 # 
 # for pv in pv_size:
-#     study_case = f"PV size = {pv}"
-#     new_structure = pre.change_peakP(structure, 'prosumer_1', pv)
-#     rec = REC(new_structure,general,path) # create REC object
+#     name_studycase = f"PV size = {pv}"
+#     new_studycase = pre.change_peakP(studycase, 'prosumer_1', pv)
+#     rec = REC(new_studycase,general,path) # create REC object
 #     rec.REC_energy_simulation() # simulate REC enegy balances
-#     rec.save(study_case) # save results in 'study_case.pkl'
+#     rec.save(name_studycase) # save results in 'name_studycase.pkl'
 #     
-#     with open('results/balances_'+study_case+'.pkl', 'rb') as f: balances = pickle.load(f)
+#     with open('results/balances_'+name_studycase+'.pkl', 'rb') as f: balances = pickle.load(f)
 #     demand = -balances['prosumer_1']['electricity']['demand'].sum() # read from saved results .pkl
 #     production = balances['prosumer_1']['electricity']['PV'].sum()
 #     into_grid = balances['prosumer_1']['electricity']['grid'].sum(where=balances['prosumer_1']['electricity']['grid']<0)
@@ -152,8 +162,6 @@ pp.hourly_balances_electricity(study_case,'prosumer_2', 2, 3)
 
 
 
-
-    
 
 
 

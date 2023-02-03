@@ -1,0 +1,41 @@
+{			
+"PV": { "cost per unit": 1200, 
+        "OeM": 1, 
+        "refund": { "rate": 50, "years": 10},
+        "replacement": {"rate": 80, "years": 25}},  
+ 
+"inverter":{    "cost per unit": 500, 
+                "OeM": 1, 
+                "refund": { "rate": 50, "years": 10},
+                "replacement": {"rate": 90 , "years":10}},  
+                
+"battery": {"cost per unit": "default price correlation", 
+            "OeM": 1, 
+            "refund": { "rate": 50, "years": 10},
+            "replacement": {"rate": 60, "years": "ageing"}}, 
+            	   
+"electrolyzer": {"cost per unit": 1500, 
+                 "OeM": 1, 
+                 "refund": { "rate": 50, "years": 0},
+                 "replacement": {"rate": 30, "years": 15}},  
+				 
+"H tank": {"cost per unit": 400,
+           "OeM": 1,
+           "refund": { "rate": 50, "years": 0},
+           "replacement": {"rate": 90, "years": 30}}, 
+		   
+"fuel cell": {"cost per unit": 1500,
+              "OeM": 1, 
+              "refund": { "rate": 50, "years": 0},
+              "replacement": {"rate": 30, "years": 15}}, 
+               
+"heatpump": {"cost per unit": 1400,
+             "OeM": 1, 
+             "refund": { "rate": 65, "years": 10},
+             "replacement": {"rate": 70, "years": 30}},
+             
+"boiler_ng": {"cost per unit": "default price correlation",
+             "OeM": 1, 
+             "refund": { "rate": 0, "years": 0},
+             "replacement": {"rate": 60, "years": 10}}    
+}

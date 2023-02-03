@@ -188,7 +188,8 @@ class REC:
         ageing = {}
         electrolyzer = {}                 
         balances['REC'] = self.energy_balance
-        parameters = {}              
+        parameters = {}        
+        tech_cost = {}
         
         for location_name in self.locations:
             balances[location_name] = self.locations[location_name].energy_balance
@@ -225,37 +226,21 @@ class REC:
                     parameters[location_name][tech_name] = {}      
                     parameters[location_name][tech_name]['cell voltage'] = self.locations[location_name].technologies[tech_name].VOLT
                     parameters[location_name][tech_name]['current density'] = self.locations[location_name].technologies[tech_name].CURR_DENS
+            
+            tech_cost[location_name] = {}
+            for tech_name in self.locations[location_name].technologies:
+                tech_cost[location_name][tech_name] = self.locations[location_name].technologies[tech_name].cost
         
         directory = './results'
-        if not os.path.exists(directory):
-            os.makedirs(directory)
+        if not os.path.exists(directory): os.makedirs(directory)
         
-        with open('results/balances_'+simulation_name+".pkl", 'wb') as f:
-            pickle.dump(balances, f) 
-            
-        with open('results/tech_params_'+simulation_name+".pkl", 'wb') as f:
-            pickle.dump(parameters, f)           
-                                                                  
-        with open('results/LOC_'+simulation_name+".pkl", 'wb') as f:
-            pickle.dump(LOC, f) 
-            
-        with open('results/ageing_'+simulation_name+".pkl", 'wb') as f:
-            pickle.dump(ageing, f)    
-            
-    def reset(self):
-        """
-        Use this function before a new simulation if you don't want to recreate the rec object
+        with open('results/balances_'+simulation_name+".pkl", 'wb') as f: pickle.dump(balances, f)      
+        with open('results/tech_params_'+simulation_name+".pkl", 'wb') as f: pickle.dump(parameters, f)
+        with open('results/LOC_'+simulation_name+".pkl", 'wb') as f: pickle.dump(LOC, f)             
+        with open('results/ageing_'+simulation_name+".pkl", 'wb') as f: pickle.dump(ageing, f)   
+        with open('results/tech_cost_'+simulation_name+".pkl", 'wb') as f: pickle.dump(tech_cost, f)   
         
-        output: initialise LOC
-        """
-        
-        to_reset = ['battery','H tank'] # technologies for which the LOC must be reset
-        for location_name in self.locations: # each location
-            for tech_name in to_reset:
-                if tech_name in self.locations[location_name].technologies: 
-                    self.locations[location_name].technologies[tech_name].LOC = np.zeros(self.simulation_hours+1) # array level of Charge 
-                    self.locations[location_name].technologies[tech_name].used_capacity = 0 # used capacity <= max_capacity   
-    
+       
     def weather_generation(self,general,path,check):
         """
         
@@ -325,3 +310,8 @@ class REC:
 
         return(weather)
    
+    def tech_cost(self,tech_cost):
+        for location_name in self.locations:
+            for tech_name in self.locations[location_name].technologies:
+                self.locations[location_name].technologies[tech_name].tech_cost(tech_cost[tech_name])
+                

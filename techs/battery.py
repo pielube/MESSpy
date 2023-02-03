@@ -45,7 +45,6 @@ class battery:
       
         self.collective = parameters['collective'] # int 0: no collective rules. 1: priority to csc and then charge or discharge the battery.
 
-       
     def use(self,h,e):
         """
         The battery can supply or absorb electricity
@@ -110,8 +109,6 @@ class battery:
             self.replacements.append(h)
             self.completed_cycles = 0
             self.max_capacity = self.nom_capacity
-
-        # calendar?  
         
     def rainflow(self,h):
         
@@ -184,7 +181,50 @@ class battery:
         
         return(n_cycles)
     
-    
+    def tech_cost(self,tech_cost):
+        """
+        Parameters
+        ----------
+        tech_cost : dict
+            'cost per unit': float [€/kWh]
+            'OeM': float, percentage on initial investment [%]
+            'refud': dict
+                'rate': float, percentage of initial investment which will be rimbursed [%]
+                'years': int, years for reimbursment
+            'replacement': dict
+                'rate': float, replacement cost as a percentage of the initial investment [%]
+                'years': int, after how many years it will be replaced
+
+        Returns
+        -------
+        self.cost: dict
+            'total cost': float [€]
+            'OeM': float, percentage on initial investment [%]
+            'refud': dict
+                'rate': float, percentage of initial investment which will be rimbursed [%]
+                'years': int, years for reimbursment
+            'replacement': dict
+                'rate': float, replacement cost as a percentage of the initial investment [%]
+                'years': int, after how many years it will be replaced
+        """
+        
+        tech_cost = {key: value for key, value in tech_cost.items()}
+        
+        size = self.nom_capacity # kWH
+        
+        if tech_cost['cost per unit'] == 'default price correlation':
+            C0 = 800 # €/kWh
+            scale_factor = 0.8 # 0:1
+            C = size * C0 **  scale_factor
+        else:
+            C = size * tech_cost['cost per unit']
+
+        tech_cost['total cost'] = tech_cost.pop('cost per unit')
+        tech_cost['total cost'] = C
+        tech_cost['OeM'] = tech_cost['OeM'] *C /100 # €
+
+
+        self.cost = tech_cost
 
 
 ###########################################################################################################################################################

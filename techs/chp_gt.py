@@ -315,58 +315,81 @@ class chp_gt:
         revenews = cb*price   # [€/y]
         
         return(Eta_global,PES)
-
-    
-    def costs(self): 
         
-        # Cost references: https://understandingchp.com/chp-applications-guide/6-8-rules-of-thumb-for-chp-engineering-and-installation-costs/
+    def tech_cost(self,tech_cost):
+        """
+        Parameters
+        ----------
+        tech_cost : dict
+            'cost per unit': float [€/kWh]
+            'OeM': float, percentage on initial investment [%]
+            'refud': dict
+                'rate': float, percentage of initial investment which will be rimbursed [%]
+                'years': int, years for reimbursment
+            'replacement': dict
+                'rate': float, replacement cost as a percentage of the initial investment [%]
+                'years': int, after how many years it will be replaced
 
-        costs = {}
-        
-        costs['GT'] = {'total installation costs': (6380*(self.GT_param['Power[MW]']*1000)**0.73),               # € - Impianti di potenza dispense 
-                       'OeM'                     : 0.06*(6380*((self.GT_param['Power[MW]']*1000)**0.73)),        # € 
-                       'lifetime'                : 30} 
+        Returns
+        -------
+        self.cost: dict
+            'total cost': float [€]
+            'OeM': float, percentage on initial investment [%]
+            'refud': dict
+                'rate': float, percentage of initial investment which will be rimbursed [%]
+                'years': int, years for reimbursment
+            'replacement': dict
+                'rate': float, replacement cost as a percentage of the initial investment [%]
+                'years': int, after how many years it will be replaced
+        """
+             
+        tech_cost = {key: value for key, value in tech_cost.items()}
 
-        costs['HRSG'] = {'total installation costs': (68679.85 +\
-                                                      182811.26+\
-                                                      211764.99+\
-                                                     (6380*((self.GT_param['Power[MW]']*1000)**0.73))*0.04),     # € - Impianti di potenza dispense
-                          'OeM'                    : 0.06*(68679.85 +\
-                                                     182811.26+\
-                                                     211764.99+\
-                                                     (6380*((self.GT_param['Power[MW]']*1000)**0.73))*0.04),                                     
-                         'lifetime'                : 30} 
+        if tech_cost['cost per unit'] == 'default price correlation':
+            
+            #Cost references: https://understandingchp.com/chp-applications-guide/6-8-rules-of-thumb-for-chp-engineering-and-installation-costs/
+            change = 1.183 # [$/€] average 2021
+            
+            # GT - Impianti di potenza dispense 
+            C = 6380*(self.GT_param['Power[MW]']*1000)**0.73               
+            OeM = 0.06*(6380*((self.GT_param['Power[MW]']*1000)**0.73)) 
+            
+            # HRSG - Impianti di potenza dispense 
+            C += (68679.85 + 182811.26 + 211764.99+ 6380*((self.GT_param['Power[MW]']*1000)**0.73))*0.04
+            OeM += 0.06*(68679.85 + 182811.26 + 211764.99 + 6380*((self.GT_param['Power[MW]']*1000)**0.73))*0.04
+            
+            # Alternator
+            C += 4028*((180/(1.38))**0.58)              
+            OeM += 0.06*4028*((180/(1.38))**0.58)
+            
+# =============================================================================
+#             # Pump
+#             C += 68679.85/change
+#             OeM += 0.06*(68679.85/change)
+#             
+#             # Eco
+#             C += 182811.26/change
+#             OeM += 0.06*(182811.26/change)
+#             
+#             # Eva
+#             C += 211764.99/change
+#             OeM += 0.06*(211764.99/change)
+#             
+#             # Condenser
+#             C += (6380*(5649**0.73))*0.04
+#             OeM += 0.06*((6380*(5649**0.73))*0.04)
+# =============================================================================
+                   
+        else:
+            print( "essendo presente solamente un modello di CHP e di una taglia fissa il costo può essere fatto solo con la default price correlation")
 
-        # costs['Pump'] = {'total installation costs': 68679.85/change,       # €
-        #                      'OeM':0.06*(68679.85/change),                  # €
-        #                      'lifetime': 25}                                # y
+            tech_cost['total cost'] = tech_cost.pop('cost per unit')
+            tech_cost['total cost'] = C
+            tech_cost['OeM'] = OeM
+            tech_cost['refund'] = { "rate": 0, "years": 0}
+            tech_cost['replacement'] = {"rate": 80, "years": 30}
 
-        # costs['Eco'] = {'total installation costs': 182811.26/change,       # € 
-        #                      'OeM':0.06*(182811.26/change),                 # €
-        #                      'lifetime': 25}                                # y
-
-        # costs['Eva'] = {'total installation costs': 211764.99/change,       # € 
-        #                      'OeM':0.06*(211764.99/change),                 # €
-        #                      'lifetime': 25}                                # y
-
-        # costs['Condenser'] = {'total installation costs': (6380*(5649**0.73))*0.04 ,  # € 
-        #                      'OeM':0.06*((6380*(5649**0.73))*0.04) ,                  # €
-        #                      'lifetime': 25}                                          # y
-
-        costs['Alternator'] = {'total installation costs': 4028*((180/(1.38))**0.58) ,          # € 
-                               'OeM'                     : 0.06*4028*((180/(1.38))**0.58),      # €
-                               'lifetime'                : 30}                                  # y 
-        
-        
-        I0  = []   # [€] initializing CAPEX costs
-        oem = []   # [€] initializing O&M costs
-        
-        for item in costs: 
-            I0.append(costs[item]['total installation costs'])
-            oem.append(costs[item]['OeM'])
-        
-        return (sum(I0),sum(oem))
-        
+            self.cost = tech_cost
         
 #%%##########################################################################################
 

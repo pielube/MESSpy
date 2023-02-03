@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import pickle
 
-def NPV(structure,structure0,study_case,reference_case,economic_data,simulation_years,path):
+def NPV(name_studycase,name_refcase,economic_data,simulation_years,path):
     """
     Economic assesment 
     
@@ -26,8 +26,8 @@ def NPV(structure,structure0,study_case,reference_case,economic_data,simulation_
         'inflation rate': -1-1 [rate/year] cost evolution of each carrier
         'investment year': time horizon for which to evaluate the economic analysis (must be a multiple of simulation_year in general.json)
         
-    study_case: str name of study case results file.pkl
-    reference_case: str name of reference case results file.pkl
+    name_studycase: str name of study case results file.pkl
+    name_refcase: str name of reference case results file.pkl
         
     structure: dictionary of study case structure (see REC.py)
     structure0: dictionary of reference case structure (see REC.py)
@@ -39,15 +39,16 @@ def NPV(structure,structure0,study_case,reference_case,economic_data,simulation_
     years_factor = int(economic_data['investment years'] / simulation_years) # this factor is useful to match the length of the energy simulation with the length of the economic investment
     
     # open energy balances of study and reference case
-    with open('Results/balances_'+study_case+'.pkl', 'rb') as f:        balances = pickle.load(f)        
-    with open('Results/balances_'+reference_case+'.pkl', 'rb') as f:        balances0 = pickle.load(f)
+    with open('Results/balances_'+name_studycase+'.pkl', 'rb') as f:        balances = pickle.load(f)        
+    with open('Results/balances_'+name_refcase+'.pkl', 'rb') as f:        balances0 = pickle.load(f)
+    
+    # open cost of componenets of studycase and refcase
+    with open('Results/tech_cost_'+name_studycase+'.pkl', 'rb') as f:        tc = pickle.load(f)        
+    with open('Results/tech_cost_'+name_refcase+'.pkl', 'rb') as f:        tc0 = pickle.load(f)
         
     results = {}                              # dictionary initialise economic results of each locations
     
-    for location_name in structure:           # for reach location
-        
-        system = structure[location_name]     # location system (see Location.py)
-        system0 = structure0[location_name]   # same for reference case
+    for location_name in tc:           # for reach location
         
         results[location_name] = {}           # dictionary initialise economic results
        
@@ -73,63 +74,55 @@ def NPV(structure,structure0,study_case,reference_case,economic_data,simulation_
 
         results[location_name]['I0'] = {} # initialise initial investment           
         
-        # each tech has different cost correlation
         
-        for tech_name in system:              # considering each techonlogiy in the location
-            if tech_name in economic_data:    # to avoid considering 'electricity demand' as a technology and thus avoiding errors
-                
-                # Calculate I0 
-                if tech_name == 'electrolyzer':
-                    results[location_name]['I0'][tech_name] = system[tech_name]['Npower']*system[tech_name]['number of modules']*economic_data[tech_name]['total installation cost']  # add technology total installation cost to location I0
-                if tech_name == 'fuel cell':
-                    results[location_name]['I0'][tech_name] = system[tech_name]['Npower']*system[tech_name]['number of modules']*economic_data[tech_name]['total installation cost']  # add technology total installation cost to location I0
-                if tech_name == 'PV':
-                    results[location_name]['I0'][tech_name] = system[tech_name]['peakP']*economic_data[tech_name]['total installation cost']  # add technology total installation cost to location I0
-                if tech_name == 'electrolyzer':
-                    results[location_name]['I0'][tech_name] = system[tech_name]['Npower']*system[tech_name]['number of modules']*economic_data[tech_name]['total installation cost']  # add technology total installation cost to location I0
-                if tech_name == 'inverter':
-                    results[location_name]['I0'][tech_name] = system[tech_name]['peakP']*economic_data[tech_name]['total installation cost']  # add technology total installation cost to location I0
-                if tech_name == 'battery':
-                    results[location_name]['I0'][tech_name] = system[tech_name]['nominal capacity']*economic_data[tech_name]['total installation cost']  # add technology total installation cost to location I0
-                if tech_name == 'H tank':
-                    results[location_name]['I0'][tech_name] = system[tech_name]['max capacity']*economic_data[tech_name]['total installation cost']  # add technology total installation cost to location I0
-                if tech_name == 'heatpump':
-                    results[location_name]['I0'][tech_name] = system[tech_name]['nom Pth']*economic_data[tech_name]['total installation cost']  # add technology total installation cost to location I0
-                   
-                # Calculate OeM
-                results[location_name]['CF_studycase']['OeM'][:] += - results[location_name]['I0'][tech_name]*economic_data[tech_name]['OeM']/100  # add technology OeM to location OeM
+        for tech_name in tc[location_name]:              # considering each techonlogiy in the location
+        
+            results[location_name]['I0'][tech_name] = tc[location_name][tech_name]['total cost'] # I0
+            results[location_name]['CF_studycase']['OeM'][:] += - tc[location_name][tech_name]['OeM'] # OeM
 
-                # replacements 
-                if economic_data[tech_name]['replacement']['years'] == "ageing": # if replacement year is calculated according to ageing
-                    with open('Results/ageing_'+study_case+'.pkl', 'rb') as f:
-                        age = pickle.load(f)     
-                        age = age[location_name][tech_name][0]
-                        for a in age:
-                            rep_time = int(a/8760)
-                            results[location_name]['CF_studycase']['OeM'][rep_time] += - results[location_name]['I0'][tech_name]*economic_data[tech_name]['replacement']['rate']/100 # subtract technology replacement to location Cash Flow
-                else: # if replacement time is given
-                    rep_time = economic_data[tech_name]['replacement']['years']
-                    while rep_time < economic_data['investment years']: # if tech_name replacement happens before the end of the simulation
-                        results[location_name]['CF_studycase']['OeM'][rep_time] += - results[location_name]['I0'][tech_name]*economic_data[tech_name]['replacement']['rate']/100 # subtract technology replacement to location Cash Flow
-                        rep_time += rep_time
-                # NB no refund considered for replacements
-                        
-                # refund
-                if economic_data[tech_name]['refund']['years'] == 0:
-                    results[location_name]['I0'][tech_name] = results[location_name]['I0'][tech_name]*(100-economic_data[tech_name]['refund']['rate'])/100
-                else:
-                    yearly_refund = results[location_name]['I0'][tech_name]*economic_data[tech_name]['refund']['rate']/100 / economic_data[tech_name]['refund']['years'] # yearly refund [€]
-                    refunds = np.zeros(economic_data['investment years']) # array initialise
-                    refunds[:min(economic_data['investment years'],economic_data[tech_name]['refund']['years'])] = yearly_refund # array repet yearly refond 
-                    results[location_name]['CF_studycase']['Refund'] += refunds # add refund to Cash Flow
-                
-        # OeM and replacements in the reference case not considered yet
-# =============================================================================
-#         for tech_name in system0: # considering each techonlogies in the locations (reference_case)
-#             if tech_name in economic_data: # to not consider 'electricity demand' as a technology and avoid bugs
-#                 results[location_name]['CF_refcase']['OeM'][:] += 
-# =============================================================================
-
+            # replacements 
+            if tc[location_name][tech_name]['replacement']['years'] == "ageing": # if replacement year is calculated according to ageing
+                with open('Results/ageing_'+name_studycase+'.pkl', 'rb') as f:
+                    age = pickle.load(f)     
+                    age = age[location_name][tech_name][0]
+                    for a in age:
+                        rep_time = int(a/8760)
+                        results[location_name]['CF_studycase']['OeM'][rep_time] += - results[location_name]['I0'][tech_name] * tc[location_name][tech_name]['replacement']['rate']/100 # subtract technology replacement to location Cash Flow
+            else: # if replacement time is given
+                rep_time = tc[location_name][tech_name]['replacement']['years']
+                while rep_time < economic_data['investment years']: # if tech_name replacement happens before the end of the simulation
+                    results[location_name]['CF_studycase']['OeM'][rep_time] += - results[location_name]['I0'][tech_name] * tc[location_name][tech_name]['replacement']['rate']/100 # subtract technology replacement to location Cash Flow
+                    rep_time += tc[location_name][tech_name]['replacement']['years']
+            # NB no refund considered for replacements
+                    
+            # refund
+            if tc[location_name][tech_name]['refund']['years'] == 0:
+                results[location_name]['I0'][tech_name] = results[location_name]['I0'][tech_name]*(100-tc[location_name][tech_name]['refund']['rate'])/100
+            else:
+                yearly_refund = results[location_name]['I0'][tech_name]*tc[location_name][tech_name]['refund']['rate']/100 / tc[location_name][tech_name]['refund']['years'] # yearly refund [€]
+                refunds = np.zeros(economic_data['investment years']) # array initialise
+                refunds[:min(economic_data['investment years'],tc[location_name][tech_name]['refund']['years'])] = yearly_refund # array repet yearly refond 
+                results[location_name]['CF_studycase']['Refund'] += refunds # add refund to Cash Flow
+            
+        for tech_name in tc0[location_name]:
+            
+            results[location_name]['CF_refcase']['OeM'][:] += - tc0[location_name][tech_name]['OeM'] # OeM
+            
+            # replacements 
+            if tc0[location_name][tech_name]['replacement']['years'] == "ageing": # if replacement year is calculated according to ageing
+                with open('Results/ageing_'+name_refcase+'.pkl', 'rb') as f:
+                    age = pickle.load(f)     
+                    age = age[location_name][tech_name][0]
+                    for a in age:
+                        rep_time = int(a/8760)
+                        results[location_name]['CF_refcase']['OeM'][rep_time] += - results[location_name]['I0'][tech_name] * tc0[location_name][tech_name]['replacement']['rate']/100 # subtract technology replacement to location Cash Flow
+            else: # if replacement time is given
+                rep_time = tc0[location_name][tech_name]['replacement']['years']
+                while rep_time < economic_data['investment years']: # if tech_name replacement happens before the end of the simulation
+                    results[location_name]['CF_refcase']['OeM'][rep_time] += - tc0[location_name][tech_name]['total cost'] * tc0[location_name][tech_name]['replacement']['rate']/100 # subtract technology replacement to location Cash Flow
+                    rep_time += tc0[location_name][tech_name]['replacement']['years']
+            
+            
         # energy sold and purchased in study case 
         for carrier in balances[location_name]:                           # for each carrier (electricity, hydrogen, gas, heat)
             if 'grid' in balances[location_name][carrier]:  
@@ -273,7 +266,7 @@ def NPV(structure,structure0,study_case,reference_case,economic_data,simulation_
             results[location_name]['PI'] = np.nan
         
     # save results in Results/economic_assesment.pkl
-    with open(f"Results/economic_assessment_{study_case}.pkl", 'wb') as f:  pickle.dump(results,f) 
+    with open(f"Results/economic_assessment_{name_studycase}.pkl", 'wb') as f:  pickle.dump(results,f) 
         
         
     

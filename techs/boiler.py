@@ -48,6 +48,51 @@ class boiler_el:
         
         return(consumption,heatprod)
     
+    def tech_cost(self,tech_cost):
+        """
+        Parameters
+        ----------
+        tech_cost : dict
+            'cost per unit': float [€/kW]
+            'OeM': float, percentage on initial investment [%]
+            'refud': dict
+                'rate': float, percentage of initial investment which will be rimbursed [%]
+                'years': int, years for reimbursment
+            'replacement': dict
+                'rate': float, replacement cost as a percentage of the initial investment [%]
+                'years': int, after how many years it will be replaced
+
+        Returns
+        -------
+        self.cost: dict
+            'total cost': float [€]
+            'OeM': float, percentage on initial investment [%]
+            'refud': dict
+                'rate': float, percentage of initial investment which will be rimbursed [%]
+                'years': int, years for reimbursment
+            'replacement': dict
+                'rate': float, replacement cost as a percentage of the initial investment [%]
+                'years': int, after how many years it will be replaced
+        """
+        
+        tech_cost = {key: value for key, value in tech_cost.items()}
+        
+        size = self.Ppeak # kW
+        
+        if tech_cost['cost per unit'] == 'default price correlation':
+            C0 = 160 # €/kW
+            scale_factor = 0.8 # 0:1
+            C = size * C0 **  scale_factor
+        else:
+            C = size * tech_cost['cost per unit']
+
+        tech_cost['total cost'] = tech_cost.pop('cost per unit')
+        tech_cost['total cost'] = C
+        tech_cost['OeM'] = tech_cost['OeM'] *C /100 # €
+
+
+        self.cost = tech_cost
+        
 class boiler_ng:    
     
     def __init__(self,parameters):
@@ -90,7 +135,48 @@ class boiler_ng:
         else:
             return(0,0)       
         
+    def tech_cost(self,tech_cost):
+        """
+        Parameters
+        ----------
+        tech_cost : dict
+            'cost per unit': float [€/kW]
+            'OeM': float, percentage on initial investment [%]
+            'refud': dict
+                'rate': float, percentage of initial investment which will be rimbursed [%]
+                'years': int, years for reimbursment
+            'replacement': dict
+                'rate': float, replacement cost as a percentage of the initial investment [%]
+                'years': int, after how many years it will be replaced
 
+        Returns
+        -------
+        self.cost: dict
+            'total cost': float [€]
+            'OeM': float, percentage on initial investment [%]
+            'refud': dict
+                'rate': float, percentage of initial investment which will be rimbursed [%]
+                'years': int, years for reimbursment
+            'replacement': dict
+                'rate': float, replacement cost as a percentage of the initial investment [%]
+                'years': int, after how many years it will be replaced
+        """
+        
+        size = self.Ppeak # kW
+        
+        if tech_cost['cost per unit'] == 'default price correlation':
+            C0 = 160 # €/kW
+            scale_factor = 0.8 # 0:1
+            C = size * C0 **  scale_factor
+        else:
+            C = size * tech_cost['cost per unit']
+
+        tech_cost['total cost'] = tech_cost.pop('cost per unit')
+        tech_cost['total cost'] = C
+        tech_cost['OeM'] = tech_cost['OeM'] *C /100 # €
+
+
+        self.cost = tech_cost
         
 class boiler_h2:    
 
@@ -142,6 +228,49 @@ class boiler_h2:
         
         else:
             return(0,0,0)               
+        
+    def tech_cost(self,tech_cost):
+        """
+        Parameters
+        ----------
+        tech_cost : dict
+            'cost per unit': float [€/kW]
+            'OeM': float, percentage on initial investment [%]
+            'refud': dict
+                'rate': float, percentage of initial investment which will be rimbursed [%]
+                'years': int, years for reimbursment
+            'replacement': dict
+                'rate': float, replacement cost as a percentage of the initial investment [%]
+                'years': int, after how many years it will be replaced
+
+        Returns
+        -------
+        self.cost: dict
+            'total cost': float [€]
+            'OeM': float, percentage on initial investment [%]
+            'refud': dict
+                'rate': float, percentage of initial investment which will be rimbursed [%]
+                'years': int, years for reimbursment
+            'replacement': dict
+                'rate': float, replacement cost as a percentage of the initial investment [%]
+                'years': int, after how many years it will be replaced
+        """
+        
+        size = self.Ppeak # kW
+        
+        if tech_cost['cost per unit'] == 'default price correlation':
+            C0 = 480 # €/kW
+            scale_factor = 0.8 # 0:1
+            C = size * C0 **  scale_factor
+        else:
+            C = size * tech_cost['cost per unit']
+
+        tech_cost['total cost'] = tech_cost.pop('cost per unit')
+        tech_cost['total cost'] = C
+        tech_cost['OeM'] = tech_cost['OeM'] *C /100 # €
+
+
+        self.cost = tech_cost
         
 ###########################################################################################################################################################
 

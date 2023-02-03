@@ -24,6 +24,8 @@ class PV:
                 if "filename.csv" a different serie can be used (upload it in input/production)
                 "filename.csv" must be the hourly time series of PV production 8760 values [Wh]
                 in this case 'peakP', 'azimuth' and 'tilt' are ignored
+            'Max field width': optional: float >0
+            'Max field length': optional: float >0
             
         general: dictironary
             see rec.py
@@ -126,8 +128,8 @@ class PV:
                 with open('previous_simulation/parameters_'+rec_name+location_name+'.pkl', 'wb') as f:
                     pickle.dump(parameters, f)            
             
-            peakP = parameters['peakP']
-            pv = pv * peakP/1000
+            self.peakP = parameters['peakP']
+            pv = pv * self.peakP/1000
             
             # electricity produced every hour in the reference_year [kWh]
             self.production = np.tile(pv,int(simulation_hours/8760))
@@ -147,7 +149,7 @@ class PV:
             # Knowing the maximum field width by input, the number of panel rows can be found as follows
             module_width = 1 #m
             module_height = 1.5 #m
-            field_ideal_width = peakP*4*module_width #m                                                  # each kWp is 4m width
+            field_ideal_width = self.peakP*4*module_width #m                                                  # each kWp is 4m width
             max_field_width = parameters ['Max field width'] #m
             self.n_rows = field_ideal_width/max_field_width
             latitude = general['latitude'] #°
@@ -185,3 +187,46 @@ class PV:
         
         return(self.production[h])
 
+    def tech_cost(self,tech_cost):
+        """
+        Parameters
+        ----------
+        tech_cost : dict
+            'cost per unit': float [€/kW]
+            'OeM': float, percentage on initial investment [%]
+            'refud': dict
+                'rate': float, percentage of initial investment which will be rimbursed [%]
+                'years': int, years for reimbursment
+            'replacement': dict
+                'rate': float, replacement cost as a percentage of the initial investment [%]
+                'years': int, after how many years it will be replaced
+
+        Returns
+        -------
+        self.cost: dict
+            'total cost': float [€]
+            'OeM': float, percentage on initial investment [%]
+            'refud': dict
+                'rate': float, percentage of initial investment which will be rimbursed [%]
+                'years': int, years for reimbursment
+            'replacement': dict
+                'rate': float, replacement cost as a percentage of the initial investment [%]
+                'years': int, after how many years it will be replaced
+        """
+        
+        tech_cost = {key: value for key, value in tech_cost.items()}
+        
+        size = self.peakP
+        
+        if tech_cost['cost per unit'] == 'default price correlation':
+            C0 = 1200 # €/kW
+            scale_factor = 0.9 # 0:1
+            C = size * C0 **  scale_factor
+        else:
+            C = size * tech_cost['cost per unit']
+
+        tech_cost['total cost'] = tech_cost.pop('cost per unit')
+        tech_cost['total cost'] = C
+        tech_cost['OeM'] = tech_cost['OeM'] *C /100 # €
+
+        self.cost = tech_cost    
