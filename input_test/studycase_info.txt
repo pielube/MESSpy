@@ -1,0 +1,56 @@
+"demand": 	"electricity": "filename.csv"
+		"hydrogen": "filename.csv",
+		"heating water": "filename.csv"
+		"gas": "filename.csv"
+
+"grid": 	"electricity": true/false,
+		"hydrogen": true/false,
+		"heating water": true/false,
+		"gas": true/false
+
+
+"PV": 		"tilt": float surface tilt [deg]
+		"azimuth": float azimuth angle 0 = south, 180 = north [deg]
+		"losses": float losses in cables, inverters (if this technoly is not considered in your simulation), dirt (sometimes snow), over the years loss of power, shading [%]
+		"Max field width": float >0 - optional
+		"Max field length": float >0 - optional
+		"peakP": float peak DC power [kWp] 
+		"serie": "TMY" or file.csv if "TMY" production serie based on typical meteorological year is used
+              		 if "filename.csv" a different serie can be used (upload it in input/production)
+               		 "filename.csv" must be the hourly time series of PV production 8760 values [Wh]
+                	 in this case 'peakP', 'azimuth' and 'tilt' are ignored
+
+"inverter":	"max efficiency": float 0-1 
+            	"peakP": float peak power of a single inverter
+            	"number": int number of inverters
+
+"battery": 	"nominal capacity": float [kWh]
+		"max E-rate": 0-1 float charging and discharging rate related to maximum capacity [kW/kWh]
+		"efficiency": float charge and discharge efficiency
+		"ageing": true or false
+		"life cycles": int number of life cycles to reach the end of battery life
+		"end life capacity": float maximum capacity left at end of life [%]
+		"collective": 0 or 1 0: no collective rules. 1: priority to collective self consumption and then charge or discharge the battery.
+
+"electrolyzer": "Npower": float nominal power of one module [kW] 
+		"number of modules": int
+		"stack model": str 'Enapter 2.1' or 'McLyzer 800' or 'PEM General' 
+
+"fuel cell": 	"Npower": float nominal power of one module [kW]
+		"number of modules": int
+		"stack model": str "PEM General" or 'SOFC' or 'FCS-C5000'
+		"ageing" : true or false
+
+"H tank": 	"max capacity": float [kg]
+		"pressure": float [bar]
+
+"heatpump":     "type": 1 = air-water (other types not yet implemented...)
+                "nom Pth": float [kW] nominal condition: t_amb=5° t_out=35° 6000 rpm
+                "t rad heat": loat [C°] temperature of radiant system in heating mode
+                "inertial TES volume": thermal energy storage float [lt]
+             	"inertial TES dispersion": float [W/m2K]
+         	"PV surplus": true or false allow to use PV surplus to charge inertial_TES
+                "REC surplus": true or false allow to use REC PV surplus to charhe intertial_TES
+
+"boiler_xx":    "Ppeak": float [kWp]
+		"efficiency": 0-1

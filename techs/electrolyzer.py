@@ -15,7 +15,7 @@ class electrolyzer:
         Create an electrolyzer object
     
         parameters : dictionary
-            'Npower': float nominal power [kW] - optional
+            'Npower': float nominal power [kW] 
             'stack model': str 'Enapter 2.1','McLyzer 800' are aviable or 'PEM General'
                       
         output : electrolyzer object able to:

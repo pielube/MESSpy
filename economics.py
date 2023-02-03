@@ -7,15 +7,6 @@ def NPV(name_studycase,name_refcase,economic_data,simulation_years,path):
     Economic assesment 
     
     economic_data: dictionary
-        'tech_name': dictionary (repeat for each installed technologies: PV, battery, electrolyzer, H tank, fuel cell)
-            'total installation cost': tech_name cost + installation costs [€]
-            'OeM': operations and maintenance costs [%I0/y]        
-            'refund': dictionary incentives definition
-                'rate': rate of initial investemt that will be refunded [%]
-                'time': refunding time [years]
-            'replacement': dictionary replacement definition
-                'rate': rate of initial investemt that will be payed to replace teh technology [%]
-                'time': replacement time [years]
         'REC': dictionary REC economic parameters definition
             'collective self consumption incentives': [€/kWh]
             'incentives redistribution': 0-100 how the incentives are redistributed between prosumers, consumers and REC manger

@@ -48,10 +48,8 @@
                 "grid": {   "electricity": true},
                 
                 "heatpump": {  "type":1,
-                               "usage": 2,
                                "nom Pth": 8,
                                "t rad heat": 45,
-                               "t rad cool": 10,
                                "inertial TES volume": 200, 
                                "inertial TES dispersion": 0.36, 
                                "PV surplus": false,

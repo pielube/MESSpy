@@ -35,13 +35,12 @@ class heatpump:
     
             """
         
-            self.type = parameters['type']
-            self.usage = parameters['usage']        
+            self.type = parameters['type'] 
             
             self.nom_Pth = parameters['nom Pth']
             
             self.t_rad_h = parameters['t rad heat']
-            self.t_rad_c = parameters['t rad cool']
+            #self.t_rad_c = parameters['t rad cool']
                     
             self.PV_surplus = parameters['PV surplus']
             self.REC_surplus = parameters['REC surplus']

@@ -93,7 +93,6 @@ pp.total_balances(name_studycase,'consumer_1','electricity')
 pp.total_balances(name_studycase,'consumer_2','electricity')
 pp.total_balances(name_studycase,'consumer_2','heating water')
 
-
 pp.REC_electricity_balance(name_studycase)
 
 pp.LOC_plot(name_studycase)
