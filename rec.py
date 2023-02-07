@@ -43,12 +43,10 @@ class REC:
         check = True # True if no general parameters are changed from the old simulation
         
         directory = './previous_simulation'
-        if not os.path.exists(directory):
-            os.makedirs(directory)
+        if not os.path.exists(directory): os.makedirs(directory)
            
         if os.path.exists('previous_simulation/general_'+rec_name+'.pkl'):
-            with open('previous_simulation/general_'+rec_name+'.pkl', 'rb') as f:
-                ps_general = pickle.load(f) # previous simulation general
+            with open('previous_simulation/general_'+rec_name+'.pkl', 'rb') as f: ps_general = pickle.load(f) # previous simulation general
             par_to_check = ['latitude','longitude','UTC time zone','DST']
             for par in par_to_check:
                 if ps_general[par] != general[par]:
@@ -68,11 +66,9 @@ class REC:
         ### create location objects and add them to the REC locations dictionary
         for location_name in structure: # location_name are the keys of 'structure' dictionary and will be used as keys of REC 'locations' dictionary too
             self.locations[location_name] = location(structure[location_name],general,location_name,path,check,rec_name) # create location object and add it to REC 'locations' dictionary                
-                     
             
         if check == False:
-            with open('previous_simulation/general_'+rec_name+'.pkl', 'wb') as f:
-                pickle.dump(general, f)
+            with open('previous_simulation/general_'+rec_name+'.pkl', 'wb') as f: pickle.dump(general, f)
             
             
             

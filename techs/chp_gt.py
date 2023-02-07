@@ -195,7 +195,7 @@ class chp_gt:
             return y
     
     
-    def use(self,h,t_air,steamdemand):
+    def use(self,h,t_air,steamdemand,available_hyd):
         """
         The chp system consumes fuel and produces multiple output energy streams as defined by the specific technology
         
