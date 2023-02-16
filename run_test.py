@@ -58,7 +58,7 @@ rec.save(name_studycase) # save results in 'name_studycase.pkl'
 
 #%% ###########################################################################
 """
-POST PROCESS - refcase simulation and investment assesment
+POST PROCESS - refcase simulation and investment assessment
 ================================
 """
   
@@ -99,7 +99,7 @@ pp.LOC_plot(name_studycase)
 
 pp.NPV_plot(name_studycase)
 
-pp.hourly_balances_electricity(name_studycase,'prosumer_1', 2, 3)
+pp.hourly_balances_electricity(name_studycase,'prosumer_1', 20, 21)
 pp.hourly_balances_electricity(name_studycase,'prosumer_2', 2, 3)
 #pp.hourly_balances_electricity(name_studycase,'consumer_1', 2, 3)
 #pp.hourly_balances_electricity(name_studycase,'consumer_2', 2, 3)

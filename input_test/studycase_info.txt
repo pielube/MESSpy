@@ -2,6 +2,7 @@
 		"hydrogen": "filename.csv",
 		"heating water": "filename.csv"
 		"gas": "filename.csv"
+		"process steam": "filename.csv"
 
 "grid": 	"electricity": true/false,
 		"hydrogen": true/false,

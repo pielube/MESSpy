@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from techs import heatpump,boiler_el,boiler_ng,boiler_h2,PV,wind,battery,H_tank,fuel_cell,electrolyzer,inverter,chp_gt
+from techs import heatpump,boiler_el,boiler_ng,boiler_h2,PV,wind,battery,H_tank,fuel_cell,electrolyzer,inverter,chp_gt,Chp,Absorber
 
 
 class location:
@@ -11,12 +11,16 @@ class location:
     
         system: dictionary (all the inputs are optional)
             'demand'': dictionary
-                'electricity':   str 'file_name.csv' hourly time series of electricity demand 8760 values [kWh]
-                'heating water': str 'file_name.csv' hourly time series of heating and dhw demand 8760 values [kWh]
-                'cooling water': str 'file_name.csv' hourly time series of cooling demand 8760 values [kWh]
-                'hydrogen':      str 'file_name.csv' hourly time series of hydrogen demand 8760 values [kg/h]
-                'gas':           str 'file_name.csv' hourly time series of gas demand 8760 values [kWh]
-                'process steam': str 'file_name.csv' hourly time series of process steam demand 8760 values [kg/h]
+                'electricity':              str 'file_name.csv' hourly time series of electricity demand 8760 values [kWh]
+                'heating water':            str 'file_name.csv' hourly time series of heating and dhw demand 8760 values [kWh]
+                'cooling water':            str 'file_name.csv' hourly time series of cooling demand 8760 values [kWh]
+                'hydrogen':                 str 'file_name.csv' hourly time series of hydrogen demand 8760 values [kg/h]
+                'gas':                      str 'file_name.csv' hourly time series of gas demand 8760 values [kWh]
+                'process steam':            str 'file_name.csv' hourly time series of process steam demand 8760 values [kg/h]
+                'process heat':             str 'file_name.csv' hourly time series of process heat demand 8760 values [kWh]
+                'process hot water':        str 'file_name.csv' hourly time series of process hot water demand 8760 values [kWh]
+                'process cold water':       str 'file_name.csv' hourly time series of process cold water demand (absorber, 7-12 °C) 8760 values [kWh]
+                'process chilled water':    str 'file_name.csv' hourly time series of process chilled water demand (absorber, 1-5 °C) 8760 values [kWh]
             'PV':           dictionary parameters needed to create PV object (see PV.py)
             'inverter':     dictionary parameters needed to create inverter object (see inverter.py)
             'wind':         dictionary parameters needed to create wind object (see wind.py)
@@ -40,8 +44,17 @@ class location:
         
         self.system = dict(sorted(system.items(), key=lambda item: item[1]['priority'])) # ordered by priority
         self.name = location_name
-        self.technologies = {} # initialise technologies dictionary
-        self.energy_balance = {'electricity': {}, 'heating water': {}, 'cooling water': {}, 'hydrogen': {}, 'gas': {}, 'process steam': {}} # initialise energy balances dictionaries
+        self.technologies = {}                                  # initialise technologies dictionary
+        self.energy_balance = {'electricity'            : {},   # initialise energy balances dictionaries
+                               'heating water'          : {}, 
+                               'cooling water'          : {}, 
+                               'hydrogen'               : {}, 
+                               'gas'                    : {}, 
+                               'process steam'          : {},
+                               'process heat'           : {},
+                               'process hot water'      : {},
+                               'process cold water'     : {},
+                               'process chilled water'  : {}} 
 
         self.simulation_hours = int(general['simulation years']*8760) # hourly timestep     
         
@@ -65,6 +78,20 @@ class location:
             self.energy_balance['electricity']['chp_gt'] = np.zeros(self.simulation_hours) # array chp_gt electricity balance
             self.energy_balance['hydrogen']['chp_gt'] = np.zeros(self.simulation_hours) # array chp_gt process hydrogen balance 
         
+        if 'chp' in self.system:
+            self.technologies['chp'] = Chp(system['chp'],self.simulation_hours) # chp object created and added to 'technologies' dictionary
+            self.energy_balance[self.technologies['chp'].th_out]['chp'] = np.zeros(self.simulation_hours) # array chp thermal output balance (process steam/hot water)
+            self.energy_balance['electricity']['chp'] = np.zeros(self.simulation_hours) # array chp electricity balance
+            self.energy_balance[self.technologies['chp'].fuel]['chp'] = np.zeros(self.simulation_hours) # array chp fuel consumption balance
+            self.energy_balance['process heat']['chp'] = np.zeros(self.simulation_hours) # array chp process heat balance
+            self.energy_balance['process cold water']['chp'] = np.zeros(self.simulation_hours) # array chp process cold water balance
+       
+        # if 'absorber' in self.system:
+        #     self.technologies['chp'] = Chp(system['chp'],self.simulation_hours) # chp object created and added to 'technologies' dictionary
+        #     self.energy_balance['process steam']['chp'] = np.zeros(self.simulation_hours) # array chp process steam balance 
+        #     self.energy_balance['electricity']['chp'] = np.zeros(self.simulation_hours) # array chp electricity balance
+        #     self.energy_balance['hydrogen']['chp'] = np.zeros(self.simulation_hours) # array chp process hydrogen balance
+            
         if 'heatpump' in self.system:
             self.technologies['heatpump'] = heatpump(system['heatpump'],self.simulation_hours) # heatpump object created and add to 'technologies' dictionary
             self.energy_balance['electricity']['heatpump'] = np.zeros(self.simulation_hours) # array heatpump electricity balance
@@ -174,7 +201,7 @@ class location:
                 else:
                     available_hyd = max(0,eb['hydrogen']) # hydrogen is produced by an electrolyzer which have higher priority than chp
                 if available_hyd > 0:
-                    use = self.technologies['chp_gt'].use(h,weather['temp_air'][h],eb['process steam'],available_hyd)     # saving fuel cell working parameters for the current timeframe
+                    use = self.technologies['chp_gt'].use(h,weather['temp_air'][h],eb['process steam'],available_hyd)     # saving chp_gt working parameters for the current timeframe
                     self.energy_balance['process steam']['chp_gt'][h] = use[0]   # produced steam (+)
                     self.energy_balance['electricity']['chp_gt'][h] =   use[1]   # produced electricity (+)
                     self.energy_balance['hydrogen']['chp_gt'][h] =      use[2]   # hydrogen required by chp system to run (-)  
@@ -182,6 +209,18 @@ class location:
                 eb['hydrogen'] += self.energy_balance['hydrogen']['chp_gt'][h]            
                 eb['process steam'] += self.energy_balance['process steam']['chp_gt'][h]    
                 eb['electricity'] += self.energy_balance['electricity']['chp_gt'][h] 
+           
+            if tech_name == 'chp':
+                use = self.technologies['chp'].use(h,weather['temp_air'][h],eb[self.technologies['chp'].th_out]) #,available_hyd)     # saving chp working parameters for the current timeframe
+                self.energy_balance[self.technologies['chp'].th_out]['chp'][h]  = use[0]   # produced thermal output (+) (steam/hot water)
+                self.energy_balance['electricity']['chp'][h]                    = use[1]   # produced electricity (+)
+                self.energy_balance[self.technologies['chp'].fuel]['chp'][h]    = use[2]   # fuel required by chp system to run (-)  
+                self.energy_balance['process heat']['chp'][h]                   = use[3]   # process heat produced by chp system (+)  
+
+                eb[self.technologies['chp'].fuel] += self.energy_balance['hydrogen']['chp'][h]            
+                eb[self.technologies['chp'].th_out] += self.energy_balance[self.technologies['chp'].th_out]['chp'][h]    
+                eb['electricity'] += self.energy_balance['electricity']['chp'][h] 
+                eb['process heat'] += self.energy_balance['process heat']['chp'][h] 
            
             if tech_name == 'electrolyzer':
                 if eb['electricity'] > 0: #? this condition must be solved if electricity from the grid is to be used to produce hydrogen

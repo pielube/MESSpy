@@ -77,7 +77,7 @@ class chp_gt:
             os.chdir(r'./techs/chp_maps') # if code is being executed from main
             main = True
 
-        with pd.ExcelFile('CHPmaps.xlsx') as xls:
+        with pd.ExcelFile('CHPmaps_old.xlsx') as xls:
         
             self.Wel_map = pd.read_excel(xls,sheet_name='W_el',header=2,nrows= 7,usecols='A:G',index_col='Tamb [°C]')     # [kW]    Net Electric Power Output of the GT MAP
             self.Eta_map = pd.read_excel(xls,sheet_name='Eta_tag',header=2,usecols='A:G',index_col='Tamb [°C]')           # [-]     GT Efficiency MAP
@@ -362,6 +362,7 @@ class chp_gt:
             C += 4028*((180/(1.38))**0.58)              
             OeM += 0.06*4028*((180/(1.38))**0.58)
             
+            tech_cost['total cost'] = C
 # =============================================================================
 #             # Pump
 #             C += 68679.85/change
@@ -384,12 +385,11 @@ class chp_gt:
             print( "essendo presente solamente un modello di CHP e di una taglia fissa il costo può essere fatto solo con la default price correlation")
 
             tech_cost['total cost'] = tech_cost.pop('cost per unit')
-            tech_cost['total cost'] = C
-            tech_cost['OeM'] = OeM
-            tech_cost['refund'] = { "rate": 0, "years": 0}
-            tech_cost['replacement'] = {"rate": 80, "years": 30}
+        tech_cost['OeM'] = OeM
+        tech_cost['refund'] = { "rate": 0, "years": 0}
+        tech_cost['replacement'] = {"rate": 80, "years": 30}
 
-            self.cost = tech_cost
+        self.cost = tech_cost
         
 #%%##########################################################################################
 
