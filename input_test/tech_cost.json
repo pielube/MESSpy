@@ -42,5 +42,15 @@
 "chp_gt": {"cost per unit": "default price correlation",
            "OeM": 1, 
            "refund": { "rate": 0, "years": 0},
-           "replacement": {"rate": 60, "years": 10}}                 
+           "replacement": {"rate": 60, "years": 20}},
+           
+"chp"   : {"cost per unit": "default price correlation",
+           "OeM": 1, 
+           "refund": { "rate": 0, "years": 0},
+           "replacement": {"rate": 60, "years": 20}},
+           
+"absorber": {"cost per unit": 1500, 
+             "OeM": 1, 
+             "refund": { "rate": 50, "years": 0},
+             "replacement": {"rate": 30, "years": 15}}              
 }

@@ -105,7 +105,7 @@ class chp_gt:
         self.Wel_max= self.GT_param['Power[MW]']*1.2    # [kW] Max Electric Power Output - 120% of Nominal Power
         self.Wel_min= self.GT_param['Power[MW]']*0.3    # [kW] Min Electric Power Output - 30% of Nominal Power
         self.Tmax= self.GT_param['TIT[K]']              # [K]  Turbine Inlet Temperature/ Max cycle T - 1530.07 K
-        self.Ts_min= 90 + 273.15                   # [K]  Min Temperature at Stack
+        self.Ts_min= 90 + 273.15                        # [K]  Min Temperature at Stack
     
         'System Boundaries - Lines'
     
@@ -217,37 +217,27 @@ class chp_gt:
         for label in self.limits:
             bound.append(self.limits[label][1](t_air))    # evaluating real limits of the system depending on ambient temerature
         bound = np.sort(bound)
-        # bound[bound<1.5] = 1.5                       # lower operational boundary set in the operative constraints (PER ORA NON è UTILIZZATO)
+        # bound[bound<1.5] = 1.5                          # lower operational boundary set in the operative constraints (PER ORA NON è UTILIZZATO)
         bound = bound[0:2]                                # lower and upper operational boundaries values for the required carrier
         self.minprod[h] = bound[0]                        # min producibility for given conditions
         self.maxprod[h] = bound[1]                        # max producibility for given conditions
        
         if demand in pd.Interval(bound[0],bound[1],closed='both'):  # steam demand within the GT + HRSG range for given temperature
-            self.wel[h]= self.bilinear_interpolation(self.Wel_map,demand,t_air)  
-            self.steam_chp[h]= demand
-            # steam_SG[h]= 0   
-            self.steam_miss[h]= 0
-            self.mH2CHP[h]= self.bilinear_interpolation(self.mH2fuel_map,demand,t_air)
-            # mH2SG[h] = 0
-            # mH2[h] = mH2CHP[h]
+            pass
+           
         elif demand > self.maxprod[h]:
-            self.wel[h]= self.bilinear_interpolation(self.Wel_map,self.maxprod[h],t_air)
-            self.steam_chp[h]=  self.maxprod[h]
-            # steam_SG[h]= demand -  maxprod[h]
-            self.steam_miss[h] = (demand-self.maxprod[h]) # - SG.use(steam_SG[h],deltaSG)[0]
-            self.mH2CHP[h]= self.bilinear_interpolation(self.mH2fuel_map,self.maxprod[h],t_air)
-            # mH2SG[h] = SG.use(steam_SG[h],delta)[2]
-            # self.mH2[h] = mH2CHP[h] #+ mH2SG[h]
-            # pump[h] = SG.pcons(steam_SG[h], 1.01325, 20)
-        elif demand < self.minprod[h]:            # GT running to avoid shutdowns (given it would be turned off only for 62/8760 h/y  - 0.06 % of the time)
-            self.wel[h]= self.bilinear_interpolation(self.Wel_map,self.minprod[h],t_air)
-            self.steam_chp[h]= demand
-            # steam_SG[h]= 0  
-            self.steam_miss[h] = 0
-            # steam_miss[h] = steam_SG[h] - SG.use(steam_SG[h],deltaSG)[0]
-            self.mH2CHP[h]= self.bilinear_interpolation(self.mH2fuel_map,self.minprod[h],t_air) # +SG.use(steam_SG[h],delta)[2] 
-            # mH2SG[h] = 0
-            # mH2[h] = mH2CHP[h]
+            demand = self.maxprod[h]
+         
+        elif demand < self.minprod[h]:                    # GT running to avoid shutdowns (given it would be turned off only for 62/8760 h/y  - 0.06 % of the time)
+            demand = self.minprod[h]
+            
+        self.wel[h]= self.bilinear_interpolation(self.Wel_map,demand,t_air)  
+        self.steam_chp[h]= demand
+        # steam_SG[h]= 0   
+        self.steam_miss[h]= 0
+        self.mH2CHP[h]= self.bilinear_interpolation(self.mH2fuel_map,demand,t_air)
+        # mH2SG[h] = 0
+        # mH2[h] = mH2CHP[h]
         
         return(self.steam_chp[h]*3600,self.wel[h],-self.mH2CHP[h]*3600) # return hydrogen supplied
                     
@@ -406,6 +396,7 @@ if __name__ == "__main__":
     chp_gt = chp_gt(inp_test,simulation_hours)   # creating chp object
     
     chp_gt.map_plot()                         # displaying CHP operational constraints
+    available_hyd = 99999999   # [kg]
 
     x = np.arange(0,24)       # hours in a day
     simulation_hours = 24     
@@ -421,7 +412,7 @@ if __name__ == "__main__":
         steam_demand = np.random.uniform(0.5,5.2,simulation_hours)*3600    # [kg/h] creating a random steam demand array 
        
         for h in range(24):
-            chp_gt.use(h,daily_temperature[k][h],steam_demand[h])
+            chp_gt.use(h, daily_temperature[k][h], steam_demand[h], available_hyd)
         
         fig, ax = plt.subplots(dpi=600)
         ax.plot(x,chp_gt.minprod[:simulation_hours],label ='CHP$_\mathregular{min}$', alpha=0.9)
