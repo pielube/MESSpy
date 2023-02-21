@@ -236,6 +236,15 @@ class location:
                 eb['electricity'] += self.energy_balance['electricity']['chp'][h] 
                 eb['process heat'] += self.energy_balance['process heat']['chp'][h] 
                 
+# =============================================================================
+#                 # if q_th != q_th_chp :     # WIP:  logica in cui si tiene conto di avere priorità per la domanda termica dell'assorbitore               \
+#                                             #       si interroga l'assorbitore con la domanda frigorifera dell'utenza, tramite funzione inversa          \
+#                                             #       si risale al calore che sarebbe necessario avere in input all'assorbitore (q_in =q_frigo/COP)        \
+#                                             #       e si somma alla domanda termica con cui si va ad interrogare il chp in questo if tech_name == 'chp'  \
+#                                             #       A questo punto si verifica quanto calore è in grado di generare il CHP e si gestiscono i flussi      \     
+#                                             #       qui con comandi specifici o con una funzione chp.trigeneration() che suggeriva Marco. 
+# =============================================================================
+
             if tech_name == 'absorber':  
                 # self.energy_balance['process cold water']['absorber'][h] = self.technologies['absorber'].use(h, eb[self.technologies['chp'].th_out])  # cold energy produced via the absorption cycle (+) - here accounting for\
                                                                                                                                                         # the specific thermal output of CHP

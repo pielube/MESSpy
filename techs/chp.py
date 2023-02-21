@@ -191,6 +191,8 @@ class Chp:
                 
         """
         demand = abs(demand)     # demand has to be a positive value     
+        
+        # WIP: salvare i limiti upper e lower per ogni timestep con attributo qualitativo di qual è stato esattamente il limite più stringente (TIT, Tstack....)
 
         # Lower functioning bound
         lb_list =  []
@@ -208,6 +210,8 @@ class Chp:
         self.l_bound[h]  = max(lb_list)   # saving minimum functioning boundary - expressed as load %
         self.u_bound[h]  = min(ub_list)   # saving maximum functioning boundary - expressed as load %
         
+        # WIP long term: se non c'è idrogeno sviluppare logica di funzionamento ad altro combustibile (switch)
+            
         if available_fuel is not None:  # if available_fuel is a parameter to be considered in the analysis (hydrogen case)
         
             if available_fuel <= 0:       # if there is no fuel available, chp system is turned off
