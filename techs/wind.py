@@ -47,6 +47,8 @@ class wind:
         
         self.params = params
         self.ts = ts
+        self.cost = False # will be updated with tec_cost()
+
         
         if params['model'] not in ['betz','detailed']:
             print('Error: wrong wind turbine model')

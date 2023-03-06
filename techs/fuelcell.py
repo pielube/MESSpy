@@ -25,6 +25,8 @@ class fuel_cell:
             absosrb hydrogen and produce electricity .use(e)
         """
         
+        self.cost = False # will be updated with tec_cost()
+
         self.model               = parameters['stack model']  # [-]  Fuel cell model
         self.Npower              = parameters['Npower']       # [kW] Single module nominal power   
         self.ageing              = parameters['ageing']       # bool - calucate ageing   

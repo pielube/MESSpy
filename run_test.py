@@ -131,7 +131,7 @@ pp.hourly_balances_electricity(name_studycase,'prosumer_2', 2, 3)
 # for pv in pv_size:
 #     name_studycase = f"PV size = {pv}"
 #     new_studycase = pre.change_peakP(studycase, 'prosumer_1', pv)
-#     rec = REC(new_studycase,general,path) # create REC object
+#     rec = REC(new_studycase,general,path,name_studycase) # create REC object
 #     rec.REC_energy_simulation() # simulate REC enegy balances
 #     rec.save(name_studycase) # save results in 'name_studycase.pkl'
 #     

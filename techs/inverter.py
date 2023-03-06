@@ -19,6 +19,8 @@ class inverter:
 
         """
         
+        self.cost = False # will be updated with tec_cost()
+
         self.eta_max = parameters['max efficiency']
         self.n = parameters['number']
         self.peakP = parameters['peakP']

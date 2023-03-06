@@ -34,6 +34,8 @@ class PV:
             produce electricity .use(h)
         """
         
+        self.cost = False # will be updated with tec_cost()
+
         if parameters['serie'] == "TMY":
             ### If PV serie have already been downloaded and saved as file.csv, this file is used
             ### Otherwise new serie is downloaded from PVgis (type meteorological year)

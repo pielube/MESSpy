@@ -28,6 +28,8 @@ class chp_gt:
             # calculate its own volume (pressure) .volume(pressure)
         """
         
+        self.cost = False # will be updated with tec_cost()
+
         self.tech = parameters["Technology"]
         self.fuel = parameters["Fuel"]
         

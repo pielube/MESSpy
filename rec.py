@@ -229,7 +229,8 @@ class REC:
             
             tech_cost[location_name] = {}
             for tech_name in self.locations[location_name].technologies:
-                tech_cost[location_name][tech_name] = self.locations[location_name].technologies[tech_name].cost
+                if self.locations[location_name].technologies[tech_name].cost:
+                    tech_cost[location_name][tech_name] = self.locations[location_name].technologies[tech_name].cost
         
         directory = './results'
         if not os.path.exists(directory): os.makedirs(directory)

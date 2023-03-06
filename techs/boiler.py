@@ -28,7 +28,8 @@ class boiler_el:
         
         self.Ppeak = parameters['Ppeak']
         self.efficiency = parameters['efficiency']
-        
+        self.cost = False # will be updated with tec_cost()
+
         
     def use(self,demand,timestep):
         """
@@ -108,6 +109,8 @@ class boiler_ng:
             consume fuel or electricity and produce heat .use(demand,timestep)
         """
         
+        self.cost = False # will be updated with tec_cost()
+
         self.Ppeak = parameters['Ppeak']
         self.efficiency = parameters['efficiency']
         
@@ -196,7 +199,8 @@ class boiler_h2:
         
         self.Ppeak = parameters['Ppeak']
         self.efficiency = parameters['efficiency']
-        
+        self.cost = False # will be updated with tec_cost()
+
         
     def use(self,demand,available_hyd,timestep):
         """
