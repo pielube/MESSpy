@@ -2,7 +2,7 @@
 "prosumer_1": {	"demand": {	"electricity": "load_test_1.csv"},
 				"grid": {	"electricity": true},
 				"PV": {		"tilt": 30,
-							"azimuth": 0,
+							"azimuth": 10,
 							"losses": 10,
 					    	"Max field width": 10,
 							"Max field length": 5,

@@ -118,35 +118,34 @@ pp.hourly_balances_electricity(name_studycase,'prosumer_2', 2, 3)
 "Sensitivity analysis - practical example"
 # click on the following code and press Ctrl+5 to discomment all together
 
-# =============================================================================
 # import numpy as np
 # import pickle
 # import matplotlib.pyplot as plt
-# 
+
 # pv_size = np.arange(1,11)
 # npv = []
 # sc = [] # self-consumption
 # ss = [] # self-sufficiency
-# 
+# name_studycase = 'REC_SensAnalysis_'
+
 # for pv in pv_size:
-#     name_studycase = f"PV size = {pv}"
 #     new_studycase = pre.change_peakP(studycase, 'prosumer_1', pv)
 #     rec = REC(new_studycase,general,path,name_studycase) # create REC object
 #     rec.REC_energy_simulation() # simulate REC enegy balances
 #     rec.save(name_studycase) # save results in 'name_studycase.pkl'
-#     
+    
 #     with open('results/balances_'+name_studycase+'.pkl', 'rb') as f: balances = pickle.load(f)
 #     demand = -balances['prosumer_1']['electricity']['demand'].sum() # read from saved results .pkl
 #     production = balances['prosumer_1']['electricity']['PV'].sum()
 #     into_grid = balances['prosumer_1']['electricity']['grid'].sum(where=balances['prosumer_1']['electricity']['grid']<0)
 #     from_grid = balances['prosumer_1']['electricity']['grid'].sum(where=balances['prosumer_1']['electricity']['grid']>0)
-#     
+    
 #     # you can also read values from the python object rec. (in this case you do not need rec.save)
 #     # demand = -rec.locations['prosumer_1'].energy_balance['electricity']['demand'].sum() # read from python 
-#     
+    
 #     sc.append((production+into_grid)/production*100)
 #     ss.append((demand-from_grid)/demand*100)
-#     
+    
 # plt.figure(dpi=1000)
 # plt.plot(pv_size,sc,label='Self-consumption')
 # plt.plot(pv_size,ss,label='Self-sufficiency')
@@ -156,7 +155,6 @@ pp.hourly_balances_electricity(name_studycase,'prosumer_2', 2, 3)
 # plt.legend()
 # plt.title('prosumer_1')
 # plt.show()
-# =============================================================================
 
 
 

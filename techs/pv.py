@@ -53,6 +53,7 @@ class PV:
                 for par in par_to_check:
                     if ps_parameters[par] != parameters[par]:
                         check = False
+                        
             else:
                 check = False
                                     

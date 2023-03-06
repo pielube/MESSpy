@@ -52,7 +52,7 @@ class REC:
             par_to_check = ['latitude','longitude','UTC time zone','DST']
             for par in par_to_check:
                 if ps_general[par] != general[par]:
-                    check = False  
+                    check = False          
         else:
             check = False
 
@@ -73,7 +73,6 @@ class REC:
         if check == False:
             with open('previous_simulation/general_'+rec_name+'.pkl', 'wb') as f:
                 pickle.dump(general, f)
-            
             
             
     def REC_energy_simulation(self):
