@@ -5,7 +5,7 @@ from techs import heatpump,boiler_el,boiler_ng,boiler_h2,PV,wind,battery,H_tank,
 
 class location:
     
-    def __init__(self,system,general,location_name,path,check,rec_name):
+    def __init__(self,system,general,location_name,path,check,file_structure,file_general):
         """
         Create a location object (producer, consumer or prosumer) 
     
@@ -83,7 +83,7 @@ class location:
             self.energy_balance['heating water']['boiler_ng'] = np.zeros(self.simulation_hours) # array boiler_ng heat balance 
 
         if 'PV' in self.system:
-            self.technologies['PV'] = PV(self.system['PV'],general,self.simulation_hours,self.name,path,check,rec_name) # PV object created and add to 'technologies' dictionary
+            self.technologies['PV'] = PV(self.system['PV'],general,self.simulation_hours,self.name,path,check,file_structure,file_general) # PV object created and add to 'technologies' dictionary
             self.energy_balance['electricity']['PV'] = np.zeros(self.simulation_hours) # array PV electricity balance
            
         if 'inverter' in self.system:

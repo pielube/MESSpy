@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import pickle
 
-def NPV(name_studycase,name_refcase,economic_data,simulation_years,path):
+def NPV(name_studycase,name_refcase,economic_data,simulation_years,path,name_economic):
     """
     Economic assesment 
     
@@ -257,7 +257,7 @@ def NPV(name_studycase,name_refcase,economic_data,simulation_years,path):
             results[location_name]['PI'] = np.nan
         
     # save results in Results/economic_assesment.pkl
-    with open(f"Results/economic_assessment_{name_studycase}.pkl", 'wb') as f:  pickle.dump(results,f) 
+    with open(f"Results/economic_assessment_{name_economic}.pkl", 'wb') as f:  pickle.dump(results,f) 
         
         
     

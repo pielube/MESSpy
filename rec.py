@@ -8,7 +8,7 @@ from location import location
 
 class REC:
     
-    def __init__(self,structure,general,path,rec_name):
+    def __init__(self,structure,general,file_structure,file_general,path):
         """
         Create a Renewable Energy Comunity object composed of several locations (producers, consumers, prosumers)
     
@@ -39,41 +39,45 @@ class REC:
         otherwise they are downloaded from PVgis considering the typical meteorological year.
         
         """
-        
-        check = True # True if no general parameters are changed from the old simulation
-        
+    
+    
+        # Check if new input files have to been donloaded from PV gis ##############################################################################################
+        check = True # Used to check if TMY have to been downloaded from PVgis or the old one can be used
+        check_pv = True # Used to check if PV_production series hate to been downloaded from PVgis or the old one can be used
         directory = './previous_simulation'
-        if not os.path.exists(directory):
-            os.makedirs(directory)
-           
-        if os.path.exists('previous_simulation/general_'+rec_name+'.pkl'):
-            with open('previous_simulation/general_'+rec_name+'.pkl', 'rb') as f:
-                ps_general = pickle.load(f) # previous simulation general
+        if not os.path.exists(directory): os.makedirs(directory)
+        if os.path.exists(f"previous_simulation/{file_general}.pkl"):
+            with open(f"previous_simulation/{file_general}.pkl", 'rb') as f: ps_general = pickle.load(f) # previous simulation general
             par_to_check = ['latitude','longitude','UTC time zone','DST']
             for par in par_to_check:
                 if ps_general[par] != general[par]:
                     check = False          
         else:
-            check = False
+            check = False 
+        if os.path.exists(f"previous_simulation/{file_general}_{file_structure}.pkl"):
+            with open(f"previous_simulation/{file_general}_{file_structure}.pkl", 'rb') as f: ps_general = pickle.load(f) # previous simulation general
+            par_to_check = ['latitude','longitude','UTC time zone','DST']
+            for par in par_to_check:
+                if ps_general[par] != general[par]:
+                    check_pv = False          
+        else:
+            check_pv = False
+        self.weather = self.weather_generation(general,path,check,file_general) # check if metereological data have to been downloaded from PVgis or has already been done in a previous simulation
+        if check == False:
+            with open(f"previous_simulation/{file_general}.pkl", 'wb') as f: pickle.dump(general, f)
+        if check_pv == False:
+            with open(f"previous_simulation/{file_general}_{file_structure}.pkl", 'wb') as f: pickle.dump(general, f)
+        ##############################################################################################
 
-
-        self.weather = self.weather_generation(general,path,check) # check if metereological data have to been downloaded from PVgis or has already been done in a previous simulation
 
         self.locations = {} # initialise REC locations dictionary
         self.energy_balance = {'electricity': {}, 'heating water': {}, 'cooling water': {}, 'hydrogen': {}, 'gas': {}, 'process steam': {}} # initialise energy balances dictionaries
-                                                                                                        
-        
         self.simulation_hours = int(general['simulation years']*8760) # hourly timestep  
         
         ### create location objects and add them to the REC locations dictionary
         for location_name in structure: # location_name are the keys of 'structure' dictionary and will be used as keys of REC 'locations' dictionary too
-            self.locations[location_name] = location(structure[location_name],general,location_name,path,check,rec_name) # create location object and add it to REC 'locations' dictionary                
+            self.locations[location_name] = location(structure[location_name],general,location_name,path,check_pv,file_structure,file_general) # create location object and add it to REC 'locations' dictionary                
                      
-            
-        if check == False:
-            with open('previous_simulation/general_'+rec_name+'.pkl', 'wb') as f:
-                pickle.dump(general, f)
-            
             
     def REC_energy_simulation(self):
         """
@@ -241,7 +245,7 @@ class REC:
         with open('results/tech_cost_'+simulation_name+".pkl", 'wb') as f: pickle.dump(tech_cost, f)   
         
        
-    def weather_generation(self,general,path,check):
+    def weather_generation(self,general,path,check,file_general):
         """
         
         If the meteorological data have not already been downloaded and saved in a previous simulation, 
@@ -255,13 +259,13 @@ class REC:
         -------
         previous_simulation/files.csv
 
-        """
-                                
-        if check and os.path.exists(path+'/weather/weather_TMY.csv'): # if the prevoius weather series can be used
-            weather = pd.read_csv(path+'/weather/weather_TMY.csv')
+        """                        
+
+        if check and os.path.exists(f"{path}/weather/TMY_{file_general}.csv"): # if the prevoius weather series can be used
+            weather = pd.read_csv(f"{path}/weather/TMY_{file_general}.csv")
         
         else: # if new weather data must be downoladed from PV gis
-            print('Downolading typical metereological year data from PVGIS')   
+            print('Downolading typical metereological year data from PVGIS for '+file_general)   
                             
             latitude = general['latitude']
             longitude = general['longitude']
@@ -305,8 +309,9 @@ class REC:
                 weather = weather.interpolate(method='linear')
 
                 weather['Local time - DST'] = weather.index
-                weather.set_index('Local time - DST',inplace=True)                                               
-            weather.to_csv(path+'/weather/weather_TMY.csv')   
+                weather.set_index('Local time - DST',inplace=True)  
+                                             
+            weather.to_csv(f"{path}/weather/TMY_{file_general}.csv") 
 
         return(weather)
    
