@@ -165,6 +165,8 @@ class boiler_ng:
                 'years': int, after how many years it will be replaced
         """
         
+        tech_cost = {key: value for key, value in tech_cost.items()}
+        
         size = self.Ppeak # kW
         
         if tech_cost['cost per unit'] == 'default price correlation':
@@ -259,6 +261,8 @@ class boiler_h2:
                 'rate': float, replacement cost as a percentage of the initial investment [%]
                 'years': int, after how many years it will be replaced
         """
+        
+        tech_cost = {key: value for key, value in tech_cost.items()}
         
         size = self.Ppeak # kW
         

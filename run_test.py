@@ -83,25 +83,27 @@ some post-process are alredy avaiable as examples in postprocess_test
 you should create your own postprocess_dev.py
 """
 
-pp.total_balances(name_studycase,'prosumer_1','electricity')
-pp.total_balances(name_studycase,'prosumer_2','electricity')
-pp.total_balances(name_studycase,'prosumer_2','hydrogen')
-pp.total_balances(name_studycase,'consumer_1','electricity')
-
-#pp.total_balances(name_refcase,'consumer_2','electricity')
-#pp.total_balances(name_refcase,'consumer_2','heating water')
-#pp.total_balances(name_refcase,'consumer_2','gas')
-pp.total_balances(name_studycase,'consumer_2','electricity')
-pp.total_balances(name_studycase,'consumer_2','heating water')
-
-pp.REC_electricity_balance(name_studycase)
-
-pp.LOC_plot(name_studycase)
-
-pp.NPV_plot(name_economic)
-
-pp.hourly_balances_electricity(name_studycase,'prosumer_1', 2, 3)
-pp.hourly_balances_electricity(name_studycase,'prosumer_2', 2, 3)
+# =============================================================================
+# pp.total_balances(name_studycase,'prosumer_1','electricity')
+# pp.total_balances(name_studycase,'prosumer_2','electricity')
+# pp.total_balances(name_studycase,'prosumer_2','hydrogen')
+# pp.total_balances(name_studycase,'consumer_1','electricity')
+# 
+# #pp.total_balances(name_refcase,'consumer_2','electricity')
+# #pp.total_balances(name_refcase,'consumer_2','heating water')
+# #pp.total_balances(name_refcase,'consumer_2','gas')
+# pp.total_balances(name_studycase,'consumer_2','electricity')
+# pp.total_balances(name_studycase,'consumer_2','heating water')
+# 
+# pp.REC_electricity_balance(name_studycase)
+# 
+# pp.LOC_plot(name_studycase)
+# 
+# pp.NPV_plot(name_economic)
+# 
+# pp.hourly_balances_electricity(name_studycase,'prosumer_1', 2, 3)
+# pp.hourly_balances_electricity(name_studycase,'prosumer_2', 2, 3)
+# =============================================================================
 #pp.hourly_balances_electricity(name_studycase,'consumer_1', 2, 3)
 #pp.hourly_balances_electricity(name_studycase,'consumer_2', 2, 3)
 
