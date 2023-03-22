@@ -27,6 +27,8 @@ class battery:
             take account of ageing .calculate_aging()   
         """
         
+        self.cost = False # will be updated with tec_cost()
+
         self.nom_capacity = parameters['nominal capacity'] # battery early life max capacity [kWh]
         self.max_capacity = parameters['nominal capacity'] # battery max capacity [kWh]
         self.max_E_rate = parameters['max E-rate'] # battery max_E_rate [kW/kWh]

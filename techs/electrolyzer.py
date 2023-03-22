@@ -22,6 +22,8 @@ class electrolyzer:
             abrosrb electricity and produce hydrogen .use(e)
         """
         
+        self.cost = False # will be updated with tec_cost()
+
         self.rhoNrh2 = c.H2NDENSITY          # [kg/m^3] hydrogen density under normal condition
         self.Npower = parameters['Npower']   # [kW] float nominal power of electrolyzers installed capacity for the location
     

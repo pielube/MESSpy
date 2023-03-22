@@ -16,8 +16,9 @@
 		"Max field width": float >0 - optional
 		"Max field length": float >0 - optional
 		"peakP": float peak DC power [kWp] 
-		"serie": "TMY" or file.csv if "TMY" production serie based on typical meteorological year is used
-              		 if "filename.csv" a different serie can be used (upload it in input/production)
+		"serie": "TMY" or INT [2005-2016] or file.csv if "TMY" production serie based on typical meteorological year is used
+              		if INT [2005-2016] the PV serie of the specific year is used 
+			if "filename.csv" a different serie can be used (upload it in input/production)
                		 "filename.csv" must be the hourly time series of PV production 8760 values [Wh]
                 	 in this case 'peakP', 'azimuth' and 'tilt' are ignored
 

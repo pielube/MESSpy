@@ -7,7 +7,7 @@
                                         "priority": 3},
                                         
 				"PV": {		"tilt": 30,
-							"azimuth": 0,
+							"azimuth": 10,
 							"losses": 10,
 					    	"Max field width": 10,
 							"Max field length": 5,

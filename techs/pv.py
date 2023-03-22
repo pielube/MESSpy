@@ -11,7 +11,7 @@ import constants as c
 
 class PV:    
     
-    def __init__(self,parameters,general,simulation_hours,location_name,path,check,rec_name):
+    def __init__(self,parameters,general,simulation_hours,location_name,path,check,file_structure,file_general):
         """
         Create a PV object based on PV production taken from PVGIS data 
     
@@ -21,6 +21,7 @@ class PV:
             'tilt':  float surface tilt [deg]
             'azimuth': float azimuth angle 0 = south, 180 = north [deg]  
             'serie': if "TMY" production serie based on typical meteorological year is used
+                if INT [2005-2016] a serie of the specific year is used
                 if "filename.csv" a different serie can be used (upload it in input/production)
                 "filename.csv" must be the hourly time series of PV production 8760 values [Wh]
                 in this case 'peakP', 'azimuth' and 'tilt' are ignored
@@ -34,32 +35,33 @@ class PV:
             produce electricity .use(h)
         """
         
-        if parameters['serie'] == "TMY":
+        self.cost = False # will be updated with tec_cost()
+
+        if parameters['serie'] == "TMY" or type(parameters['serie']) == int:
             ### If PV serie have already been downloaded and saved as file.csv, this file is used
             ### Otherwise new serie is downloaded from PVgis (type meteorological year)
             
             # check = True # True if no PV parameters are changed from the old simulation
             
             directory = './previous_simulation'
-            if not os.path.exists(directory):
-                os.makedirs(directory)
+            if not os.path.exists(directory): os.makedirs(directory)
            
-            if os.path.exists('previous_simulation/parameters_'+rec_name+location_name+'.pkl'):
-                with open('previous_simulation/parameters_'+rec_name+location_name+'.pkl', 'rb') as f:
-                    ps_parameters = pickle.load(f) # previous simulation location parameters
-                par_to_check = ['tilt','azimuth','losses']
+            if os.path.exists(f"previous_simulation/{file_structure}_{location_name}.pkl"):
+                with open(f"previous_simulation/{file_structure}_{location_name}.pkl", 'rb') as f: ps_parameters = pickle.load(f) # previous simulation location parameters
+                par_to_check = ['tilt','azimuth','losses','serie']
                 for par in par_to_check:
                     if ps_parameters[par] != parameters[par]:
                         check = False
+                        
             else:
                 check = False
                                     
-            name_serie = rec_name + location_name + '_PV_TMY.csv'
+            name_serie = f"PV_{parameters['serie']}_{location_name}_{file_general}_{file_structure}.csv"
             if check and os.path.exists(path+'/production/'+name_serie): # if the prevoius pv serie can be used
                 pv = pd.read_csv(path+'/production/'+name_serie)['P'].to_numpy()
             
             else: # if a new pv serie must be downoladed from PV gis
-                print('Downolading a new PV serie from PVgis for '+rec_name+location_name)   
+                print(f"Downolading a new PV serie from PVgis for {location_name}_{file_general}_{file_structure}") 
                     
                 latitude = general['latitude']
                 longitude = general['longitude']
@@ -68,18 +70,23 @@ class PV:
                 tilt = parameters['tilt']
                 azimuth = parameters['azimuth']
                 
-                weather = pvlib.iotools.get_pvgis_tmy(latitude, longitude, map_variables=True)[0]
                 
-                # Actual production calculation (extract all available data points)
-                res = pvlib.iotools.get_pvgis_hourly(latitude,longitude,surface_tilt=tilt,surface_azimuth=azimuth,pvcalculation=True,peakpower=1,loss=losses,optimalangles=False)
+                if parameters['serie'] == 'TMY':
+                    weather = pvlib.iotools.get_pvgis_tmy(latitude, longitude, map_variables=True)[0]
+                    # Actual production calculation (extract all available data points)
+                    res = pvlib.iotools.get_pvgis_hourly(latitude,longitude,surface_tilt=tilt,surface_azimuth=azimuth,pvcalculation=True,peakpower=1,loss=losses,optimalangles=False)
+                    # Index to select TMY relevant data points
+                    pv = res[0]['P']
+                    refindex = weather.index
+                    shift_minutes = int(str(pv.index[0])[14:16])
+                    refindex = refindex.shift(shift_minutes,'T')
+                    pv = pv[refindex]
+                    
+                else: # INT
+                    year = parameters['serie']
+                    res = pvlib.iotools.get_pvgis_hourly(latitude,longitude,start=year,end=year,surface_tilt=tilt,surface_azimuth=azimuth,pvcalculation=True,peakpower=1,loss=losses,optimalangles=False)
+                    pv = res[0]['P']
                 
-                
-                # Index to select TMY relevant data points
-                pv = res[0]['P']
-                refindex = weather.index
-                shift_minutes = int(str(pv.index[0])[14:16])
-                refindex = refindex.shift(shift_minutes,'T')
-                pv = pv[refindex]
                 pv = pd.DataFrame(pv)
                 
                 # time zone correction
@@ -125,7 +132,7 @@ class PV:
                 pv.to_csv(path+'/production/'+name_serie)
             
                 # save new parameters in previous_simulation
-                with open('previous_simulation/parameters_'+rec_name+location_name+'.pkl', 'wb') as f:
+                with open(f"previous_simulation/{file_structure}_{location_name}.pkl", 'wb') as f:
                     pickle.dump(parameters, f)            
             
             self.peakP = parameters['peakP']
@@ -173,7 +180,7 @@ class PV:
                 
             max_field_length = parameters ['Max field length'] #m
             if field_length > max_field_length:
-                print('Warning!! The surface covered by the '+rec_name+location_name+' PV field is higher than the maximum available one')
+                print('Warning!! The surface covered by the '+location_name+' PV field is higher than the maximum available one')
             
         
     def use(self,h):

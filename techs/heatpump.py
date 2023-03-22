@@ -35,6 +35,8 @@ class heatpump:
     
             """
         
+            self.cost = False # will be updated with tec_cost()
+
             self.type = parameters['type'] 
             
             self.nom_Pth = parameters['nom Pth']

@@ -28,7 +28,8 @@ class boiler_el:
         
         self.Ppeak = parameters['Ppeak']
         self.efficiency = parameters['efficiency']
-        
+        self.cost = False # will be updated with tec_cost()
+
         
     def use(self,demand,timestep):
         """
@@ -108,6 +109,8 @@ class boiler_ng:
             consume fuel or electricity and produce heat .use(demand,timestep)
         """
         
+        self.cost = False # will be updated with tec_cost()
+
         self.Ppeak = parameters['Ppeak']
         self.efficiency = parameters['efficiency']
         
@@ -162,6 +165,8 @@ class boiler_ng:
                 'years': int, after how many years it will be replaced
         """
         
+        tech_cost = {key: value for key, value in tech_cost.items()}
+        
         size = self.Ppeak # kW
         
         if tech_cost['cost per unit'] == 'default price correlation':
@@ -196,7 +201,8 @@ class boiler_h2:
         
         self.Ppeak = parameters['Ppeak']
         self.efficiency = parameters['efficiency']
-        
+        self.cost = False # will be updated with tec_cost()
+
         
     def use(self,demand,available_hyd,timestep):
         """
@@ -255,6 +261,8 @@ class boiler_h2:
                 'rate': float, replacement cost as a percentage of the initial investment [%]
                 'years': int, after how many years it will be replaced
         """
+        
+        tech_cost = {key: value for key, value in tech_cost.items()}
         
         size = self.Ppeak # kW
         

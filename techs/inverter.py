@@ -19,6 +19,8 @@ class inverter:
 
         """
         
+        self.cost = False # will be updated with tec_cost()
+
         self.eta_max = parameters['max efficiency']
         self.n = parameters['number']
         self.peakP = parameters['peakP']
@@ -86,7 +88,7 @@ class inverter:
         """
         tech_cost = {key: value for key, value in tech_cost.items()}
 
-        size = self.peakP
+        size = self.peakP * self.n
         
         if tech_cost['cost per unit'] == 'default price correlation':
             C0 = 500 # €/kW

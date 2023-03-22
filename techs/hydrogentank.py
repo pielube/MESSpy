@@ -22,6 +22,8 @@ class H_tank:
             calculate its own volume (pressure) .volume(pressure)
         """
         
+        self.cost = False # will be updated with tec_cost()
+
         self.pressure = parameters['pressure']          # H tank storage pressure
         self.LOC = np.zeros(simulation_hours+1)         # array H tank level of Charge 
         self.max_capacity = parameters['max capacity']  # H tank max capacity [kg]

@@ -45,9 +45,9 @@
 							"azimuth": 10,
 							"losses": 10,
 							"peakP": 3,
-							"serie": "TMY",
+							"serie": 2015,
     						"priority": 2},	
-    						
+
      			"inverter":{"max efficiency": 0.95,
              				"peakP": 2,
              				"number": 1,
