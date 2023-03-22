@@ -304,6 +304,10 @@ class location:
                 self.energy_balance['hydrogen']['H tank'][h] = self.technologies['H tank'].use(h,eb['hydrogen'])
                 eb['hydrogen'] += self.energy_balance['hydrogen']['H tank'][h]
             
+            if tech_name == 'inverter':
+                self.energy_balance['electricity']['inverter'][h] = self.technologies['inverter'].use(h,eb['electricity']) # electricity lost in conversion by the inverter
+                eb['electricity'] += self.energy_balance['electricity']['inverter'][h] # electricity balance update: - electricity lost in conversion by the invertert
+
             ### demand and grid   
             for carrier in eb: # for each energy carrier
                 if tech_name == f"{carrier} demand":                
@@ -312,13 +316,7 @@ class location:
                     if eb[carrier] > 0 and self.system[f"{carrier} grid"]['feed'] or eb[carrier] < 0 and self.system[f"{carrier} grid"]['draw']:
                         self.energy_balance[carrier]['grid'][h] = - eb[carrier] # energy from grid(+) or into grid(-) 
             
-            # inverter?!?!?! to add inside demand and grid (without proprity)
-# =============================================================================
-#             if tech_name == 'inverter':
-#                 self.energy_balance['electricity']['inverter'][h] = self.technologies['inverter'].use(h,eb['electricity']) # electricity lost in conversion by the inverter
-#                 eb['electricity'] += self.energy_balance['electricity']['inverter'][h] # electricity balance update: - electricity lost in conversion by the invertert
-#             
-# =============================================================================
+            
                 
         
         

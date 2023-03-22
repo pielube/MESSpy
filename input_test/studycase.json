@@ -13,12 +13,7 @@
 							"Max field length": 30,
 							"peakP": 5,
 							"serie": "TMY",
-							"priority": 2},		
-												
-				"inverter":{"max efficiency": 0.95,
-            				"peakP": 3,
-            				"number": 1,
-            				"priority": 3},      
+							"priority": 2},		     
             				      				
 				"battery": {"nominal capacity": 3,
 							"max E-rate": 0.5,
@@ -46,12 +41,7 @@
 							"losses": 10,
 							"peakP": 3,
 							"serie": 2015,
-    						"priority": 2},	
-
-     			"inverter":{"max efficiency": 0.95,
-             				"peakP": 2,
-             				"number": 1,
-             				"priority": 3},			
+    						"priority": 2},			
              							
 				"electrolyzer": {	"Npower": 2,
 									"number of modules":1,
