@@ -46,6 +46,7 @@ class REC:
         check_pv = True # Used to check if PV_production series hate to been downloaded from PVgis or the old one can be used
         directory = './previous_simulation'
         if not os.path.exists(directory): os.makedirs(directory)
+
         if os.path.exists(f"previous_simulation/{file_general}.pkl"):
             with open(f"previous_simulation/{file_general}.pkl", 'rb') as f: ps_general = pickle.load(f) # previous simulation general
             par_to_check = ['latitude','longitude','UTC time zone','DST']
@@ -78,7 +79,7 @@ class REC:
         for location_name in structure: # location_name are the keys of 'structure' dictionary and will be used as keys of REC 'locations' dictionary too
             self.locations[location_name] = location(structure[location_name],general,location_name,path,check_pv,file_structure,file_general) # create location object and add it to REC 'locations' dictionary                
                      
-            
+
     def REC_energy_simulation(self):
         """
         Simulate the REC every hour

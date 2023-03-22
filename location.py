@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from techs import heatpump,boiler_el,boiler_ng,boiler_h2,PV,wind,battery,H_tank,fuel_cell,electrolyzer,inverter,chp_gt
+from techs import heatpump,boiler_el,boiler_ng,boiler_h2,PV,wind,battery,H_tank,fuel_cell,electrolyzer,inverter,chp_gt,Chp,Absorber
 
 
 class location:
@@ -11,12 +11,16 @@ class location:
     
         system: dictionary (all the inputs are optional)
             'demand'': dictionary
-                'electricity':   str 'file_name.csv' hourly time series of electricity demand 8760 values [kWh]
-                'heating water': str 'file_name.csv' hourly time series of heating and dhw demand 8760 values [kWh]
-                'cooling water': str 'file_name.csv' hourly time series of cooling demand 8760 values [kWh]
-                'hydrogen':      str 'file_name.csv' hourly time series of hydrogen demand 8760 values [kg/h]
-                'gas':           str 'file_name.csv' hourly time series of gas demand 8760 values [kWh]
-                'process steam': str 'file_name.csv' hourly time series of process steam demand 8760 values [kg/h]
+                'electricity':              str 'file_name.csv' hourly time series of electricity demand 8760 values [kWh]
+                'heating water':            str 'file_name.csv' hourly time series of heating and dhw demand 8760 values [kWh]
+                'cooling water':            str 'file_name.csv' hourly time series of cooling demand 8760 values [kWh]
+                'hydrogen':                 str 'file_name.csv' hourly time series of hydrogen demand 8760 values [kg/h]
+                'gas':                      str 'file_name.csv' hourly time series of gas demand 8760 values [kWh]
+                'process steam':            str 'file_name.csv' hourly time series of process steam demand 8760 values [kg/h]
+                'process heat':             str 'file_name.csv' hourly time series of process heat demand 8760 values [kWh]
+                'process hot water':        str 'file_name.csv' hourly time series of process hot water demand 8760 values [kWh]
+                'process cold water':       str 'file_name.csv' hourly time series of process cold water demand (absorber, 7-12 °C) 8760 values [kWh]
+                'process chilled water':    str 'file_name.csv' hourly time series of process chilled water demand (absorber, 1-5 °C) 8760 values [kWh]
             'PV':           dictionary parameters needed to create PV object (see PV.py)
             'inverter':     dictionary parameters needed to create inverter object (see inverter.py)
             'wind':         dictionary parameters needed to create wind object (see wind.py)
@@ -37,11 +41,20 @@ class location:
             simulate the energy flows of present technologies .loc_simulation
             record energy balances .energy_balance (electricity, heating water, cooling water, gas, hydrogen)
         """
-
-        self.system = system
+        
+        self.system = dict(sorted(system.items(), key=lambda item: item[1]['priority'])) # ordered by priority
         self.name = location_name
-        self.technologies = {} # initialise technologies dictionary
-        self.energy_balance = {'electricity': {}, 'heating water': {}, 'cooling water': {}, 'hydrogen': {}, 'gas': {}, 'process steam': {}} # initialise energy balances dictionaries
+        self.technologies = {}                                  # initialise technologies dictionary
+        self.energy_balance = {'electricity'            : {},   # initialise energy balances dictionaries
+                               'heating water'          : {}, 
+                               'cooling water'          : {}, 
+                               'hydrogen'               : {}, 
+                               'gas'                    : {}, 
+                               'process steam'          : {},
+                               'process heat'           : {},
+                               'process hot water'      : {},
+                               'process cold water'     : {},
+                               'process chilled water'  : {}} 
 
         self.simulation_hours = int(general['simulation years']*8760) # hourly timestep     
         
@@ -49,24 +62,38 @@ class location:
         # initialise energy balance and add them to the energy_balance dictionary
         
         for carrier in self.energy_balance:
-            if carrier in system['grid'] and system['grid'][carrier]:
+            
+            if f"{carrier} grid" in self.system:
                 self.energy_balance[carrier]['grid'] = np.zeros(self.simulation_hours) # array energy carrier bought from the grid (-) or feed into the grid (+)
 
-            if carrier in system['demand']:
+            if f"{carrier} demand" in self.system:
                 if carrier == 'hydrogen' or carrier == 'process steam':
-                    self.energy_balance[carrier]['demand'] = - np.tile(pd.read_csv(path+'/loads/'+system['demand'][carrier])['kg'].to_numpy(),int(self.simulation_hours/8760))   # hourly energy carrier needed for the entire simulation
-                # if carrier == 'process steam':
-                    # self.energy_balance[carrier]['demand'] = - np.tile(pd.read_csv(path+'/loads/'+system['demand'][carrier])['kg'].to_numpy(),int(self.simulation_hours/8760))   # hourly energy carrier needed for the entire simulation
+                    self.energy_balance[carrier]['demand'] = - np.tile(pd.read_csv(path+'/loads/'+system[f"{carrier} demand"]['serie'])['kg'].to_numpy(),int(self.simulation_hours/8760))   # hourly energy carrier needed for the entire simulation
                 else:                                                                                                                                                                                                          
-                    self.energy_balance[carrier]['demand'] = - np.tile(pd.read_csv(path+'/loads/'+system['demand'][carrier])['kWh'].to_numpy(),int(self.simulation_hours/8760))  # hourly energy carrier needed for the entire simulation
+                    self.energy_balance[carrier]['demand'] = - np.tile(pd.read_csv(path+'/loads/'+system[f"{carrier} demand"]['serie'])['kWh'].to_numpy(),int(self.simulation_hours/8760))  # hourly energy carrier needed for the entire simulation
 
-        if 'chp_gt' in system:
+        if 'chp_gt' in self.system:
             self.technologies['chp_gt'] = chp_gt(system['chp_gt'],self.simulation_hours) # chp_gt object created and added to 'technologies' dictionary
             self.energy_balance['process steam']['chp_gt'] = np.zeros(self.simulation_hours) # array chp_gt process steam balance 
             self.energy_balance['electricity']['chp_gt'] = np.zeros(self.simulation_hours) # array chp_gt electricity balance
             self.energy_balance['hydrogen']['chp_gt'] = np.zeros(self.simulation_hours) # array chp_gt process hydrogen balance 
         
-        if 'heatpump' in system:
+        if 'chp' in self.system:
+            self.technologies['chp'] = Chp(system['chp'],self.simulation_hours) # chp object created and added to 'technologies' dictionary
+            self.energy_balance[self.technologies['chp'].th_out]['chp'] = np.zeros(self.simulation_hours) # array chp thermal output balance (process steam/hot water)
+            self.energy_balance['electricity']['chp'] = np.zeros(self.simulation_hours) # array chp electricity balance
+            self.energy_balance[self.technologies['chp'].fuel]['chp'] = np.zeros(self.simulation_hours) # array chp fuel consumption balance
+            self.energy_balance['process heat']['chp'] = np.zeros(self.simulation_hours) # array chp process heat balance
+            self.energy_balance['process hot water']['chp'] = np.zeros(self.simulation_hours) # array chp process hot water balance
+            self.energy_balance['process cold water']['chp'] = np.zeros(self.simulation_hours) # array chp process cold water balance
+       
+        if 'absorber' in self.system:
+            self.technologies['absorber'] = Absorber(system['absorber'],self.simulation_hours) # absorber object created and added to 'technologies' dictionary
+            self.energy_balance['process heat']['absorber'] = np.zeros(self.simulation_hours) # array absorber process steam balance 
+            self.energy_balance['process hot water']['absorber'] = np.zeros(self.simulation_hours) # array absorber process steam balance 
+            self.energy_balance['process cold water']['absorber'] = np.zeros(self.simulation_hours) # array absorber process steam balance 
+            
+        if 'heatpump' in self.system:
             self.technologies['heatpump'] = heatpump(system['heatpump'],self.simulation_hours) # heatpump object created and add to 'technologies' dictionary
             self.energy_balance['electricity']['heatpump'] = np.zeros(self.simulation_hours) # array heatpump electricity balance
             self.energy_balance['heating water']['heatpump'] = np.zeros(self.simulation_hours) # array heatpump heat balance
@@ -121,7 +148,7 @@ class location:
         self.energy_balance['electricity']['collective self consumption'] = np.zeros(self.simulation_hours) # array contribution to collective-self-consumption as producer (-) or as consumer (+)
         self.energy_balance['heating water']['collective self consumption'] = np.zeros(self.simulation_hours) # array contribution to collective-self-consumption as producer (-) or as consumer (+)---heat----mio!!!
         self.energy_balance['process steam']['collective self consumption'] = np.zeros(self.simulation_hours) # array contribution to collective-self-consumption as producer (-) or as consumer (+)---heat----mio!!!
-
+             
     def loc_energy_simulation(self,h,weather):
         """
         Simulate the location
@@ -131,130 +158,165 @@ class location:
         output : updating of location energy balances
         """
         
-        eb = {'electricity': 0, 'heating water': 0, 'cooling water': 0, 'hydrogen': 0, 'gas': 0, 'process steam': 0} # initialise Energy Balances     
+        eb = {}
+        for carrier in self.energy_balance:
+            eb[carrier] = 0 # initialise hourly Energy Balances     
+            
+        for tech_name in self.system: # (which is ordered py priority)
         
+            if tech_name == 'PV': 
+                self.energy_balance['electricity']['PV'][h] = self.technologies['PV'].use(h) # electricity produced from PV
+                eb['electricity'] += self.energy_balance['electricity']['PV'][h] # elecricity balance update: + electricity produced from PV
+    
+            if tech_name == 'wind': 
+                self.energy_balance['electricity']['wind'][h] = self.technologies['wind'].use(h,weather['wind_speed'][h]) # electricity produced from wind
+                eb['electricity'] += self.energy_balance['electricity']['wind'][h] # elecricity balance update: + electricity produced from wind
+                        
+            if tech_name == 'boiler_el': 
+                self.energy_balance['electricity']['boiler_el'][h], self.energy_balance['heating water']['boiler_el'][h] = self.technologies['boiler_el'].use(eb['heating water'],1) # el consumed and heat produced from boiler_el
+                eb['electricity'] += self.energy_balance['electricity']['boiler_el'][h] # elecricity balance update: - electricity consumed by boiler_el
+                eb['heating water'] += self.energy_balance['heating water']['boiler_el'][h] # heat balance update: + heat produced by boiler_el
+    
+            if tech_name == 'boiler_ng': 
+                self.energy_balance['gas']['boiler_ng'][h], self.energy_balance['heating water']['boiler_ng'][h] = self.technologies['boiler_ng'].use(eb['heating water'],1) # ng consumed and heat produced from boiler_ng
+                eb['gas'] += self.energy_balance['gas']['boiler_ng'][h] # gas balance update: - gas consumed by boiler_ng
+                eb['heating water'] += self.energy_balance['heating water']['boiler_ng'][h] # heat balance update: + heat produced by boiler_ng
         
-        ### production from renewables (pv, wind, inverter)
-        if 'PV' in self.technologies: 
-            self.energy_balance['electricity']['PV'][h] = self.technologies['PV'].use(h) # electricity produced from PV
-            eb['electricity'] += self.energy_balance['electricity']['PV'][h] # elecricity balance update: + electricity produced from PV
-
-        if 'wind' in self.technologies: 
-            self.energy_balance['electricity']['wind'][h] = self.technologies['wind'].use(h,weather['wind_speed'][h]) # electricity produced from wind
-            eb['electricity'] += self.energy_balance['electricity']['wind'][h] # elecricity balance update: + electricity produced from wind
-    
-        if 'inverter' in self.technologies:
-            self.energy_balance['electricity']['inverter'][h] = self.technologies['inverter'].use(h,eb['electricity']) # electricity lost in conversion by the inverter
-            eb['electricity'] += self.energy_balance['electricity']['inverter'][h] # electricity balance update: - electricity lost in conversion by the invertert
-     
-        ### demand
-        for carrier in eb: # for each energy carrier
-            if 'demand' in self.energy_balance[carrier]:                
-                eb[carrier] += self.energy_balance[carrier]['demand'][h] # energy balance update: energy demand(-) # n.b cooling demand (+)              
-       
-        ### production from cogeneration system (chp_gt)
-        if 'chp_gt' in self.technologies:
-            if 'H tank' in self.technologies:   # if hydrogen is stored in a tank
-                available_hyd = self.technologies['H tank'].LOC[h] + self.technologies['H tank'].max_capacity - self.technologies['H tank'].used_capacity                                                                  
-            else:                               # if hydrogen is sold to the grid 
-                available_hyd = 99999999999 # there are no limits, f.i an hydrogen producer
-
-            use = self.technologies['chp_gt'].use(h,weather['temp_air'][h],eb['process steam'])     # saving fuel cell working parameters for the current timeframe
-            self.energy_balance['process steam']['chp_gt'][h] = use[0]   # produced steam (+)
-            self.energy_balance['electricity']['chp_gt'][h] =   use[1]   # produced electricity (+)
-            self.energy_balance['hydrogen']['chp_gt'][h] =      use[2]   # hydrogen required by chp system to run (-)  
-
-            eb['hydrogen'] += self.energy_balance['hydrogen']['chp_gt'][h]            
-            eb['process steam'] += self.energy_balance['process steam']['chp_gt'][h]    
-            eb['electricity'] += self.energy_balance['electricity']['chp_gt'][h]
-
-        ### other techologies (boiler_el, boiler_ng, heatpump, battery, electrolyzer, fuel cell, boiler_H2, H tank)
-                    
-        if 'boiler_el' in self.technologies: 
-            self.energy_balance['electricity']['boiler_el'][h], self.energy_balance['heating water']['boiler_el'][h] = self.technologies['boiler_el'].use(eb['heating water'],1) # el consumed and heat produced from boiler_el
-            eb['electricity'] += self.energy_balance['electricity']['boiler_el'][h] # elecricity balance update: - electricity consumed by boiler_el
-            eb['heating water'] += self.energy_balance['heating water']['boiler_el'][h] # heat balance update: + heat produced by boiler_el
-
-        if 'boiler_ng' in self.technologies: 
-            self.energy_balance['gas']['boiler_ng'][h], self.energy_balance['heating water']['boiler_ng'][h] = self.technologies['boiler_ng'].use(eb['heating water'],1) # ng consumed and heat produced from boiler_ng
-            eb['gas'] += self.energy_balance['gas']['boiler_ng'][h] # gas balance update: - gas consumed by boiler_ng
-            eb['heating water'] += self.energy_balance['heating water']['boiler_ng'][h] # heat balance update: + heat produced by boiler_ng
-    
-        if 'heatpump' in self.technologies:     
-            self.energy_balance['electricity']['heatpump'][h], self.energy_balance['heating water']['heatpump'][h], self.energy_balance['heating water']['inertial TES'][h] = self.technologies['heatpump'].use(weather['temp_air'][h],eb['heating water'],eb['electricity'],h) 
-         
-            eb['electricity'] += self.energy_balance['electricity']['heatpump'][h] # electricity absorbed by heatpump
-            self.energy_balance['electricity']['demand'][h] += self.energy_balance['electricity']['heatpump'][h] # add heatpump demand to 'electricity demand'
-            eb['heating water'] += self.energy_balance['heating water']['inertial TES'][h] + self.energy_balance['electricity']['heatpump'][h] # heat or cool supplied by HP or inertial TES
-    
-        if 'battery' in self.technologies:
-            if self.technologies['battery'].collective == 0: 
-                self.energy_balance['electricity']['battery'][h] = self.technologies['battery'].use(h,eb['electricity']) # electricity absorbed(-) or supplied(+) by battery
-                eb['electricity'] += self.energy_balance['electricity']['battery'][h]  # electricity balance update: +- electricity absorbed or supplied by battery
-       
-        if 'electrolyzer' in self.technologies:
-            if eb['electricity'] > 0:
-                if 'H tank' in self.technologies:   # if hydrogen is stored in a tank
-                    storable_hydrogen = self.technologies['H tank'].max_capacity-self.technologies['H tank'].LOC[h] # the tank can't be full
-                    if storable_hydrogen>self.technologies['H tank'].max_capacity*0.00001:
-                        self.energy_balance['hydrogen']['electrolyzer'][h], self.energy_balance['electricity']['electrolyzer'][h] = self.technologies['electrolyzer'].use(h,eb['electricity'],storable_hydrogen) # hydrogen supplied by electrolyzer(+) and electricity absorbed(-) 
-                        eb['hydrogen']    += self.energy_balance['hydrogen']['electrolyzer'][h]
-                        eb['electricity'] += self.energy_balance['electricity']['electrolyzer'][h]                                                                  
-                else:                               # if hydrogen is sold to the grid 
-                    storable_hydrogen = 99999999999 # there are no limits, f.i an hydrogen producer
-                    
-                    self.energy_balance['hydrogen']['electrolyzer'][h],self.energy_balance['electricity']['electrolyzer'][h] = self.technologies['electrolyzer'].use(h,eb['electricity'],storable_hydrogen)      # [:2] # hydrogen supplied by electrolyzer(+) # electricity absorbed by the electorlyzer(-) 
-                  
-                    eb['hydrogen']    += self.energy_balance['hydrogen']['electrolyzer'][h]
-                    eb['electricity'] += self.energy_balance['electricity']['electrolyzer'][h]
+            if tech_name == 'heatpump':     
+                self.energy_balance['electricity']['heatpump'][h], self.energy_balance['heating water']['heatpump'][h], self.energy_balance['heating water']['inertial TES'][h] = self.technologies['heatpump'].use(weather['temp_air'][h],eb['heating water'],eb['electricity'],h) 
+             
+                eb['electricity'] += self.energy_balance['electricity']['heatpump'][h] # electricity absorbed by heatpump
+                self.energy_balance['electricity']['demand'][h] += self.energy_balance['electricity']['heatpump'][h] # add heatpump demand to 'electricity demand'
+                eb['heating water'] += self.energy_balance['heating water']['inertial TES'][h] + self.energy_balance['electricity']['heatpump'][h] # heat or cool supplied by HP or inertial TES
         
-                
-        if 'fuel cell' in self.technologies:
-            if eb['electricity'] < 0:      
-                if 'H tank' in self.technologies: # if hydrogen is stored in a tank
-                    available_hyd = self.technologies['H tank'].LOC[h] + self.technologies['H tank'].max_capacity - self.technologies['H tank'].used_capacity
-                else:                             # if hydrogen is purchased
-                    available_hyd = 99999999999   # there are no limits
-
-                use = self.technologies['fuel cell'].use(h,eb['electricity'],available_hyd)     # saving fuel cell working parameters for the current timeframe
-                self.energy_balance['hydrogen']['fuel cell'][h] =    use[0] # hydrogen absorbed by fuel cell(-)
-                self.energy_balance['electricity']['fuel cell'][h] = use[1] # electricity supplied(+) 
-
-                if use[2] < -eb['heating water']: #all of the heat producted by FC is used      
-                    self.energy_balance['heating water']['fuel cell'][h]=use[2] # heat loss of fuel cell
+            if tech_name == 'battery':
+                if self.technologies['battery'].collective == 0: 
+                    self.energy_balance['electricity']['battery'][h] = self.technologies['battery'].use(h,eb['electricity']) # electricity absorbed(-) or supplied(+) by battery
+                    eb['electricity'] += self.energy_balance['electricity']['battery'][h]  # electricity balance update: +- electricity absorbed or supplied by battery
+           
+            if tech_name == 'chp_gt':
+                if "hydrogen grid" in self.system and self.system["hydrogen grid"]["draw"]: # hydrogen can be withdranw from an hydrogen grid
+                    available_hyd = 9999999999999999999 
+                elif 'H tank' in self.system:   # only hydrogen inside H tank can be used
+                    available_hyd = self.technologies['H tank'].LOC[h] + self.technologies['H tank'].max_capacity - self.technologies['H tank'].used_capacity                                                                  
                 else:
-                    self.energy_balance['heating water']['fuel cell'][h]=-eb['heating water'] # heat loss of fuel cell- demand
-                    # self.energy_balance['heating water']['fuel cell']['unused'][h]=self.technologies['fuel cell'].use(h,eb['electricity'],available_hyd)[2]+eb['heating water']
-                if 'grid' in self.energy_balance['heating water']:
-                    if use[2] > -eb['heating water']:      
-                        self.energy_balance['heating water']['grid'][h]=use[2]+eb['heating water']
+                    available_hyd = max(0,eb['hydrogen']) # hydrogen is produced in the same timestep by an electrolyzer with a higher priority than chp
+                if available_hyd > 0:
+                    use = self.technologies['chp_gt'].use(h,weather['temp_air'][h],eb['process steam'],available_hyd)     # saving chp_gt working parameters for the current timeframe
+                    self.energy_balance['process steam']['chp_gt'][h] = use[0]   # produced steam (+)
+                    self.energy_balance['electricity']['chp_gt'][h] =   use[1]   # produced electricity (+)
+                    self.energy_balance['hydrogen']['chp_gt'][h] =      use[2]   # hydrogen required by chp system to run (-)  
+    
+                eb['hydrogen'] += self.energy_balance['hydrogen']['chp_gt'][h]            
+                eb['process steam'] += self.energy_balance['process steam']['chp_gt'][h]    
+                eb['electricity'] += self.energy_balance['electricity']['chp_gt'][h] 
+           
+            if tech_name == 'chp':
+                strategy    = self.technologies['chp'].strategy     # thermal-load follow or electric-load follow 
+                coproduct   = self.technologies['chp'].coproduct    # process co-product depending on the  approache chosen above 
+                if self.system['chp']['Fuel'] == 'hydrogen':
+                    if "hydrogen grid" in self.system and self.system["hydrogen grid"]["draw"]: # hydrogen can be withdranw from an hydrogen grid
+                        available_hyd = 9999999999999999999 
+                    elif 'H tank' in self.system:   # only hydrogen inside H tank can be used
+                        available_hyd = self.technologies['H tank'].LOC[h] + self.technologies['H tank'].max_capacity - self.technologies['H tank'].used_capacity                                                                  
                     else:
-                        self.energy_balance['heating water']['grid'][h]=0
-          
-                eb['hydrogen'] += self.energy_balance['hydrogen']['fuel cell'][h]
-                eb['electricity'] += self.energy_balance['electricity']['fuel cell'][h]
-                eb['heating water'] += self.energy_balance['heating water']['fuel cell'][h] 
-                
-        if 'boiler_h2' in self.technologies: 
-            if 'H tank' in self.technologies: # if hydrogen is stored in a tank
-                available_hyd = self.technologies['H tank'].LOC[h] + self.technologies['H tank'].max_capacity - self.technologies['H tank'].used_capacity-self.energy_balance['hydrogen']['fuel cell'][h]
-            else: # if hydrogen is purchased
-                available_hyd = 99999999999 # there are no limits
-            self.energy_balance['hydrogen']['boiler_h2'][h], self.energy_balance['heating water']['boiler_h2'][h] = self.technologies['boiler_h2'].use(eb['heating water'],available_hyd,1)[1:3] #h2 consumed from boiler_h2 and heat produced by boiler_h2
-            eb['hydrogen'] += self.energy_balance['hydrogen']['boiler_h2'][h] # hydrogen balance update: - hydrogen consumed by boiler_h2
-            eb['heating water'] += self.energy_balance['heating water']['boiler_h2'][h] # heat balance update: + heat produced by boiler_h2
-                
-        if 'H tank' in self.technologies:
-            self.energy_balance['hydrogen']['H tank'][h] = self.technologies['H tank'].use(h,eb['hydrogen'])
-            eb['hydrogen'] += self.energy_balance['hydrogen']['H tank'][h]
-        
-        for carrier in eb:    
-            if 'grid' in self.energy_balance[carrier]:
-                if carrier=='heating water':
-                    continue
+                        available_hyd = max(0,eb['hydrogen']) # hydrogen is produced in the same timestep by an electrolyzer with a higher priority than chp
+                    use = self.technologies['chp'].use(h,weather['temp_air'][h],eb[strategy], eb[coproduct], available_hyd)     # saving chp working parameters for the current timeframe
                 else:
-                    self.energy_balance[carrier]['grid'][h] = - eb[carrier] # energy from grid(+) or into grid(-) 
-                                                                  
+                    use = self.technologies['chp'].use(h,weather['temp_air'][h],eb[strategy], eb[coproduct])                    # saving chp working parameters for the current timeframe
+                
+                self.energy_balance[self.technologies['chp'].th_out]['chp'][h]  = use[0]   # produced thermal output (+) (steam/hot water)
+                self.energy_balance['electricity']['chp'][h]                    = use[1]   # produced electricity (+)
+                self.energy_balance[self.technologies['chp'].fuel]['chp'][h]    = use[2]   # fuel required by chp system to run (-)  
+                self.energy_balance['process heat']['chp'][h]                   = use[3]   # process heat produced by chp system (+)  
+                self.energy_balance['process hot water']['chp'][h]              = use[4]   # process heat produced by chp system (+)  
+
+                eb[self.technologies['chp'].fuel] += self.energy_balance[self.technologies['chp'].fuel]['chp'][h]            
+                eb[self.technologies['chp'].th_out] += self.energy_balance[self.technologies['chp'].th_out]['chp'][h]    
+                eb['electricity'] += self.energy_balance['electricity']['chp'][h] 
+                eb['process heat'] += self.energy_balance['process heat']['chp'][h] 
+                
+# =============================================================================
+#                 # if q_th != q_th_chp :     # WIP:  logica in cui si tiene conto di avere priorità per la domanda termica dell'assorbitore               \
+#                                             #       si interroga l'assorbitore con la domanda frigorifera dell'utenza, tramite funzione inversa          \
+#                                             #       si risale al calore che sarebbe necessario avere in input all'assorbitore (q_in =q_frigo/COP)        \
+#                                             #       e si somma alla domanda termica con cui si va ad interrogare il chp in questo if tech_name == 'chp'  \
+#                                             #       A questo punto si verifica quanto calore è in grado di generare il CHP e si gestiscono i flussi      \     
+#                                             #       qui con comandi specifici o con una funzione chp.trigeneration() che suggeriva Marco. 
+# =============================================================================
+
+            if tech_name == 'absorber':  
+                # self.energy_balance['process cold water']['absorber'][h] = self.technologies['absorber'].use(h, eb[self.technologies['chp'].th_out])  # cold energy produced via the absorption cycle (+) - here accounting for\
+                                                                                                                                                        # the specific thermal output of CHP
+                self.energy_balance['process cold water']['absorber'][h] = self.technologies['absorber'].use(h, eb['process heat'])  # cold energy produced via the absorption cycle (+)
+            
+            if tech_name == 'electrolyzer':
+                if eb['electricity'] > 0: #? this condition must be solved if electricity from the grid is to be used to produce hydrogen
+                    if "hydrogen grid" in self.system and self.system["hydrogen grid"]["feed"]: # hydrogen can be fed into an hydrogen grid
+                        producible_hyd = 9999999999999999999 
+                    elif 'H tank' in self.system:   # hydrogen can only be stored into an H tank 
+                        producible_hyd = self.technologies['H tank'].max_capacity-self.technologies['H tank'].LOC[h] # the tank can't be full 
+                        if producible_hyd < self.technologies['H tank'].max_capacity*0.00001: # to avoid unnecessary interation
+                            producible_hyd = 0
+                    else:
+                        producible_hyd = max(0,-eb['hydrogen']) # hydrogen is consumed by a technology which have higher priority than electrolyzer
+                    if producible_hyd > 0:
+                        self.energy_balance['hydrogen']['electrolyzer'][h],self.energy_balance['electricity']['electrolyzer'][h] = self.technologies['electrolyzer'].use(h,eb['electricity'],producible_hyd)      # [:2] # hydrogen supplied by electrolyzer(+) # electricity absorbed by the electorlyzer(-) 
+                        eb['hydrogen']    += self.energy_balance['hydrogen']['electrolyzer'][h]
+                        eb['electricity'] += self.energy_balance['electricity']['electrolyzer'][h]
+                    
+            if tech_name == 'fuel cell':
+                if eb['electricity'] < 0: #? this condition must be solved if you want to produce electricity to fed into the gird
+                    if "hydrogen grid" in self.system and self.system["hydrogen grid"]["draw"]: # hydrogen can be withdranw from an hydrogen grid
+                        available_hyd = 9999999999999999999 
+                    elif 'H tank' in self.system:   # only hydrogen inside H tank can be used
+                        available_hyd = self.technologies['H tank'].LOC[h] + self.technologies['H tank'].max_capacity - self.technologies['H tank'].used_capacity                                                                  
+                    else:
+                        available_hyd = max(0,eb['hydrogen']) # hydrogen is produced by an electrolyzer with a higher priority than fc
+                    if available_hyd > 0:
+                        use = self.technologies['fuel cell'].use(h,eb['electricity'],available_hyd)     # saving fuel cell working parameters for the current timeframe
+                        self.energy_balance['hydrogen']['fuel cell'][h] =    use[0] # hydrogen absorbed by fuel cell(-)
+                        self.energy_balance['electricity']['fuel cell'][h] = use[1] # electricity supplied(+) 
+        
+                        if use[2] < -eb['heating water']: #all of the heat producted by FC is used      
+                            self.energy_balance['heating water']['fuel cell'][h]=use[2] # heat loss of fuel cell
+                        else:
+                            self.energy_balance['heating water']['fuel cell'][h]=-eb['heating water'] # heat loss of fuel cell- demand
+
+                        eb['hydrogen'] += self.energy_balance['hydrogen']['fuel cell'][h]
+                        eb['electricity'] += self.energy_balance['electricity']['fuel cell'][h]
+                        eb['heating water'] += self.energy_balance['heating water']['fuel cell'][h] 
+                    
+            if tech_name == 'boiler_h2': 
+                if eb['electricity'] < 0: #? this condition must be solved if you want to produce electricity to fed into the gird
+                    if "hydrogen grid" in self.system and self.system["hydrogen grid"]["draw"]: # hydrogen can be withdranw from an hydrogen grid
+                        available_hyd = 9999999999999999999 
+                    elif 'H tank' in self.system:   # only hydrogen inside H tank can be used
+                        available_hyd = self.technologies['H tank'].LOC[h] + self.technologies['H tank'].max_capacity - self.technologies['H tank'].used_capacity                                                                  
+                    else:
+                        available_hyd = max(0,eb['hydrogen']) # hydrogen is produced by an electrolyzer which have higher priority than boiler_h2
+                    if available_hyd > 0:
+                        self.energy_balance['hydrogen']['boiler_h2'][h], self.energy_balance['heating water']['boiler_h2'][h] = self.technologies['boiler_h2'].use(eb['heating water'],available_hyd,1)[1:3] #h2 consumed from boiler_h2 and heat produced by boiler_h2
+                        eb['hydrogen'] += self.energy_balance['hydrogen']['boiler_h2'][h] # hydrogen balance update: - hydrogen consumed by boiler_h2
+                        eb['heating water'] += self.energy_balance['heating water']['boiler_h2'][h] # heat balance update: + heat produced by boiler_h2
+                    
+            if tech_name == 'H tank':
+                self.energy_balance['hydrogen']['H tank'][h] = self.technologies['H tank'].use(h,eb['hydrogen'])
+                eb['hydrogen'] += self.energy_balance['hydrogen']['H tank'][h]
+            
+            if tech_name == 'inverter':
+                self.energy_balance['electricity']['inverter'][h] = self.technologies['inverter'].use(h,eb['electricity']) # electricity lost in conversion by the inverter
+                eb['electricity'] += self.energy_balance['electricity']['inverter'][h] # electricity balance update: - electricity lost in conversion by the invertert
+
+            ### demand and grid   
+            for carrier in eb: # for each energy carrier
+                if tech_name == f"{carrier} demand":                
+                    eb[carrier] += self.energy_balance[carrier]['demand'][h] # energy balance update: energy demand(-)  
+                if tech_name == f"{carrier} grid":
+                    if eb[carrier] > 0 and self.system[f"{carrier} grid"]['feed'] or eb[carrier] < 0 and self.system[f"{carrier} grid"]['draw']:
+                        self.energy_balance[carrier]['grid'][h] = - eb[carrier] # energy from grid(+) or into grid(-) 
+            
+            
                 
         
         

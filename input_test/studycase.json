@@ -1,57 +1,88 @@
 {
-"prosumer_1": {	"demand": {	"electricity": "load_test_1.csv"},
-				"grid": {	"electricity": true},
-				"PV": 	{	"tilt": 10,
+"prosumer_1": {	"electricity demand": { "serie": "load_test_1.csv",
+                        				"priority": 1},  
+                        				           				
+                "electricity grid": {   "draw": true,
+                                        "feed": true,
+                                        "priority": 4},      
+                                          				         		
+				"PV": 	{	"tilt": 0,
 							"azimuth": 30,
 							"losses": 20,
 							"Max field width": 40,
 							"Max field length": 30,
 							"peakP": 5,
-							"serie": "TMY"},
-				"inverter":{"max efficiency": 0.95,
-            				"peakP": 3,
-            				"number": 1},
+							"serie": "TMY",
+							"priority": 2},		     
+            				      				
 				"battery": {"nominal capacity": 3,
 							"max E-rate": 0.5,
 							"efficiency": 0.9,
 							"ageing": true,
 							"life cycles": 6000,
 							"end life capacity": 80,
-							"collective": 0 }},
+							"collective": 0,
+							"priority": 3}},
 		
-"prosumer_2": { "demand": {	"electricity": "load_test_2.csv"},
-				"grid":	{	"electricity": true,
-							"hydrogen": true},
+		
+"prosumer_2": { "electricity demand": { "serie": "load_test_2.csv",
+                        				"priority": 1},
+                        				
+                "electricity grid": {   "draw": true,
+                                        "feed": true,
+                                        "priority": 6},
+                                        
+                "hydrogen grid": {  "draw": false,
+                                    "feed": true,
+                                    "priority": 7},   	
+                                    			
 				"PV": {		"tilt": 30,
 							"azimuth": 10,
 							"losses": 10,
 							"peakP": 3,
-							"serie": 2015},	
-     			"inverter":{"max efficiency": 0.95,
-             				"peakP": 2,
-             				"number": 1},						
+							"serie": 2015,
+    						"priority": 2},			
+             							
 				"electrolyzer": {	"Npower": 2,
 									"number of modules":1,
-									"stack model": "PEM General"},
+									"stack model": "PEM General",
+									"priority": 3},
+									
 				"fuel cell": {	"Npower": 1,
 								"number of modules":1,
 								"stack model": "PEM General",
-								"ageing" : false},
+								"ageing" : false,
+								"priority": 4},
+								
 				"H tank": {		"max capacity": 1,
-								"pressure": 30 }},
+								"pressure": 30,
+								"priority": 5 }},
 							
-"consumer_1": { "demand": { "electricity": "load_test_3.csv"},
-				"grid": {	"electricity": true}},
+							
+"consumer_1": {	"electricity demand": { "serie": "load_test_3.csv",
+                        				"priority": 1},
+                        				
+                "electricity grid": {   "draw": true,
+                                        "feed": true,
+                                        "priority": 2}},
 				
-"consumer_2": { "demand": { "electricity": "load_test_4.csv",
-                            "heating water": "heating-dhw_test.csv"},
-                "grid": {   "electricity": true},
-                
+				
+"consumer_2": {  "electricity demand": { "serie": "load_test_4.csv",
+                                   		"priority": 1},
+                                   		
+                "heating water demand": {   "serie": "heating-dhw_test.csv",
+                                         	"priority": 2}, 
+                                         	
+                "electricity grid": {   "draw": true,
+                                        "feed": true,
+                                        "priority": 4},       
+                                            	
                 "heatpump": {  "type":1,
                                "nom Pth": 8,
                                "t rad heat": 45,
                                "inertial TES volume": 200, 
                                "inertial TES dispersion": 0.36, 
                                "PV surplus": false,
-                               "REC surplus": false}}
+                               "REC surplus": false,
+                               "priority": 3}}
 }   

@@ -8,3 +8,5 @@ from .boiler import boiler_el, boiler_ng, boiler_h2
 from .heatpump import heatpump
 from .inverter import inverter
 from .chp_gt import chp_gt
+from .chp import Chp 
+from .chp import Absorber 
