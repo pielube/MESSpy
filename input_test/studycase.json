@@ -4,7 +4,7 @@
                         				           				
                 "electricity grid": {   "draw": true,
                                         "feed": true,
-                                        "priority": 5},      
+                                        "priority": 4},      
                                           				         		
 				"PV": 	{	"tilt": 0,
 							"azimuth": 30,
@@ -22,7 +22,7 @@
 							"life cycles": 6000,
 							"end life capacity": 80,
 							"collective": 0,
-							"priority": 4}},
+							"priority": 3}},
 		
 		
 "prosumer_2": { "electricity demand": { "serie": "load_test_2.csv",
@@ -30,11 +30,11 @@
                         				
                 "electricity grid": {   "draw": true,
                                         "feed": true,
-                                        "priority": 7},
+                                        "priority": 6},
                                         
                 "hydrogen grid": {  "draw": false,
                                     "feed": true,
-                                    "priority": 8},   	
+                                    "priority": 7},   	
                                     			
 				"PV": {		"tilt": 30,
 							"azimuth": 10,
@@ -46,17 +46,17 @@
 				"electrolyzer": {	"Npower": 2,
 									"number of modules":1,
 									"stack model": "PEM General",
-									"priority": 4},
+									"priority": 3},
 									
 				"fuel cell": {	"Npower": 1,
 								"number of modules":1,
 								"stack model": "PEM General",
 								"ageing" : false,
-								"priority": 5},
+								"priority": 4},
 								
 				"H tank": {		"max capacity": 1,
 								"pressure": 30,
-								"priority": 6 }},
+								"priority": 5 }},
 							
 							
 "consumer_1": {	"electricity demand": { "serie": "load_test_3.csv",

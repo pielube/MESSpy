@@ -1,16 +1,15 @@
-"demand": 	"electricity": "filename.csv"
-		"hydrogen": "filename.csv",
-		"heating water": "filename.csv"
-		"gas": "filename.csv"
-		"process steam": "filename.csv"
+Each location (es. prosumer_1) has a list of technologies. Each technology has its parameters as this info explain.
+During hourly simulations, technologies are used to solve energy balances one at a time following the order dictated by the parameter "priority".
 
-"grid": 	"electricity": true/false,
-		"hydrogen": true/false,
-		"heating water": true/false,
-		"gas": true/false
+"electricity* demand":  "serie": str name of the serie in input/loads from wich the hourly demand have to be read
+
+"electricity* grid":    "draw": bool, true if the carrier can be wishtdawn from the grid
+                        "feed": bool, true if the carrier can be feed into the grid
+
+*or hydrogen, heating water, gas, process steam
 
 
-"PV": 		"tilt": float surface tilt [deg]
+"PV": 	"tilt": float surface tilt [deg]
 		"azimuth": float azimuth angle 0 = south, 180 = north [deg]
 		"losses": float losses in cables, inverters (if this technoly is not considered in your simulation), dirt (sometimes snow), over the years loss of power, shading [%]
 		"Max field width": float >0 - optional
