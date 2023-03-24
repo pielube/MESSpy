@@ -111,7 +111,7 @@ pp.hourly_balances_electricity(name_studycase,'prosumer_2', 2, 3)
 #pp.fc_param(name_studycase, 2, 3)
 
 # here you can read the main results (balances and economic):
-#with open('results/economic_assessment_'+name_studycase+'.pkl', 'rb') as f: economic = pickle.load(f)
+#with open('results/economic_assessment_'+name_economic+'.pkl', 'rb') as f: economic = pickle.load(f)
 #with open('results/balances_'+name_studycase+'.pkl', 'rb') as f: balances = pickle.load(f)
 
 
