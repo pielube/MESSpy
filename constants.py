@@ -44,7 +44,7 @@ HHVH2MOL     =  H2MOLMASS*HHVH2*1e3        # [kJ/mol]     Hydrogen Higher Heatin
 HHV_H2       =  HHVH2*(1000/3600)          # [kWh/kg]     Hydrogen Higher Heating Value - kWh-mass
 HHV_H2VOL    =  HHV_H2*H2NDENSITY          # [kWh/Nm^3]   Hydrogen Higher Heating Value - kWh-volume
 H2MOL_S_E    =  130.7                      # [J/K*mol]    Hydrogen Standard Entropy - gaseous phase
-
+CP_H2        =  14.269                     # [kJ/kgK]     Hydrogen mass specific costant pressure heat capacity
 
 'Water'
 
@@ -67,3 +67,14 @@ LHV_NGSVOL   = LHVNGVOL/3.6                # [kWh/Sm^3]   Natural Gas Lower Heat
 'Oxygen'
 
 O2MOL_S_E    = 205.1                       # [J/K*mol]    Oxygen Standard Entropy - gaseous phase
+
+
+'Air'
+
+AIRMOLMASS   = 0.02897                     # [kg/mol]     Air molar mass
+AIRSDENSITY  = 1.225                       # [kg/Sm^3]    Air density at Standard conditions (T = 15°C, P = 101325 Pa) -> PropsSI('D', 'T', 273.15, 'P', 101325, 'Air')
+CP_AIR       = 1.005                       # [kJ/kgK]     Air mass specific costant pressure specific heat
+
+'Steam'
+
+H1_STEAM800 = 4159.9                       # [kJ/kg]     Steam mass specific enthalpy @ T = 800°C, P = 116000 Pa
