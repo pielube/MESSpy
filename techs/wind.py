@@ -1,13 +1,15 @@
 import numpy as np
+import pandas as pd
 import math
 import os
 import sys 
 sys.path.append(os.path.abspath(os.path.join(os.getcwd(),os.path.pardir)))   # temorarily adding constants module path 
 import constants as c
+import matplotlib.pyplot as plt
 
 class wind:    
     
-    def __init__(self,params,ts=1):
+    def __init__(self, params, simulation_hours, path=os.getcwd(), ts=1):
         """
         Create a wind object based on the specified model
     
@@ -18,10 +20,13 @@ class wind:
                     Saint-Drenan, Yves-Marie, et al. 
                     "A parametric model for wind turbine power curves incorporating environmental conditions." 
                     Renewable Energy 157 (2020): 754-768.
-            
+                    simple -> wind production data retrieved from https://www.renewables.ninja/.
+                              When using this model, only one more parameter needs 
+                              to be defined: 'Npower'.
+                              
             'area': float swept area [m2] e.g. 39.6 m^2 (Aircon 10/10 kW)
             'efficiency': float total efficiency = Betz*efficiency [-] default: 0.45 (ca. 0.593*0.76, i.e. Betz*efficiency)
-            'Prated': float rated power [kW] # NOTE: useless
+            'Npower': float rated power [kW] # NOTE: useless for 'betz' and 'detailed' methods
             'WSrated': float rated wind speed [m/s] e.g. 11.0 m/s (Aircon 10/10 kW)
             'WScutin': float cut in wind speed [m/s] e.g.  2.5 m/s (Aircon 10/10 kW)
             'WScutoff': float cut off wind speed [m/s] e.g. 32.0 m/s (Aircon 10/10 kW)
@@ -48,12 +53,37 @@ class wind:
         self.params = params
         self.ts = ts
         self.cost = False # will be updated with tec_cost()
+        self.simulation_hours = simulation_hours
 
         
-        if params['model'] not in ['betz','detailed']:
+        if params['model'] not in ['betz','detailed','simple']:
             print('Error: wrong wind turbine model')
-        
 
+        if self.params['model'] == 'simple':
+                           
+            'Data Extraction - Wind power generation'
+            main = False                        # check
+            if __name__ == "__main__":          # if code is being executed from wind.py file
+                directory = r'../input_dev'     # check for input folder
+                if os.path.exists(directory):   # if 'input_dev' exists
+                    pass
+                else:                           # if not check in 'input_test'
+                    directory = r'../input_test'
+                os.chdir(directory +'/production')          
+            else: 
+                os.chdir(f"{path}\\production") # if code is being executed from main
+                main = True
+            
+            self.wind_prod = (pd.read_csv("Windprod_Gortawee.csv", skiprows =3,\
+                             usecols = ["electricity"]).values).reshape(-1,)    # importing hourly wind production data for 
+                                                                                # the selected location. Expressed as ratio kWprod/1KWrated
+            self.prod_1kw = np.tile(self.wind_prod, int(self.simulation_hours/8760))  # creating the production series needed for the entire simulation
+            self.wprod = self.prod_1kw*self.params['Npower']
+            
+            if __name__ == "__main__":
+                os.chdir('../../techs')
+            else:
+                os.chdir('../..')
         
     def use(self,h,ws_input,rho=1.225,ts=1):
         """
@@ -66,39 +96,42 @@ class wind:
         output : float electricity produced that hour [kWh]
     
         """
+        if self.params['model'] == 'simple':
+            self.energy = self.wprod[h]
         
-        ws_turbine=ws_input
-        
-        if self.params['model'] == 'betz':
-                        
-            if ws_turbine<self.params['WScutin']:
-                ws_turbine = 0.
-            elif self.params['WSrated']<ws_turbine<self.params['WScutout']:
-                ws_turbine = self.params['WSrated']
-            elif ws_turbine>self.params['WScutout']:
-               ws_turbine = 0.
+        else:
+            ws_turbine=ws_input
             
-            self.energy = 0.5*rho*self.params['area']*ws_turbine**3*self.params['efficiency']/1000.*ts # kWh
-            
-        elif self.params['model'] == 'detailed':
-            
-            if ws_turbine<self.params['WScutin']:
-                ws_turbine = 0.
-            elif self.params['WSrated']<ws_turbine<self.params['WScutout']:
-                ws_turbine = self.params['WSrated']
-            elif ws_turbine>self.params['WScutout']:
-               ws_turbine = 0.
-            
-            cp_max = 0.44
-            
-            if 'cp_max' in self.params:
-                cp_max = self.params['cp_max']
+            if self.params['model'] == 'betz':
+                            
+                if ws_turbine<self.params['WScutin']:
+                    ws_turbine = 0.
+                elif self.params['WSrated']<ws_turbine<self.params['WScutout']:
+                    ws_turbine = self.params['WSrated']
+                elif ws_turbine>self.params['WScutout']:
+                   ws_turbine = 0.
                 
-            powercoeff = self.cpfunc(ws_turbine,self.params['area'],self.params['beta'],self.params['idx'],cp_max=cp_max)
-            wseq = self.eqspeed(ws_turbine,self.params['z_i'],self.params['z_hub'],self.params['alpha'],self.params['area'],self.params['Vu'],self.params['Nbands'])
-            
-            self.energy = 0.5*rho*self.params['area']*wseq**3*powercoeff/1000.*ts # kWh
-            
+                self.energy = 0.5*rho*self.params['area']*ws_turbine**3*self.params['efficiency']/1000.*ts # kWh
+                
+            elif self.params['model'] == 'detailed':
+                
+                if ws_turbine<self.params['WScutin']:
+                    ws_turbine = 0.
+                elif self.params['WSrated']<ws_turbine<self.params['WScutout']:
+                    ws_turbine = self.params['WSrated']
+                elif ws_turbine>self.params['WScutout']:
+                   ws_turbine = 0.
+                
+                cp_max = 0.44
+                
+                if 'cp_max' in self.params:
+                    cp_max = self.params['cp_max']
+                    
+                powercoeff = self.cpfunc(ws_turbine,self.params['area'],self.params['beta'],self.params['idx'],cp_max=cp_max)
+                wseq = self.eqspeed(ws_turbine,self.params['z_i'],self.params['z_hub'],self.params['alpha'],self.params['area'],self.params['Vu'],self.params['Nbands'])
+                
+                self.energy = 0.5*rho*self.params['area']*wseq**3*powercoeff/1000.*ts # kWh
+                
         return(self.energy)
 
 
@@ -238,7 +271,7 @@ class wind:
         """
         tech_cost = {key: value for key, value in tech_cost.items()}
 
-        size = self.param['Prated'] # KW
+        size = self.params['Npower'] # KW
         
         if tech_cost['cost per unit'] == 'default price correlation':
             C0 = 1270 # €/kW
@@ -259,31 +292,51 @@ class wind:
 if __name__ == "__main__":
     
     """
-    Test
+    Functional Test
     """
 
-    params = {
-                'model': 'detailed',
-                'area':  39.6 ,
-                'efficiency': 0.45,
-                'Prated': 10,
-                'WSrated': 11.0,
-                'WScutin': 2.5,
-                'WScutout': 32.0,
-                'beta': 0.,
-                'idx': 5,
-                'z_i': 40.,
-                'z_hub': 30.,
-                'alpha': 0.25,
-                'Vu': 0.5,
-                'Nbands': 10
-                }
+    # params = {
+    #             'model': 'detailed',
+    #             'area':  39.6 ,
+    #             'efficiency': 0.45,
+    #             'Npower': 10,
+    #             'WSrated': 11.0,
+    #             'WScutin': 2.5,
+    #             'WScutout': 32.0,
+    #             'beta': 0.,
+    #             'idx': 5,
+    #             'z_i': 40.,
+    #             'z_hub': 30.,
+    #             'alpha': 0.25,
+    #             'Vu': 0.5,
+    #             'Nbands': 10
+    #             }
 
-    # windsp = np.array([0.5,3.0,12.0,35.0])
-    windsp = np.array([11.0])    
+    # # windsp = np.array([0.5,3.0,12.0,35.0])
+    # windsp = np.array([11.0])    
     
-    wind = wind(params)
+    # wind = wind(params)
     
-    for h in range(len(windsp)):
-        print(wind.use(h,windsp[h]))    
+    # for h in range(len(windsp)):
+    #     print(wind.use(h,windsp[h]))    
+    
+
+    params = {
+                'model' : 'simple',
+                'Npower': 5000
+                }
+    
+    simulation_hours = 8760
+        
+    wind = wind(params, simulation_hours)
+    
+    # Plot
+    
+    fig, ax = plt.subplots(dpi=600)
+    ax.plot(wind.wprod, zorder=3, lw=1)
+    ax.set_xlabel('Time [h]')
+    ax.set_ylabel('Power Production [kW]')
+    ax.grid(alpha=0.4)
+    ax.set_title('Wind Energy Production')
+
     

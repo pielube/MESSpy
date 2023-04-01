@@ -20,38 +20,67 @@ During hourly simulations, technologies are used to solve energy balances one at
 			if "filename.csv" a different serie can be used (upload it in input/production)
                		 "filename.csv" must be the hourly time series of PV production 8760 values [Wh]
                 	 in this case 'peakP', 'azimuth' and 'tilt' are ignored
+					 
+"wind":	'model': str type of model to be used for wind
+                    betz -> simple model based on Betz theory
+                    detailed -> more detailed model based on
+                    Saint-Drenan, Yves-Marie, et al. 
+                    "A parametric model for wind turbine power curves incorporating environmental conditions." 
+                    Renewable Energy 157 (2020): 754-768.
+                    simple -> wind production data retrieved from https://www.renewables.ninja/.
+                              When using this model, only one more parameter needs 
+                              to be defined: 'Npower'.
+                              
+		'area': float swept area [m2] e.g. 39.6 m^2 (Aircon 10/10 kW)
+		'efficiency': float total efficiency = Betz*efficiency [-] default: 0.45 (ca. 0.593*0.76, i.e. Betz*efficiency)
+		'Npower': float rated power [kW] # NOTE: useless for 'betz' and 'detailed' methods
+		'WSrated': float rated wind speed [m/s] e.g. 11.0 m/s (Aircon 10/10 kW)
+		'WScutin': float cut in wind speed [m/s] e.g.  2.5 m/s (Aircon 10/10 kW)
+            'WScutoff': float cut off wind speed [m/s] e.g. 32.0 m/s (Aircon 10/10 kW)
+            
+		'omega_min': [rpm] OPTIONAL default = from eq.
+		'omega_max': [rpm] OPTIONAL default = from eq.
+		'beta': [°] e.g. 0°
+		'cp_max': [-] OPTIONAL default = 0.44; values from 0.4 to 0.5
+		'idx': [-] e.g. 5; values from 0 to 5
+		
+		'z_i': [m] wind turbine height, (?)
+		'z_hub': [m] hub height, e.g. 30 m (Aircon 10/10 kW)
+		'alpha': [-] Hellman or shear coefficient, values from 0 to 0.4
+		'Vu': [°/m] Veer coefficient, values from 0 to 0.75 °/m
+		'Nbands': [-] Number of horizontal bands
 
 "inverter":	"max efficiency": float 0-1 
-            	"peakP": float peak power of a single inverter
-            	"number": int number of inverters
+			"peakP": float peak power of a single inverter
+			"number": int number of inverters
 
 "battery": 	"nominal capacity": float [kWh]
-		"max E-rate": 0-1 float charging and discharging rate related to maximum capacity [kW/kWh]
-		"efficiency": float charge and discharge efficiency
-		"ageing": true or false
-		"life cycles": int number of life cycles to reach the end of battery life
-		"end life capacity": float maximum capacity left at end of life [%]
-		"collective": 0 or 1 0: no collective rules. 1: priority to collective self consumption and then charge or discharge the battery.
+			"max E-rate": 0-1 float charging and discharging rate related to maximum capacity [kW/kWh]
+			"efficiency": float charge and discharge efficiency
+			"ageing": true or false
+			"life cycles": int number of life cycles to reach the end of battery life
+			"end life capacity": float maximum capacity left at end of life [%]
+			"collective": 0 or 1 0: no collective rules. 1: priority to collective self consumption and then charge or discharge the battery.
 
 "electrolyzer": "Npower": float nominal power of one module [kW] 
-		"number of modules": int
-		"stack model": str 'Enapter 2.1' or 'McLyzer 800' or 'PEM General' 
+				"number of modules": int
+				"stack model": str 'Enapter 2.1' or 'McLyzer 800' or 'PEM General' 
 
 "fuel cell": 	"Npower": float nominal power of one module [kW]
-		"number of modules": int
-		"stack model": str "PEM General" or 'SOFC' or 'FCS-C5000'
-		"ageing" : true or false
+				"number of modules": int
+				"stack model": str "PEM General" or 'SOFC' or 'FCS-C5000'
+				"ageing" : true or false
 
 "H tank": 	"max capacity": float [kg]
-		"pressure": float [bar]
+			"pressure": float [bar]
 
 "heatpump":     "type": 1 = air-water (other types not yet implemented...)
                 "nom Pth": float [kW] nominal condition: t_amb=5° t_out=35° 6000 rpm
                 "t rad heat": loat [C°] temperature of radiant system in heating mode
                 "inertial TES volume": thermal energy storage float [lt]
              	"inertial TES dispersion": float [W/m2K]
-         	"PV surplus": true or false allow to use PV surplus to charge inertial_TES
+				"PV surplus": true or false allow to use PV surplus to charge inertial_TES
                 "REC surplus": true or false allow to use REC PV surplus to charhe intertial_TES
 
 "boiler_xx":    "Ppeak": float [kWp]
-		"efficiency": 0-1
+				"efficiency": 0-1
