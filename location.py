@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from techs import heatpump,boiler_el,boiler_ng,boiler_h2,PV,wind,battery,H_tank,fuel_cell,electrolyzer,inverter,chp_gt,Chp,Absorber
+from techs import heatpump,boiler_el,boiler_ng,boiler_h2,PV,wind,battery,H_tank,fuel_cell,electrolyzer,inverter,chp_gt,Chp,Absorber,hydrogen_compressor
 
 
 class location:
@@ -32,7 +32,7 @@ class location:
             'boiler_el':    dictionary parameters needed to create fuel cell object (see boiler.py)
             'boiler_h2':    dictionary parameters needed to create fuel cell object (see boiler.py)
             'chp_gt':       dicitonary parameters needed to create a chp object based on gas turbine technoology (see chp_gt.py)
-            
+            'hydrogen_compressor':       dicitonary parameters needed to create a mhhc object (see mhhc compressor.py)
             
         general: dictionary 
             see rec.py
@@ -136,6 +136,10 @@ class location:
             self.energy_balance['hydrogen']['fuel cell'] = np.zeros(self.simulation_hours)        # array fuel cell hydrogen balance
             self.energy_balance['heating water']['fuel cell']=np.zeros(self.simulation_hours)              #array fuel cell heat balance used
             
+        if 'hydrogen compressor' in self.system:
+            self.technologies['hydrogen compressor'] = hydrogen_compressor(self.system['hydrogen compressor'],self.simulation_hours) # MHHC compressor object created and to 'technologies' dictionary
+            self.energy_balance['hydrogen']['hydrogen compressor'] = np.zeros(self.simulation_hours)     # array hydrogen compressor hydrogen compressed
+            self.energy_balance['gas']['hydrogen compressor'] = np.zeros(self.simulation_hours)        # array hydrogen compressor heating water balanced used
         if 'H tank' in self.system:
             self.technologies['H tank'] = H_tank(self.system['H tank'],self.simulation_hours) # H tank object created and to 'technologies' dictionary
             self.energy_balance['hydrogen']['H tank'] = np.zeros(self.simulation_hours)  # array H tank hydrogen balance
@@ -265,6 +269,17 @@ class location:
                         eb['hydrogen']    += self.energy_balance['hydrogen']['electrolyzer'][h]
                         eb['electricity'] += self.energy_balance['electricity']['electrolyzer'][h]
                     
+            
+            if tech_name == 'hydrogen compressor':
+                if self.energy_balance['hydrogen']['electrolyzer'][h] > 0:
+                    if "hydrogen grid" in self.system and self.system["hydrogen grid"]["feed"]: # hydrogen can be fed into an hydrogen grid
+                        storable_hyd = 9999999999999999999 
+                    elif 'H tank' in self.system:   # hydrogen can only be stored into an H tank 
+                        storable_hydrogen = self.technologies['H tank'].max_capacity-self.technologies['H tank'].LOC[h] # the tank can't be full
+                    if storable_hydrogen>self.technologies['H tank'].max_capacity*0.00001:
+                        self.energy_balance['hydrogen']['hydrogen compressor'][h], self.energy_balance['gas']['hydrogen compressor'][h] = self.technologies['hydrogen compressor'].use(h,self.energy_balance['hydrogen']['electrolyzer'][h],storable_hydrogen) # hydrogen compressed by the compressor (+) and heat requested to make it work expressed as heating water need (-) 
+                        eb['gas'] += self.energy_balance['gas']['hydrogen compressor'][h]
+                        # eb['hydrogen']=...self.energy_balance['hydrogen']['hydrogen compressor'][h]?? come ne tengo conto di quanto comprimo? in linea teorica ne dovrei sempre comprimere esattamente quanto me ne entra perchè il controllo sullo sotrable hydrogen lho gia fatto nell'elettrolizzatore'
             if tech_name == 'fuel cell':
                 if eb['electricity'] < 0: #? this condition must be solved if you want to produce electricity to fed into the gird
                     if "hydrogen grid" in self.system and self.system["hydrogen grid"]["draw"]: # hydrogen can be withdranw from an hydrogen grid
@@ -287,6 +302,19 @@ class location:
                         eb['electricity'] += self.energy_balance['electricity']['fuel cell'][h]
                         eb['heating water'] += self.energy_balance['heating water']['fuel cell'][h] 
                     
+            if tech_name == 'boiler_h2': 
+                                                                                                                                  
+                if "hydrogen grid" in self.system and self.system["hydrogen grid"]["draw"]: # hydrogen can be withdranw from an hydrogen grid
+                    available_hyd = 9999999999999999999 
+                elif 'H tank' in self.system:   # only hydrogen inside H tank can be used
+                    available_hyd = self.technologies['H tank'].LOC[h] + self.technologies['H tank'].max_capacity - self.technologies['H tank'].used_capacity + eb['hydrogen']
+
+                                                                                                                                                 
+                                         
+                self.energy_balance['hydrogen']['boiler_h2'][h], self.energy_balance['gas']['boiler_h2'][h] = self.technologies['boiler_h2'].use(eb['gas'],available_hyd,1)[1:3] #h2 consumed from boiler_h2 and heat produced by boiler_h2
+                eb['hydrogen'] += self.energy_balance['hydrogen']['boiler_h2'][h] # hydrogen balance update: - hydrogen consumed by boiler_h2
+                eb['gas'] += self.energy_balance['gas']['boiler_h2'][h] # heat balance update: + heat produced by boiler_h2
+            #ANDREA HA MESSO QUESTO COME PROCESSO NEL LOCATION, QUELLO SOTTO A COSA é DOVUTO?                                                                                                                                                          
             if tech_name == 'boiler_h2': 
                 if eb['electricity'] < 0: #? this condition must be solved if you want to produce electricity to fed into the gird
                     if "hydrogen grid" in self.system and self.system["hydrogen grid"]["draw"]: # hydrogen can be withdranw from an hydrogen grid
@@ -315,6 +343,7 @@ class location:
                 if tech_name == f"{carrier} grid":
                     if eb[carrier] > 0 and self.system[f"{carrier} grid"]['feed'] or eb[carrier] < 0 and self.system[f"{carrier} grid"]['draw']:
                         self.energy_balance[carrier]['grid'][h] = - eb[carrier] # energy from grid(+) or into grid(-) 
+                        eb[carrier] += self.energy_balance[carrier]['grid'][h] # elecricity balance update                                                                                  
             
             
                 

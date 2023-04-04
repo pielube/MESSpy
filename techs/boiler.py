@@ -44,7 +44,9 @@ class boiler_el:
             heatprod float heat produced [kWh] 
         """
         
-        heatprod = min(demand,self.Ppeak*timestep)
+        if -demand/self.efficiency > self.Ppeak*timestep:
+            print('Warning: the boiler nominal power is too low to cover heat demand')
+        heatprod = min(-demand,self.Ppeak*timestep*self.efficiency)
         consumption = - heatprod/self.efficiency #
         
         return(consumption,heatprod)
@@ -129,8 +131,9 @@ class boiler_ng:
         """
         
         if demand < 0: # heat required
-        
-            heatprod = min(-demand,self.Ppeak*timestep)
+            if -demand/self.efficiency > self.Ppeak*timestep:
+                print('Warning: the boiler nominal power is too low to cover heat demand')
+            heatprod = min(-demand,self.Ppeak*timestep*self.efficiency)
             consumption = - heatprod/self.efficiency 
             
             return(consumption,heatprod)
@@ -218,8 +221,9 @@ class boiler_h2:
         """
         
         if demand < 0: # heat required
-        
-            heatprod = min(-demand,self.Ppeak*timestep)
+            if -demand/self.efficiency > self.Ppeak*timestep:
+                print('Warning: the boiler nominal power is too low to cover heat demand')
+            heatprod = min(-demand,self.Ppeak*timestep*self.efficiency)
             consumption_kWh = - heatprod/self.efficiency
             consumption_kg = consumption_kWh/c.LHV_H2     #[kg] 
         

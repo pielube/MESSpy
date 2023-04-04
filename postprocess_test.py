@@ -771,4 +771,7 @@ def fc_param(simulation_name,first_day,last_day):
                plt.xlabel('Time [hours]')
                plt.title(location_name+' fuel cell')
                plt.show() 
+
+
+
         
