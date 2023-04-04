@@ -2,7 +2,12 @@
 "PV": { "cost per unit": 1200, 
         "OeM": 1, 
         "refund": { "rate": 50, "years": 10},
-        "replacement": {"rate": 80, "years": 25}},  
+        "replacement": {"rate": 80, "years": 25}},
+
+"wind": {   "cost per unit": 1200, 
+            "OeM": 1, 
+            "refund": { "rate": 50, "years": 10},
+            "replacement": {"rate": 80, "years": 25}},  
  
 "inverter":{    "cost per unit": 500, 
                 "OeM": 1, 

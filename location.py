@@ -118,7 +118,7 @@ class location:
             self.energy_balance['electricity']['inverter'] = np.zeros(self.simulation_hours) # array inverter electricity balance
             
         if 'wind' in self.system:
-            self.technologies['wind'] = wind(self.system['wind']) # wind object created and add to 'technologies' dictionary
+            self.technologies['wind'] = wind(self.system['wind'],self.simulation_hours,path) # wind object created and add to 'technologies' dictionary
             self.energy_balance['electricity']['wind'] = np.zeros(self.simulation_hours) # array wind electricity balance 
            
         if 'battery' in self.system:
