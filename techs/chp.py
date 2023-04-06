@@ -90,7 +90,7 @@ def inverse_bilinear_interp(_map, y, t_amb):
         l1 = l2
         y1 = y2
         l2 = l    
-        if  i > 1000 or abs(eps) < (epsilon*y):   # 1000 maxnumber of iterations allowed
+        if  i > 1000 or abs(eps) <= (epsilon*y):   # 1000 maxnumber of iterations allowed
             cond_while = False
         i += 1
     return l2    

@@ -191,9 +191,9 @@ def hourly_balances_electricity(simulation_name,location_name,first_day,last_day
         if 'electrolyzer' in balances:
             ele = balances['electrolyzer'][first_day*24:last_day*24+24]
         
-        if 'electrolyzer' in balances and 'fuel cell' in balances:
+        if 'fuel cell' in balances:
             fc = balances['fuel cell'][first_day*24:last_day*24+24]
-            ele = balances['electrolyzer'][first_day*24:last_day*24+24]
+
                      
         to_csc = np.zeros(24*(last_day-first_day+1))
         from_csc = np.zeros(24*(last_day-first_day+1))
@@ -275,7 +275,7 @@ def hourly_balances_electricity(simulation_name,location_name,first_day,last_day
                 else:
                     ax.bar(x, np.array(charge_battery), width, bottom=np.array(to_csc),  label='charge battery',  color='violet')
                     ax.bar(x, np.array(to_csc), width, label='collective self consumption',  color='gold')
-                    
+                
             if 'electrolyzer' in balances and 'fuel cell' in balances:
                 ax.bar(x, from_grid-from_csc, width ,bottom=wind+fc+from_csc, label='from grid', color='tomato')
                 ax.bar(x, np.array(from_csc), width, bottom=wind+fc,  color='y')
@@ -283,6 +283,14 @@ def hourly_balances_electricity(simulation_name,location_name,first_day,last_day
                 ax.bar(x, np.array(into_grid), width,bottom=ele , label='into grid', color='orange')
                 ax.bar(x, np.array(ele), width,  label='to electrolyzer',  color='chocolate')
                 ax.bar(x, fc, width, bottom = wind, label='from fuel cell',  color='peru')
+                ax.bar(x, np.array(to_csc), width, bottom=ele, label='collective self consumption',  color='gold')
+                
+            if 'electrolyzer' in balances:
+                ax.bar(x, from_grid-from_csc, width ,bottom=wind+from_csc, label='from grid', color='tomato')
+                ax.bar(x, np.array(from_csc), width, bottom=wind,  color='y')
+            
+                ax.bar(x, np.array(into_grid), width,bottom=ele , label='into grid', color='orange')
+                ax.bar(x, np.array(ele), width,  label='to electrolyzer',  color='chocolate')
                 ax.bar(x, np.array(to_csc), width, bottom=ele, label='collective self consumption',  color='gold')
                 
         elif 'chp_gt' in balances:
