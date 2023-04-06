@@ -282,9 +282,183 @@ def NPV(name_studycase,name_refcase,economic_data,simulation_years,path,name_eco
     # save results in Results/economic_assesment.pkl
     with open(f"Results/economic_assessment_{name_economic}.pkl", 'wb') as f:  pickle.dump(results,f) 
         
-        
-    
             
+            
+def LCOH(name_studycase, economic_data, simulation_years, path, name_output, revenues=False, refund=False):
+    """
+    Levelized Cost Of Hydrogen Calculation
+    ----------
+    name_studycase: str name of study case results file.pkl
+
+    economic_data: dictionary
+        'REC': dictionary REC economic parameters definition
+            'collective self consumption incentives': [€/kWh]
+            'incentives redistribution': 0-100 how the incentives are redistributed between prosumers, consumers and REC manger
+        'carrier_name': dictionary (repeat for reach considered carrier: electricity, hydrogen, gas)
+            'purchase': [€/kWh] (electricity and gas) or [€/kg] (hydrogen)
+            'sales': [€/kWh] (electricity and gas) or [€/kg] (hydrogen)
+        'interest rate': 0-1 [rate/year]
+        'inflation rate': -1-1 [rate/year] cost evolution of each carrier
+        'investment year': time horizon for which to evaluate the economic analysis (must be a multiple of simulation_year in general.json)
+     
+    simulation_years: int number of years considered for the energy balances       
+    
+    path: str path of the input data folder 
+        
+    name_output: str name of the file where to save results of interest
+    
+    revenues: boolean value defining if generated revenues from excess energy streams have to be included in the calculation. Default = False
+    
+    refund: boolean value defining refund cash flows have to be included in the calculation. Default = False
+                        
+    output:  [€/kgH2] float value of LCOH for the considered configuration
+
+    """
+            
+    years_factor = int(economic_data['investment years'] / simulation_years) # this factor is useful to match the length of the energy simulation with the length of the economic investment
+    
+    # open energy balances of studycase
+    with open('Results/balances_'+name_studycase+'.pkl', 'rb') as f:        balances = pickle.load(f)
+    
+    # open cost of componenets of studycase
+    with open('Results/tech_cost_'+name_studycase+'.pkl', 'rb') as f:       tc = pickle.load(f)
+
+    # Check for hydrogen carrier to be included in location balances
+    if all(len(balances[location_name]['hydrogen']) != 0 for location_name in tc):    # if hydrogen dictionary has values for at least one location
+        pass
+    else:
+        print("Hydrogen carrier not included in the considered case study - LCOH calculation not available")
+        return
+    
+    results = {}                       # dictionary initialising economic results of each location
+    
+    for location_name in tc:           # for each location
+        
+        results[location_name] = {}           # dictionary initialise economic results
+        
+        # initialise cash flow:     
+        results[location_name]['CF'] = {  'OeM': np.zeros(economic_data['investment years']),
+                                          'Purchase': {},
+                                          'Sale': {},
+                                          'Refund': np.zeros(economic_data['investment years']),
+                                          'Tot': np.zeros(economic_data['investment years'])} 
+    
+        results[location_name]['I0'] = {} # initialise initial investment
+        
+        for tech_name in tc[location_name]:              # considering each technologiy in the location
+        
+            results[location_name]['I0'][tech_name] = tc[location_name][tech_name]['total cost'] # I0
+            results[location_name]['CF']['OeM'][:] += - tc[location_name][tech_name]['OeM'] # OeM
+            
+            # replacements 
+            if tc[location_name][tech_name]['replacement']['years'] == "ageing": # if replacement year is calculated according to ageing
+                with open('Results/ageing_'+name_studycase+'.pkl', 'rb') as f:
+                    age = pickle.load(f)     
+                    age = age[location_name][tech_name][0]
+                    for a in age:
+                        rep_time = int(a/8760)
+                        results[location_name]['CF_studycase']['OeM'][rep_time] += - results[location_name]['I0'][tech_name] * tc[location_name][tech_name]['replacement']['rate']/100 # subtract technology replacement to location Cash Flow
+            else: # if replacement time is given
+                rep_time = tc[location_name][tech_name]['replacement']['years']
+                while rep_time < economic_data['investment years']: # if tech_name replacement happens before the end of the simulation
+                    results[location_name]['CF']['OeM'][rep_time] += - results[location_name]['I0'][tech_name]*tc[location_name][tech_name]['replacement']['rate']/100 # subtract technology replacement to location Cash Flow
+                    rep_time += tc[location_name][tech_name]['replacement']['years']
+            
+            if tc[location_name][tech_name]['refund']['years'] == 0:
+                results[location_name]['I0'][tech_name] = results[location_name]['I0'][tech_name]*(100-tc[location_name][tech_name]['refund']['rate'])/100
+            else:
+                yearly_refund = results[location_name]['I0'][tech_name]*tc[location_name][tech_name]['refund']['rate']/100 / tc[location_name][tech_name]['refund']['years'] # yearly refund [€]
+                refunds = np.zeros(economic_data['investment years']) # array initialise
+                refunds[:min(economic_data['investment years'],tc[location_name][tech_name]['refund']['years'])] = yearly_refund # array repet yearly refond 
+                results[location_name]['CF']['Refund'] += refunds # add refund to Cash Flow
+                    
+        # energy sold and purchased in study case 
+        for carrier in balances[location_name]:                           # for each carrier (electricity, hydrogen, gas, heat)
+            if 'grid' in balances[location_name][carrier]:  
+                
+                if type(economic_data[carrier]['sale']) == str: # if the price series is given
+                    sale_serie = np.tile(pd.read_csv(path+'/energy_price/'+economic_data[carrier]['sale'])['0'].to_numpy(),int(simulation_years))  
+                    sold = balances[location_name][carrier]['grid'] * sale_serie
+                else: # if the price is always the same 
+                    sold = balances[location_name][carrier]['grid']*economic_data[carrier]['sale'] 
+               
+                sold = np.tile(sold,years_factor)
+                sold = np.reshape(sold,(-1,8760))
+                results[location_name]['CF']['Sale'][carrier] = - sold.sum(axis=1,where=sold<0)
+                
+                if type(economic_data[carrier]['purchase']) == str: # if the price series is given
+                    purchase_serie = np.tile(pd.read_csv(path+'/energy_price/'+economic_data[carrier]['purchase'])['0'].to_numpy(),int(simulation_years))  
+                    purchase = balances[location_name][carrier]['grid'] * purchase_serie
+                else: # if the price is always the same 
+                    purchase = balances[location_name][carrier]['grid']*economic_data[carrier]['purchase']
+               
+                purchase = np.tile(purchase,years_factor)
+                purchase = np.reshape(purchase,(-1,8760))
+                results[location_name]['CF']['Purchase'][carrier] = - purchase.sum(axis=1,where=purchase>0)
+                
+        # CF update considering inflation on each carrier
+        for carrier in economic_data['inflation rate']:
+            f = economic_data['inflation rate'][carrier]
+            
+            if carrier in results[location_name]['CF']['Purchase']:
+                for y in range(economic_data['investment years']):
+                    results[location_name]['CF']['Purchase'][carrier][y] = results[location_name]['CF']['Purchase'][carrier][y]*(1+f)**y
+                    
+            if carrier in results[location_name]['CF']['Sale']:
+                for y in range(economic_data['investment years']):
+                    results[location_name]['CF']['Sale'][carrier][y] = results[location_name]['CF']['Sale'][carrier][y]*(1+f)**y
+        
+        # Building Cash Flow final array while changing sign to earnings and expenditures as needed in LCOH formula
+        
+        for carrier in results[location_name]['CF']['Purchase']:
+            results[location_name]['CF']['Tot'] -= results[location_name]['CF']['Purchase'][carrier]
+
+        if revenues:        # if revenues have to be included in LCOH calcuation (function input)
+            for carrier in results[location_name]['CF']['Sale']:
+                results[location_name]['CF']['Tot'] -= results[location_name]['CF']['Sale'][carrier]
+       
+        if refund:          # if refunds have to be included in LCOH calcuation (function input)
+            results[location_name]['CF']['Tot'] += - results[location_name]['CF']['Refund']
+            
+                    
+        results[location_name]['CF']['Tot'] +=  - results[location_name]['CF']['OeM']       
+                                            
+        # calculate I0
+        results[location_name]['I0']['Tot'] = 0
+        for tech_name in results[location_name]['I0']:
+            if tech_name != 'Tot':
+                results[location_name]['I0']['Tot'] += results[location_name]['I0'][tech_name]   
+                
+        # LCOH calculation
+        
+        # Hydrogen produced each year via electrolysis
+        produced_hydrogen =  [sum(balances[location_name]['hydrogen']['electrolyzer'])]*economic_data['investment years']
+        r       = economic_data['interest rate']                # [%] interest rate 
+        I0      = results[location_name]['I0']['Tot']           # [€] Initial investment at time = 0
+        CF      = results[location_name]['CF']['Tot'].copy()    # [€] Cash Flows
+        CF[0]   += I0
+        
+        num=[]  # numerator
+        den=[]  # denominator
+        
+        for i in range(economic_data['investment years']):
+
+            num.append((CF[i])*(1/(1+r)**i))
+            den.append(produced_hydrogen[i]*(1/(1+r)**i))
+        
+        LCOH = round(sum(num)/sum(den),2)
+        
+        results[location_name]['LCOH'] = {'Value': LCOH,
+                                          'Discounted Expenditures': num,
+                                          'Discounted Production'  : den}
+        
+        # save results in Results/economic_assesment.pkl
+        # with open(f"Results/LCOH_assessment_{name_output}.pkl", 'wb') as f:  pickle.dump(results,f) 
+        
+        return print(f"The LCOH calculated for the considered scenario results in {LCOH} €/kgH2")                                      
+
+
+         
     
             
             
