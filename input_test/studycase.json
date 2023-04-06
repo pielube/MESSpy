@@ -50,11 +50,11 @@
 									
 				"fuel cell": {	"Npower": 1,
 								"number of modules":1,
-								"stack model": "PEM General",
+								"stack model": "SOFC",
 								"ageing" : false,
 								"priority": 4},
 								
-				"H tank": {		"max capacity": 1,
+				"H tank": {		"max capacity": 20,
 								"pressure": 30,
 								"priority": 5 }},
 							

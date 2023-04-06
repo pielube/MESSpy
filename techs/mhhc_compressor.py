@@ -420,7 +420,7 @@ class hydrogen_compressor:
         plt.show()
 
 
-    def use(self,h,hyd):
+    def use(self,h,hyd,storable_hydrogen):
 
         p_in=45
 
@@ -441,14 +441,14 @@ class hydrogen_compressor:
         if hyd == 0:
             n_compressor_used = 0
         else:
-            n_compressor_used = int(hyd/self.H2_kg)+1
+            n_compressor_used = hyd/self.H2_kg
         if n_compressor_used > self.n_compressor:
             print('Warning: The number of Methal Hydride Hydrogen Compressors is not sufficient \n')
             self.n_compressors_used[h] = self.n_compressor
             hyd_compressed = self.H2_kg*self.n_compressor
             Q_requested = Q_requested*self.n_compressor
         else:
-            self.n_compressors_used[h] = n_compressor_used
+            self.n_compressors_used[h] = int(n_compressor_used)+1
             hyd_compressed = hyd
             Q_requested = Q_requested*n_compressor_used
 

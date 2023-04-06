@@ -6,11 +6,11 @@
 		"costitution cost": 0,
         "OeM": 0},
 		 
-"electricity": {"purchase": "electricity_price.csv", 
+"electricity": {"purchase": 0.4, 
                 "sale": 0.08}, 
 				 
-"hydrogen": {"purchase": 0, 
-             "sale": 0},
+"hydrogen": {"purchase": 8, 
+             "sale": 8},
 			  
 "gas": {"purchase": 0.15, 
         "sale": 0}, 	  

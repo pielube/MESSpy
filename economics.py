@@ -1,6 +1,8 @@
 import numpy as np
 import pandas as pd
 import pickle
+import os
+import json
 
 def NPV(name_studycase,name_refcase,economic_data,simulation_years,path,name_economic):
     """
@@ -27,6 +29,9 @@ def NPV(name_studycase,name_refcase,economic_data,simulation_years,path,name_eco
         
     """  
     
+    # open file study_case
+    file_studycase = 'studycase.json'
+    with open(os.path.join(path,file_studycase),'r') as f:        studycase = json.load(f)
     years_factor = int(economic_data['investment years'] / simulation_years) # this factor is useful to match the length of the energy simulation with the length of the economic investment
     
     # open energy balances of study and reference case
@@ -45,18 +50,21 @@ def NPV(name_studycase,name_refcase,economic_data,simulation_years,path,name_eco
        
         # initialise cash flow:
         results[location_name]['CF_refcase'] = {  'OeM': np.zeros(economic_data['investment years']),
+                                                  'Initial/Final Tank level': np.zeros(economic_data['investment years']),                                                                                                                                                
                                                   'Purchase': {},
                                                   'Sale': {},
                                                   'Refund': np.zeros(economic_data['investment years']),
                                                   'CSC': np.zeros(economic_data['investment years']),
                                                   'Tot': np.zeros(economic_data['investment years'])}        
         results[location_name]['CF_studycase'] = {'OeM': np.zeros(economic_data['investment years']),
+                                                  'Initial/Final Tank level': np.zeros(economic_data['investment years']),                                                                                                                                                
                                                   'Purchase': {},
                                                   'Sale': {},
                                                   'Refund': np.zeros(economic_data['investment years']),
                                                   'CSC': np.zeros(economic_data['investment years']),
                                                   'Tot': np.zeros(economic_data['investment years'])}       
         results[location_name]['CF'] = {  'OeM': np.zeros(economic_data['investment years']),
+                                          'Initial/Final Tank level': np.zeros(economic_data['investment years']),                                                                                                                                                
                                           'Purchase': {},
                                           'Sale': {},
                                           'Refund': np.zeros(economic_data['investment years']),
@@ -199,7 +207,22 @@ def NPV(name_studycase,name_refcase,economic_data,simulation_years,path,name_eco
                 for y in range(economic_data['investment years']):
                     results[location_name]['CF_refcase']['Sale'][carrier][y] = results[location_name]['CF_refcase']['Sale'][carrier][y]*(1+f)**y
             
-            
+        if 'H tank' in studycase[location_name]:
+            with open('results/LOC_'+name_studycase+'.pkl', 'rb') as f:
+                    loc = pickle.load(f)
+            final_tank_level = loc[location_name]['H tank'][-1]
+            initial_tank_level = loc[location_name]['H tank'][0]
+            tank_difference_level = initial_tank_level-final_tank_level
+            if final_tank_level >= initial_tank_level:
+                H2_cost = economic_data['hydrogen']['sale'] #€/kg
+            else:
+                H2_cost = economic_data['hydrogen']['purchase'] #€/kg
+                
+            results[location_name]['CF_studycase']['Initial/Final Tank level'][:] = -tank_difference_level*H2_cost    
+            results[location_name]['CF_studycase']['Tot'] += results[location_name]['CF_studycase']['Initial/Final Tank level']  
+            results[location_name]['CF_refcase']['Tot'] += results[location_name]['CF_refcase']['Initial/Final Tank level']
+            results[location_name]['CF']['Initial/Final Tank level'] += results[location_name]['CF_studycase']['Initial/Final Tank level'] -results[location_name]['CF_refcase']['Initial/Final Tank level'] 
+                 
         # Calculate CF comparing CF_studycase and CF_refcase and total cash flow calculation
         results[location_name]['CF']['OeM'] += results[location_name]['CF_studycase']['OeM'] -results[location_name]['CF_refcase']['OeM'] 
         results[location_name]['CF']['Refund'] += results[location_name]['CF_studycase']['Refund'] -results[location_name]['CF_refcase']['Refund']

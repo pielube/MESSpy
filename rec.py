@@ -230,6 +230,16 @@ class REC:
                     parameters[location_name][tech_name] = {}      
                     parameters[location_name][tech_name]['cell voltage'] = self.locations[location_name].technologies[tech_name].VOLT
                     parameters[location_name][tech_name]['current density'] = self.locations[location_name].technologies[tech_name].CURR_DENS
+                if self.locations[location_name].technologies['fuel cell'].model == 'SOFC':
+                    parameters[location_name][tech_name] = {}
+                    parameters[location_name][tech_name]['efficiency'] = self.locations[location_name].technologies[tech_name].EFF
+                    parameters[location_name][tech_name]['efficiency last module'] = self.locations[location_name].technologies[tech_name].EFF_last_module
+                    parameters[location_name][tech_name]['number modules used'] = self.locations[location_name].technologies[tech_name].n_modules_used
+            
+            tech_name = 'hydrogen compressor'
+            if tech_name in self.locations[location_name].technologies:
+                parameters[location_name][tech_name] = {}      
+                parameters[location_name][tech_name]['compressor number used'] = self.locations[location_name].technologies[tech_name].n_compressors_used                                                                                           
             
             tech_cost[location_name] = {}
             for tech_name in self.locations[location_name].technologies:

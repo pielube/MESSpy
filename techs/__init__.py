@@ -9,4 +9,5 @@ from .heatpump import heatpump
 from .inverter import inverter
 from .chp_gt import chp_gt
 from .chp import Chp 
-from .chp import Absorber 
+from .chp import Absorber
+from .mhhc_compressor import hydrogen_compressor
