@@ -13,7 +13,7 @@ PRE PROCESSING
 
 # Import modules
 from rec import REC
-from economics import NPV
+from economics import NPV,LCOH
 import postprocess_test as pp
 import preprocess_test as pre
 #import postprocess_dev as pp
@@ -31,11 +31,12 @@ name_economic = 'From Rec0 to Rec' # str name for economic_assesment_results fil
 path = r'./input_test' # change the path with r'./input_dev' if you are working on your own run_dev
 #path = r'./input_dev'
 
-file_studycase = 'studycase'
-file_refcase = 'refcase'
-file_general = 'general'
-file_tech_cost = 'tech_cost'
-file_energy_market = 'energy_market'
+file_studycase      = 'studycase'
+file_refcase        = 'refcase'
+file_general        = 'general'
+file_tech_cost      = 'tech_cost'
+file_energy_market  = 'energy_market'
+file_emissions      = 'emissions'
 
 # Opening input files:
 with open(os.path.join(path,f"{file_studycase}.json"),'r') as f: studycase = json.load(f)
@@ -43,6 +44,7 @@ with open(os.path.join(path,f"{file_refcase}.json"),'r') as f: refcase = json.lo
 with open(os.path.join(path,f"{file_general}.json"),'r') as f: general = json.load(f)
 with open(os.path.join(path,f"{file_tech_cost}.json"),'r') as f: tech_cost = json.load(f)
 with open(os.path.join(path,f"{file_energy_market}.json"),'r') as f: energy_market = json.load(f)
+with open(os.path.join(path,f"{file_emissions}.json"),'r') as f: emissions = json.load(f)
 
 
 #%% ###########################################################################
@@ -99,6 +101,10 @@ pp.REC_electricity_balance(name_studycase)
 pp.LOC_plot(name_studycase)
 
 pp.NPV_plot(name_economic)
+
+# pp.renewables(name_studycase,general['simulation years'],'prosumer_1',190,200)
+# LCOH(name_studycase,energy_market,general['simulation years'],path,name_economic) 
+# pp.ghg_emissions(name_studycase,'prosumer_1', emissions, '2025')
 
 pp.hourly_balances_electricity(name_studycase,'prosumer_1', 20, 21)
 pp.hourly_balances_electricity(name_studycase,'prosumer_2', 2, 3)
