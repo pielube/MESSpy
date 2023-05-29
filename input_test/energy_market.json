@@ -7,10 +7,19 @@
         "OeM": 0},
 		 
 "electricity": {"purchase": 0.4, 
-                "sale": 0.08}, 
+                "sale": 0.08},
+				
+"wind electricity": {"purchase": 0.046, 
+                        "sale": 0.08}, 
+                        
+"pv electricity": {"purchase": 0.056, 
+                        "sale": 0.08},  				
 				 
 "hydrogen": {"purchase": 8, 
              "sale": 8},
+			 
+"oxygen": {"purchase": 0,
+            "sale": 0.1},
 			  
 "gas": {"purchase": 0.15, 
         "sale": 0}, 	  
@@ -20,6 +29,8 @@
 "inflation rate": { "electricity": 0.02,
                     "gas": 0.04,
                     "hydrogen": -0.10},
+					
+"decommissioning" : 0.05,
                 
 "investment years": 30
 }

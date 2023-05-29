@@ -1,12 +1,12 @@
 {			
-"PV": { "cost per unit": 1200, 
+"PV": { "cost per unit": "default price correlation", 
         "OeM": 1, 
         "refund": { "rate": 50, "years": 10},
         "replacement": {"rate": 80, "years": 25}},
 
-"wind": {   "cost per unit": 1200, 
-            "OeM": 1, 
-            "refund": { "rate": 50, "years": 10},
+"wind": {   "cost per unit": 1279, 
+            "OeM": 3, 
+            "refund": { "rate": 50, "years": 0},
             "replacement": {"rate": 80, "years": 25}},  
  
 "inverter":{    "cost per unit": 500, 
@@ -19,13 +19,28 @@
             "refund": { "rate": 50, "years": 10},
             "replacement": {"rate": 60, "years": "ageing"}}, 
             	   
-"electrolyzer": {"cost per unit": 1500, 
-                 "OeM": 1, 
+"electrolyzer": {"cost per unit": 649, 
+                 "OeM": 2, 
                  "refund": { "rate": 50, "years": 0},
                  "replacement": {"rate": 30, "years": 15}},  
 				 
-"H tank": {"cost per unit": 400,
-           "OeM": 1,
+"mechanical compressor": {"cost per unit": "default price correlation", 
+                 "OeM": 4, 
+                 "refund": { "rate": 50, "years": 0},
+                 "replacement": {"rate": 30, "years": 20}},
+				 
+"H tank": {"cost per unit": 450,
+           "OeM": 2,
+           "refund": { "rate": 50, "years": 0},
+           "replacement": {"rate": 90, "years": 30}},
+		   
+"O2 tank": {"cost per unit": 450,
+           "OeM": 2,
+           "refund": { "rate": 50, "years": 0},
+           "replacement": {"rate": 90, "years": 30}},
+          
+"HPH tank": {"cost per unit": 450,
+           "OeM": 2,
            "refund": { "rate": 50, "years": 0},
            "replacement": {"rate": 90, "years": 30}}, 
 		   
