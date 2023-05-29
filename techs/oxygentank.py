@@ -3,6 +3,7 @@ import os
 import sys 
 sys.path.append(os.path.abspath(os.path.join(os.getcwd(),os.path.pardir)))   # temorarily adding constants module path 
 import constants as c
+from CoolProp.CoolProp import PropsSI
 
 class O2_tank:    
     
@@ -24,7 +25,11 @@ class O2_tank:
         self.pressure = parameters['pressure']          # H tank storage pressure
         self.LOC = np.zeros(simulation_hours+1)         # array H tank level of Charge 
         self.max_capacity = parameters['max capacity']  # H tank max capacity [kg]
-        self.used_capacity = 0                          # H tank used capacity <= max_capacity [kg]      
+        self.used_capacity = 0                          # H tank used capacity <= max_capacity [kg]
+        temperature         = 273.15 + 15                           # [K] temperature at which hydrogen is stored
+        self.density        = PropsSI('D', 'P', self.pressure*100000, 'T', temperature, 'oxygen')  # [kg/m^3] oxygen density for selected density and temperature
+        if self.max_capacity:
+            self.tank_volume = round(self.max_capacity/self.density,2)   # [m^3] tank volume
         
     def use(self,h,oxy,constant_demand=False):
         """
@@ -71,6 +76,8 @@ class O2_tank:
                 self.shift          = abs(min(self.LOC))                # oxygen amount in storage at time 0
                 self.LOC            = self.LOC + self.shift             # shifting the Level Of Charge curve to avoid negative minimum value (minimum is now at 0kg)
                                                                         # It is now possible to define how much H2 must be present in storage at the beginning of simulation. 
+                self.tank_volume = round(self.max_capacity/self.density,2)   # [m^3] tank volume                                                        
+            
             return(charge)
     
     def sizing(self,htankmaxcapacity):
@@ -83,6 +90,9 @@ class O2_tank:
         """
         constant = 9 # [-] units of oxygen produced per each unit of hydrogen
         self.max_capacity = htankmaxcapacity*constant
+        self.tank_volume = round(self.max_capacity/self.density,2)   # [m^3] tank volume
+        
+        return(self.max_capacity)
         
     def tech_cost(self,tech_cost):
         """

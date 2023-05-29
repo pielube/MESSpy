@@ -3,6 +3,7 @@ import os
 import sys 
 sys.path.append(os.path.abspath(os.path.join(os.getcwd(),os.path.pardir)))   # temorarily adding constants module path 
 import constants as c
+from CoolProp.CoolProp import PropsSI
 
 class H_tank:    
     
@@ -24,10 +25,14 @@ class H_tank:
         
         self.cost = False # will be updated with tec_cost()
 
-        self.pressure = parameters['pressure']          # H tank storage pressure
-        self.LOC = np.zeros(simulation_hours+1)         # array H tank level of Charge 
-        self.max_capacity = parameters['max capacity']  # H tank max capacity [kg]
-        self.used_capacity = 0                          # H tank used capacity <= max_capacity [kg]      
+        self.pressure       = parameters['pressure']                # [bar] H tank storage pressure
+        self.LOC            = np.zeros(simulation_hours+1)          # array H tank level of Charge 
+        self.max_capacity   = parameters['max capacity']            # H tank max capacity [kg]
+        self.used_capacity  = 0                                     # H tank used capacity <= max_capacity [kg]
+        temperature         = 273.15 + 15                           # [K] temperature at which hydrogen is stored
+        self.density        = PropsSI('D', 'P', self.pressure*100000, 'T', temperature, 'hydrogen')  # [kg/m^3] hydrogen density for selected density and temperature
+        if self.max_capacity:
+            self.tank_volume = round(self.max_capacity/self.density,2)   # [m^3] tank volume
         
     def use(self,h,hyd,constant_demand=False):
         """
@@ -74,6 +79,8 @@ class H_tank:
                 self.shift          = abs(min(self.LOC))                # Hydrogen amount in storage at time 0
                 self.LOC            = self.LOC + self.shift             # shifting the Level Of Charge curve to avoid negative minimum value (minimum is now at 0kg)
                                                                         # It is now possible to define how much H2 must be present in storage at the beginning of simulation. 
+                self.tank_volume = round(self.max_capacity/self.density,2)   # [m^3] tank volume   
+                                                     
             return(charge)
         
         
@@ -145,7 +152,11 @@ class HPH_tank:
         self.pressure = parameters['pressure']          # H tank storage pressure
         self.LOC = np.zeros(simulation_hours+1)         # array H tank level of Charge 
         self.max_capacity = parameters['max capacity']  # H tank max capacity [kg]
-        self.used_capacity = 0                          # H tank used capacity <= max_capacity [kg]      
+        self.used_capacity = 0                          # H tank used capacity <= max_capacity [kg]
+        temperature         = 273.15 + 15                           # [K] temperature at which hydrogen is stored
+        self.density        = PropsSI('D', 'P', self.pressure*100000, 'T', temperature, 'hydrogen')  # [kg/m^3] hydrogen density for selected density and temperature
+        if self.max_capacity:
+            self.tank_volume = round(self.max_capacity/self.density,2)   # [m^3] tank volume
         
     def use(self,h,hyd,constant_demand=False):
         """
@@ -192,6 +203,8 @@ class HPH_tank:
                 self.shift          = abs(min(self.LOC))                # Hydrogen amount in storage at time 0
                 self.LOC            = self.LOC + self.shift             # shifting the Level Of Charge curve to avoid negative minimum value (minimum is now at 0kg)
                                                                         # It is now possible to define how much H2 must be present in storage at the beginning of simulation. 
+                self.tank_volume = round(self.max_capacity/self.density,2)   # [m^3] tank volume
+                
             return(charge)
         
         
