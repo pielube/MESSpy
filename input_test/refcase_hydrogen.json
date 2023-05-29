@@ -1,0 +1,19 @@
+{
+
+"prosumer_1": { "gas demand": { "serie"   : "gas_demand_test.csv",
+                                         "priority": 1,
+                                         "strategy": "demand-led"  },
+                                         
+                        	"electricity demand": { "serie": "load_test_1.csv",
+                                                  "priority": 2}, 	    
+                        				           				
+                          "electricity grid": { "draw": true,
+                                                "feed": false,
+                                                "priority":4  },
+                                                
+                          "gas grid": { "draw": true,
+                                        "feed": false,
+                                        "priority":3  }
+              				      		
+                           }
+}   
