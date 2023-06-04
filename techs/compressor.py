@@ -1,8 +1,8 @@
-# import CoolProp
+import CoolProp
 from CoolProp.CoolProp import PropsSI
 from CoolProp.Plots import PropertyPlot
-from scipy.optimize import curve_fit
-from sklearn.metrics import r2_score
+# from scipy.optimize import curve_fit
+# from sklearn.metrics import r2_score
 from scipy.interpolate import interp1d
 import math as m
 import pandas as pd
@@ -326,6 +326,7 @@ class Compressor:
                     h_out_ic = PropsSI('H', 'P', P_out_ic*100000, 'T', self.T_IC, self.fluid)/1000
                     self.delta_H[i] = h_out - h_out_ic
                     self.comp_lav_spec[i] = h_out - h_in
+                    self.delta_H = sum(self.delta_H)
                     
                 if 'flow_rate' in parameters:       # if flow rate is defined as input - compressor nominal power is defined as a consequence
                     self.maxflowrate = parameters['flow_rate']                            # [kg/h] hourly mass flow rate
@@ -1177,7 +1178,7 @@ class Compressor:
             else:   # working with a single hydrogen tank. Simplification of partial load functioning - Can be upgraded
                 self.hyd[h] = massflowrate
                 e_absorbed  = massflowrate/3600*sum(self.comp_lav_spec)
-                t_absorbed  = massflowrate/3600*sum(self.delta_H)
+                t_absorbed  = massflowrate/3600*self.delta_H
                 
                 return(self.hyd[h],-e_absorbed,-t_absorbed)
                 

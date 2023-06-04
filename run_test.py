@@ -141,6 +141,7 @@ pp.hourly_balances_electricity(name_studycase,'prosumer_2', 2, 3)
 #     new_studycase = pre.change_peakP(studycase, 'prosumer_1', pv) # change PV size 
 #     rec = REC(new_studycase,general,file_studycase,file_general,path) # create REC object
 #     rec.REC_energy_simulation() # simulate REC enegy balances
+#     rec.tech_cost(tech_cost) # calculate the cost of all technologies 
 #     rec.save(name_studycase) # save results in 'name_studycase.pkl'
 #     
 #     with open('results/balances_'+name_studycase+'.pkl', 'rb') as f: balances = pickle.load(f)
