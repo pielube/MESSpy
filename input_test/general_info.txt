@@ -1,5 +1,5 @@
 "simulation years": int (if no ageing effetcs have to be considered, we suggest to set simulation years = 1)
-"latitude": float
+"latitude": flaot
 "longitude": float
 "UTC time zone": int 0,1,2 [UTC] es. Italy is in UTC+1 time zone EUROPEAN DATABASE
 "DST": true or false (daylight saving time)

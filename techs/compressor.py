@@ -38,7 +38,7 @@ class Compressor:
         self.timestep = 1
         if 'Power' in parameters:  self.Npower = parameters['Power']  # [kW] nominal power of compressor
         if maxflowrate: self.maxflowrate = maxflowrate            # [kg/h] maximum flow rate that can be processed by the compressor - size is automatically defined
-        
+ 
         if parameters['compressor model'] == 'simple compressor':
             self.model = parameters['compressor model']
 
@@ -1231,7 +1231,7 @@ class Compressor:
         x = costdf['Gas Flow [kg/h]']
         y = costdf['Compressed Tanks [€/(kg/h)]']
         
-        f = interp1d(x, y)
+        f = interp1d(x, y,fill_value= 'extrapolate')
         
         specific_cost = f(self.maxflowrate)  # [€/(kg/h)]
         

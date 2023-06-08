@@ -34,6 +34,10 @@ def total_balances(simulation_name,loc,var=None):
         units    = {var : units[var]}
         balance  = 0                      # initializing the variable to visualize the balance at the end of the simulation period
 
+        if var == 'hydrogen':
+            balances[loc][var].pop('mechanical compressor')  # dict.values() to be removed as they alter the total hydrogen balance and ar enot supposed to do so. 
+            print(sum(balances[loc][var]['electrolyzer']))
+            
     for carrier in carriers:
         print('\nTotal '+carrier+' balances '+loc+':\n') 
         for b in balances[loc][carrier]:
@@ -81,7 +85,7 @@ def hydrogen_production(simulation_name,loc,var=None):
     plt.show()
     
 
-def renewables(simulation_name,simulation_years,loc,first_day,last_day,plot=False):  # va generalizzata - for location name in balances 
+def renewables(simulation_name,simulation_years,loc,first_day,last_day,plot=False):  # to be generalized for all locations
     
     with open('results/balances_'+simulation_name+'.pkl', 'rb') as f: balances = pickle.load(f)
     ###### load analysis
@@ -98,7 +102,7 @@ def renewables(simulation_name,simulation_years,loc,first_day,last_day,plot=Fals
         demand  = np.zeros(simulation_years*8760)  # initializing the array to store the overall demand driven also by hydrogen technolgies
             
         for tech_name in balances[loc]['electricity']:
-        # for tech_name in rec.locations[loc].system: # quando e se vorò generalizzare
+        # for tech_name in rec.locations[loc].system: # in order to generalize 
             for i in range(len(balances[loc]['electricity'][tech_name])):
                 if tech_name != 'grid' and balances[loc]['electricity'][tech_name][i] < 0: 
                     demand[i] += balances[loc]['electricity'][tech_name][i]
@@ -969,7 +973,7 @@ def ele_param(simulation_name,first_day,last_day,plot=False):              # fun
                  
                  if param[location_name]['electrolyzer'][parameter].size > 1:    # plotting only arrays among saved parameters
                      if plot == True:     
-                         plt.figure(dpi=300)
+                         plt.figure(dpi=600)
                          y = param[location_name]['electrolyzer'][parameter][first_day*24:last_day*24]
                          x = np.arange(first_day*24,last_day*24)
                          plt.plot(x,y,label=location_name)

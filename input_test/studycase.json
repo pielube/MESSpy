@@ -1,89 +1,52 @@
 {
-"prosumer_1": {	"electricity demand": { "serie": "load_test_1.csv",
-                        				"priority": 1},  
+"Industrial_Facility_1": { "hydrogen demand": { "serie"   : "hydrogen_demand.csv",
+                                                 "priority":1,
+                                                 "strategy":"supply-led"  },	    
                         				           				
-                "electricity grid": {   "draw": true,
-                                        "feed": true,
-                                        "priority": 4},      
-                                          				         		
-				"PV": 	{	"tilt": 0,
-							"azimuth": 30,
-							"losses": 20,
-							"Max field width": 40,
-							"Max field length": 30,
-							"peakP": 5,
-							"serie": "TMY",
-							"priority": 2},		     
-            				      				
-				"battery": {"nominal capacity": 3,
-							"max E-rate": 0.5,
-							"efficiency": 0.9,
-							"ageing": true,
-							"life cycles": 6000,
-							"end life capacity": 80,
-							"collective": 0,
-							"priority": 3}},
-		
-		
-"prosumer_2": { "electricity demand": { "serie": "load_test_2.csv",
-                        				"priority": 1},
-                        				
-                "electricity grid": {   "draw": true,
-                                        "feed": true,
-                                        "priority": 6},
-                                        
-                "hydrogen grid": {  "draw": false,
-                                    "feed": true,
-                                    "priority": 7},   	
-                                    			
-				"PV": {		"tilt": 30,
-							"azimuth": 10,
-							"losses": 10,
-							"peakP": 3,
-							"serie": 2015,
-    						"priority": 2},			
-             							
-				"electrolyzer": {	"Npower": 2,
-									"number of modules":1,
-									"stack model": "PEM General",
-									"strategy": "hydrogen-first",
-									"priority": 3},
-									
-				"fuel cell": {	"Npower": 1,
-								"number of modules":1,
-								"stack model": "SOFC",
-								"ageing" : false,
-								"priority": 4},
-								
-				"H tank": {	"max capacity": 20,
-								"pressure": 30,
-								"priority": 5 }},
-							
-							
-"consumer_1": {	"electricity demand": { "serie": "load_test_3.csv",
-                        				"priority": 1},
-                        				
-                "electricity grid": {   "draw": true,
-                                        "feed": true,
-                                        "priority": 2}},
-				
-				
-"consumer_2": {  "electricity demand": { "serie": "load_test_4.csv",
-                                   		"priority": 1},
-                                   		
-                "heating water demand": {   "serie": "heating-dhw_test.csv",
-                                         	"priority": 2}, 
-                                         	
-                "electricity grid": {   "draw": true,
-                                        "feed": true,
-                                        "priority": 4},       
-                                            	
-                "heatpump": {  "type":1,
-                               "nom Pth": 8,
-                               "t rad heat": 45,
-                               "inertial TES volume": 200, 
-                               "inertial TES dispersion": 0.36, 
-                               "PV surplus": false,
-                               "REC surplus": false,
-                               "priority": 3}}
+                            "electricity grid": { "draw": true,
+                                                  "feed": false,
+                                                  "priority":9  },
+                                                   
+                            "oxygen grid": { "draw": false,
+                                             "feed": true,
+                                             "priority": 7  },
+                                             
+                            "water grid": {  "draw": true,
+                                             "feed": false,
+                                             "priority": 8  },
+                           
+                            "wind": 	  {  "model"   : "simple",
+                                          "series" : "WindOnshore2025.csv",
+                    							 "Npower"  : 135000,
+                    							 "priority": 2        , 
+                    							 "owned"   : false},
+							                     				
+							"PV": 	{ "tilt": 0,
+									  "azimuth": 30,
+									  "losses": 0,
+									  "Max field width": 40000,
+									  "Max field length": 30000,
+									  "peakP": 50000,
+									  "serie": "TMY",
+									  "priority": 3,
+									  "owned":false},
+
+                  		    "electrolyzer": { "Npower": 1000,
+                                  	          "number of modules": 101,
+                                      	      "stack model": "PEM General",
+                                      	      "priority":4                 ,
+                                      	      "strategy": "hydrogen-first"},
+                  	         
+              	            "mechanical compressor":{"P_out": 300,
+                                                      "P_in": 30,
+                                                      "T_in": 343.15,
+                                                      "compressor model": "simple compressor",
+                                                      "Power": 0,
+                                                      "priority":5
+                                                      }, 
+                              	  
+          	                 "H tank": { "max capacity": false,
+                              	         "pressure"    : 300,
+                              	         "priority"    : 6}          		  							
+        							                      }                 				      		
 }   

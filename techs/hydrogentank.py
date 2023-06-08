@@ -126,8 +126,7 @@ class H_tank:
         tech_cost['total cost'] = C
         tech_cost['OeM'] = tech_cost['OeM'] *C /100 # €
 
-
-        self.cost = tech_cost    
+        self.cost = tech_cost   
         
 class HPH_tank:    
     

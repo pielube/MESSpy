@@ -632,8 +632,8 @@ if __name__ == "__main__":
     inp_test = {  
                   "Npower": 1000,
                   "number of modules": 4,
-                  "stack model": 'Enapter 2.1',
-                  "strategy": 'renewables'
+                  "stack model": 'PEM General',
+                  "strategy": 'hydrogen-first'
                 }
     
     sim_hours = 36                               # [h] simulated period of time - usually it's 1 year minimum
@@ -675,44 +675,43 @@ if __name__ == "__main__":
     print('\nAbsorbed energy [kWh]: \n\n',eabsorbed)     
     print('\nElectrolyzer Efficiency [-]: \n\n',el.EFF)                # electrolyzer efficiency at every hour     
 
-    if not inp_test['strategy']:
-        cellarea = el.CellArea
-        nompower = el.Npower
-        
-        plt.figure(dpi=600)
-        plt.scatter(el.cell_currdens,el.EFF,s=20,color='tab:orange',edgecolors='k',zorder=3)
-        plt.title("Efficiency vs Power Input")
-        # plt.ylim([0,0.8]) 
-        textstr = '\n'.join((
-            r'$CellArea=%.1f$ $cm^{2}$' % (cellarea,),
-            r'$P_{nom}= %.1f$ kW' % (nompower,),
-            r'$i_{max}= %.1f$ A $cm^{-2}$' % (el.CurrDensityMax,),
-            r'$n_{cell}= %.0f$' % (el.nc,)))
-        props = dict(boxstyle='round', facecolor='wheat', alpha=0.8)
-        plt.text(max(el.cell_currdens)/2,0.2,textstr,fontsize=10,va='bottom',backgroundcolor='none', bbox=props)
-        plt.grid()
-        plt.xlabel('Curr dens [A/cm2]')
-        plt.ylabel('$\\eta$')
-        
-        for i in range(len(flow1)):
-            
-            hyd[i],eabsorbed[i],oxygen[i] = el.use(i,flow1[i],storable_hydrogen)
-            
-        plt.figure(dpi=600)
-        plt.plot(flow1,el.EFF)
-        plt.title("Electrolyzer Module Efficiency")
-        # plt.ylim([0,0.8]) 
-        textstr = '\n'.join((
-            r'$CellArea=%.1f$ $cm^{2}$' % (cellarea,),
-            r'$P_{nom}= %.1f$ kW' % (nompower,),
-            r'$i_{max}= %.1f$ A $cm^{-2}$' % (el.CurrDensityMax,),
-            r'$n_{cell}= %.0f$' % (el.nc,)))
-        props = dict(boxstyle='round', facecolor='wheat', alpha=0.8)
-        plt.text(el.Npower/2,0.2,textstr,fontsize=10,va='bottom',backgroundcolor='none', bbox=props)
-        plt.grid()
-        plt.xlabel('Input Power [kW]')
-        plt.ylabel('$\\eta$')    
+    cellarea = el.CellArea
+    nompower = el.Npower
     
+    plt.figure(dpi=600)
+    plt.scatter(el.cell_currdens,el.EFF,s=20,color='tab:orange',edgecolors='k',zorder=3)
+    plt.title("Efficiency vs Power Input")
+    # plt.ylim([0,0.8]) 
+    textstr = '\n'.join((
+        r'$CellArea=%.1f$ $cm^{2}$' % (cellarea,),
+        r'$P_{nom}= %.1f$ kW' % (nompower,),
+        r'$i_{max}= %.1f$ A $cm^{-2}$' % (el.CurrDensityMax,),
+        r'$n_{cell}= %.0f$' % (el.nc,)))
+    props = dict(boxstyle='round', facecolor='wheat', alpha=0.8)
+    plt.text(max(el.cell_currdens)/2,0.2,textstr,fontsize=10,va='bottom',backgroundcolor='none', bbox=props)
+    plt.grid()
+    plt.xlabel('Curr dens [A/cm2]')
+    plt.ylabel('$\\eta$')
+    
+    for i in range(len(flow1)):
+        
+        hyd[i],eabsorbed[i],oxygen[i],water[i] = el.use(i,flow1[i],storable_hydrogen)
+        
+    plt.figure(dpi=600)
+    plt.plot(flow1,el.EFF)
+    plt.title("Electrolyzer Module Efficiency")
+    # plt.ylim([0,0.8]) 
+    textstr = '\n'.join((
+        r'$CellArea=%.1f$ $cm^{2}$' % (cellarea,),
+        r'$P_{nom}= %.1f$ kW' % (nompower,),
+        r'$i_{max}= %.1f$ A $cm^{-2}$' % (el.CurrDensityMax,),
+        r'$n_{cell}= %.0f$' % (el.nc,)))
+    props = dict(boxstyle='round', facecolor='wheat', alpha=0.8)
+    plt.text(el.Npower/2,0.2,textstr,fontsize=10,va='bottom',backgroundcolor='none', bbox=props)
+    plt.grid()
+    plt.xlabel('Input Power [kW]')
+    plt.ylabel('$\\eta$')    
+
         
     'Test 2 - Random power input'
 

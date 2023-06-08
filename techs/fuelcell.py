@@ -1297,7 +1297,7 @@ if __name__ == "__main__":
     
     inp_test = {'Npower': 1000,
                 "number of modules": 1,
-                'stack model':'SOFC',
+                'stack model':'PEM General',
                 'ageing': False
                 }
     
