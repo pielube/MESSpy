@@ -1,28 +1,52 @@
 {
-"Industrial_Facility_1": { "gas demand": { "serie"   : "gas_demand_test.csv",
-                                         "priority": 1,
-                                         "strategy": "demand-led"  },
-                                         
-                        	"electricity demand": { "serie": "electric_load.csv",
-                                                  "priority": 2}, 	    
-                                                  
-                            "PV": 	{ "tilt": 0,
-                      								"azimuth": 30,
-                      							  "losses": 0,
-                      								"Max field width": 40000,
-                      								"Max field length": 30000,
-                      								"peakP": 5000,
-                      								"serie": "TMY",
-                      								"priority": 3,
-                      								"owned":false},
+"prosumer_1": {	"electricity demand": { "serie": "load_test_1.csv",
+                        				"priority": 1},  
                         				           				
-                          "electricity grid": { "draw": true,
-                                                "feed": false,
-                                                "priority":4  },
-                                                
-                          "gas grid": { "draw": true,
-                                        "feed": false,
-                                        "priority":5  }
-              				      		
-                           }
-}   
+                "electricity grid": {   "draw": true,
+                                        "feed": true,
+                                        "priority": 3},
+                                        
+				"PV": {		"tilt": 30,
+							"azimuth": 10,
+							"losses": 10,
+					    	"Max field width": 10,
+							"Max field length": 5,
+							"peakP": 1,
+							"serie": "TMY",
+							"priority": 2}},
+							
+							
+"prosumer_2": { "electricity demand": { "serie": "load_test_2.csv",
+                        				"priority": 1},
+                        				
+                "electricity grid": {   "draw": true,
+                                        "feed": true,
+                                        "priority": 2}},
+							
+						
+"consumer_1": {"electricity demand": { "serie": "load_test_3.csv",
+                        				"priority": 1},
+                        				
+                "electricity grid": {   "draw": true,
+                                        "feed": true,
+                                        "priority": 2}},
+				
+				
+"consumer_2": { "electricity demand": { "serie": "load_test_4.csv",
+                                   		"priority": 1},
+                                   		
+                "heating water demand": {   "serie": "heating-dhw_test.csv",
+                                         	"priority": 2}, 
+                                         	
+                "electricity grid": {   "draw": true,
+                                        "feed": true,
+                                        "priority": 4}, 
+                                          
+                "gas grid": {   "draw": true,
+                                "feed": true,
+                                "priority": 5},   
+                                                         
+                "boiler_ng": {  "Ppeak": 24,
+                                "efficiency": 0.95,
+                                "priority": 3}}                        
+}
