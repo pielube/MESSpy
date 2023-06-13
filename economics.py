@@ -6,7 +6,7 @@ import json
 import matplotlib.pyplot as plt
 import matplotlib.font_manager as fm
 
-def NPV(name_studycase,name_refcase,economic_data,simulation_years,path,name_economic):  ### WIP da implementare l'opzione in cui non si possiede la risorsa rinnovabile e di conseguenza vanno rivisti i bilanci di immissione in rete poichè non sono flussi di cassa i cui dispongo io in quanto location
+def NPV(file_studycase,name_studycase,name_refcase,economic_data,simulation_years,path,name_economic):  ### WIP da implementare l'opzione in cui non si possiede la risorsa rinnovabile e di conseguenza vanno rivisti i bilanci di immissione in rete poichè non sono flussi di cassa i cui dispongo io in quanto location
     """
     Economic assesment 
     
@@ -32,8 +32,7 @@ def NPV(name_studycase,name_refcase,economic_data,simulation_years,path,name_eco
     """  
     
     # open file study_case
-    file_studycase = 'studycase.json'
-    with open(os.path.join(path,file_studycase),'r') as f:        studycase = json.load(f)
+    with open(os.path.join(path,f"{file_studycase}.json"),'r') as f:        studycase = json.load(f)
     years_factor = int(economic_data['investment years'] / simulation_years) # this factor is useful to match the length of the energy simulation with the length of the economic investment
     
     # open energy balances of study and reference case
@@ -293,10 +292,10 @@ def LCOH (
             simulation_years, 
             path, 
             name_output, 
-            revenues = False, 
-            refund = False,
-            plot = True,
-            print_= True, 
+            revenues    = False, 
+            refund      = False,
+            plot        = True,
+            print_      = True, 
             
             ):
     """
@@ -384,22 +383,26 @@ def LCOH (
             else: # if replacement time is given
                 rep_time = tc[location_name][tech_name]['replacement']['years']
                 while rep_time < economic_data['investment years']: # if tech_name replacement happens before the end of the simulation
-                    results[location_name]['CF']['OeM'][rep_time] += - np.float64(results[location_name]['I0'][tech_name])*np.float(tc[location_name][tech_name]['replacement']['rate'])/np.float(100) # subtract technology replacement to location Cash Flow
+                    results[location_name]['CF']['OeM'][rep_time-1] += - np.float64(results[location_name]['I0'][tech_name])*np.float(tc[location_name][tech_name]['replacement']['rate'])/np.float(100) # subtract technology replacement to location Cash Flow. -1 subtracted to index because the array is shifted of 1 position during LCOH calculation -> CF[1:]  = results[location_name]['CF']['Tot'].copy()    # [€] Cash Flows
                     lcoh[location_name]['Capex'][tech_name][rep_time] += np.float64(lcoh[location_name]['Capex'][tech_name][0])*np.float(tc[location_name][tech_name]['replacement']['rate'])/np.float64(100) # subtract technology replacement to location Cash Flow. np.float type added to avoid overflow problems 
                     rep_time += tc[location_name][tech_name]['replacement']['years']
             
-            if tc[location_name][tech_name]['refund']['years'] == 0 and tc[location_name][tech_name]['refund']['rate'] == 0:  # no refunds considered
-                pass
-            elif tc[location_name][tech_name]['refund']['years'] == 0 and tc[location_name][tech_name]['refund']['rate'] != 0:
-                results[location_name]['I0'][tech_name] = results[location_name]['I0'][tech_name]*(100-tc[location_name][tech_name]['refund']['rate'])/100
-                lcoh[location_name]['Capex'][tech_name] = lcoh[location_name]['Capex'][tech_name]*((100-tc[location_name][tech_name]['refund']['rate'])/100) # it somwhow gives negative results also when rate is 0, to be further investigated
-            else:
-                yearly_refund = results[location_name]['I0'][tech_name]*tc[location_name][tech_name]['refund']['rate']/100 / tc[location_name][tech_name]['refund']['years'] # yearly refund [€]
-                refunds = np.zeros(economic_data['investment years']) # array initialise
-                refunds[:min(economic_data['investment years'],tc[location_name][tech_name]['refund']['years'])] = yearly_refund # array repeat yearly refund 
-                results[location_name]['CF']['Refund'] += refunds # add refund to Cash Flow
-                lcoh[location_name]['Opex'][tech_name] -= refunds # add refund to Opex expenditures
-        
+            if refund: # if refund has to be included in LCOH calculation
+                    
+                if tc[location_name][tech_name]['refund']['years'] == 0 and tc[location_name][tech_name]['refund']['rate'] == 0:  # no refunds considered
+                    pass
+                elif tc[location_name][tech_name]['refund']['years'] == 0 and tc[location_name][tech_name]['refund']['rate'] != 0:
+                    results[location_name]['I0'][tech_name] = results[location_name]['I0'][tech_name]*((100-tc[location_name][tech_name]['refund']['rate'])/100)
+                    lcoh[location_name]['Capex'][tech_name] = lcoh[location_name]['Capex'][tech_name]*((100-tc[location_name][tech_name]['refund']['rate'])/100)
+                else:
+                    yearly_refund = results[location_name]['I0'][tech_name]*tc[location_name][tech_name]['refund']['rate']/100 / tc[location_name][tech_name]['refund']['years'] # yearly refund [€]
+                    refunds = np.zeros(economic_data['investment years']) # array initialise
+                    refunds[:min(economic_data['investment years'],tc[location_name][tech_name]['refund']['years'])] = yearly_refund # array repeat yearly refund 
+                    results[location_name]['CF']['Refund'] += refunds # add refund to Cash Flow
+                    lcoh[location_name]['Opex'][tech_name] -= refunds # add refund to Opex expenditures
+                
+                results[location_name]['CF']['Tot'] += - results[location_name]['CF']['Refund']
+                
         # energy sold and purchased in study case 
         for carrier in balances[location_name]:                           # for each carrier (electricity, hydrogen, gas, heat)
             
@@ -497,7 +500,7 @@ def LCOH (
         for carrier in results[location_name]['CF']['Purchase']:
             results[location_name]['CF']['Tot'] -= results[location_name]['CF']['Purchase'][carrier]
             
-        if revenues:        # if revenues have to be included in LCOH calculation (function input)
+        if revenues:        # if revenues have to be included in LCOH calculation
             for carrier in results[location_name]['CF']['Sale']:
                 if carrier in revenues:
                     results[location_name]['CF']['Tot'] -= results[location_name]['CF']['Sale'][carrier]
@@ -515,9 +518,6 @@ def LCOH (
                     keys_to_remove.append(carrier)
             for key in keys_to_remove:
                     del lcoh[location_name]['Opex'][key]   
-       
-        if refund:          # if refunds have to be included in LCOH calcuation (function input). Already included in lcoh dictionary, in this case the function input doesn't affect the results, tech_cost parameters have to be modified accordingly to the desired scenario.  
-            results[location_name]['CF']['Tot'] += - results[location_name]['CF']['Refund']
                                 
         results[location_name]['CF']['Tot'] +=  - results[location_name]['CF']['OeM']       
                                             
@@ -560,7 +560,7 @@ def LCOH (
         results[location_name]['LCOH'] = {'Value [€/kgH2]'          : LCOH,
                                           'Discounted Expenditures' : num,
                                           'Discounted Production'   : den}
-        
+                
         for key in lcoh[location_name]['Opex']:
             for i in range(len(lcoh[location_name]['Opex'][key])):
                 lcoh[location_name]['Opex'][key][i] = lcoh[location_name]['Opex'][key][i]*(1/(1+r)**i)
@@ -577,26 +577,31 @@ def LCOH (
             capex[key] = np.sum(value)
         for key, value in lcoh[location_name]['Opex'].items():
             opex[key] = np.sum(value)
-        
+            
         hydrogen_prod = sum(den)   # actualized hydrogen production
 
         # Building DataFrame for data visualization      
         df = pd.DataFrame([capex, opex], index=['Capex', 'Opex'])
-        # print(df)
         df = df.fillna(0)
         df = df.reindex(columns=[col for col in df.columns if col != 'Total'] + ['Total'])  # index 'Total' must be the last of the column
+         
+        
+        df1 = df.copy()
+        df1 = df1/hydrogen_prod
+        df1 = df1.round(3)
+        df1 = df1.drop(columns=df1.columns[(df1.loc['Capex'] == 0) & (df1.loc['Opex'] == 0)])    # removing elements not contributing to final LCOH value
         
         if plot == True:
+          
+            if revenues:
+                for key in df.loc['Opex'].index.tolist():
+                    if key.replace(' sold', '') in revenues and 'sold' in key:
+                        df.loc['Opex']['Total'] -= df.loc['Opex'][key]
             
-            df1 = df
-            df1 = df1/hydrogen_prod
-            df1 = df1.round(3)
-            df1 = df1.drop(columns=df1.columns[(df1.loc['Capex'] == 0) & (df1.loc['Opex'] == 0)])    # removing elements not contributing to final LCOH value
             df = df.drop(columns=df.columns[(df.loc['Capex'] == 0) & (df.loc['Opex'] == 0)])    # removing elements not contributing to final LCOH value
             df = df.drop(columns=[col for col in df.columns if 'sold' in col])
             df = df/hydrogen_prod
             df = df.round(3)
-            # print(df)
       
             colors = ['#0e4d92', '#2380b2', '#5da5c5', '#9cc2a5', '#c8e0a1', '#ebd279', '#e18b4f', '#ff0000', '#00ff00', '#0000ff']
             colors1 = ['#7fcdbb', '#edf8b1']       
@@ -613,9 +618,6 @@ def LCOH (
     
             label_colors = dict(zip(repeated_labels, colors[:len(repeated_labels)]))
             label_colors = {label: colors.pop(0) if label not in label_colors else label_colors[label] for label in labels_outer}
-    
-            if df.loc['Opex', 'Total'] < 0:
-                df.loc['Opex', 'Total'] = 0
             
             labels_inner = ['Capex','Opex']
             values_inner = [df.loc['Capex','Total'],df.loc['Opex','Total']]
@@ -623,7 +625,7 @@ def LCOH (
             # Data to plot
             explode = [0.] * len(labels_outer)
             explode1 = [0.] * len(labels_inner)
-            
+                                      
             #Plot
             plt.figure(dpi=300)
             plt.pie(values_outer, 
