@@ -34,7 +34,7 @@ def total_balances(simulation_name,loc,var=None):
         units    = {var : units[var]}
         balance  = 0                      # initializing the variable to visualize the balance at the end of the simulation period
 
-        if var == 'hydrogen':
+        if var == 'hydrogen' and 'mechanical compressor' in balances[loc]:
             balances[loc][var].pop('mechanical compressor')  # dict.values() to be removed as they alter the total hydrogen balance and ar enot supposed to do so. 
             print(sum(balances[loc][var]['electrolyzer']))
             

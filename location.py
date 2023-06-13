@@ -208,13 +208,13 @@ class location:
             self.energy_balance['cooling water']['mechanical compressor']  = np.zeros(self.simulation_hours) # array of water flow to be fed to the refrigeration system 
  
         if 'H tank' in self.system and not 'HPH tank' in self.system:
-            if self.system[self.hydrogen_demand+' demand']['strategy'] == 'supply-led' and self.system['H tank']['max capacity'] != False:
-                raise ValueError(f"Adjust {self.name} location system in studycase.json. When the system is operated in supply-led mode, H tank size cannot be defined in advance.\n\
+            if 'hydrogen demand' in self.system or 'HP hydrogen demand' in self.system:
+                if self.system[self.hydrogen_demand+' demand']['strategy'] == 'supply-led' and self.system['H tank']['max capacity'] != False:
+                    raise ValueError(f"Adjust {self.name} location system in studycase.json. When the system is operated in supply-led mode, H tank size cannot be defined in advance.\n\
             Options to fix the problem: \n\
             (a) - Insert false for 'max capacity' among H tank parameters in studycase.json\n\
             (b) - Switch to 'demand-led' in 'hydrogen-demand'('strategy')\
             ")
-
             self.technologies['H tank'] = H_tank(self.system['H tank'],self.simulation_hours)   # H tank object created and to 'technologies' dictionary
             self.energy_balance['hydrogen']['H tank'] = np.zeros(self.simulation_hours)         # array H tank hydrogen balance
             
@@ -371,8 +371,9 @@ class location:
                         eb['oxygen']        += self.energy_balance['oxygen']['electrolyzer'][h]
                         eb['water']         += self.energy_balance['water']['electrolyzer'][h]
    
-                if h == (self.simulation_hours - 1) and self.system[self.hydrogen_demand+' demand']['strategy'] == 'supply-led':  # activates only at the final step of simulation
-                    self.constant_flow = sum(self.energy_balance['hydrogen']['electrolyzer'])/self.simulation_hours # [kg/h] constant hydrogen output based on the total production
+                if h == (self.simulation_hours - 1) and ('hydrogen demand' in self.system or 'HP hydrogen demand' in self.system):
+                    if self.system[self.hydrogen_demand+' demand']['strategy'] == 'supply-led':  # activates only at the final step of simulation
+                        self.constant_flow = sum(self.energy_balance['hydrogen']['electrolyzer'])/self.simulation_hours # [kg/h] constant hydrogen output based on the total production
                     
             if tech_name == 'hydrogen compressor':   #!!! WIP to be modified by Andrea
                 if self.energy_balance['hydrogen']['electrolyzer'][h] > 0:
@@ -607,7 +608,7 @@ class location:
             #         pass
         
             if tech_name == 'H tank':
-                if 'HPH tank' not in self.system:
+                if 'HPH tank' not in self.system and ('hydrogen demand' in self.system or 'HP hydrogen demand' in self.system):
                     if self.system[self.hydrogen_demand+' demand']['strategy'] == 'demand-led':
                         self.energy_balance['hydrogen']['H tank'][h] = self.technologies['H tank'].use(h,eb['hydrogen'])
                         eb['hydrogen'] += self.energy_balance['hydrogen']['H tank'][h]

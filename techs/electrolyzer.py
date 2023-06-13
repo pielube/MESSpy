@@ -18,9 +18,9 @@ class electrolyzer:
             'Npower': float nominal power [kW]
             "number of modules": str  number of modules in the stack [-]
             'stack model': str 'Enapter 2.1','McLyzer 800' are aviable or 'PEM General'
-            'strategy': str - 'full-time'. Electrolyzers operational 24/7 
-                            - 'hydrogen-first'. Electrolyzers working when renewable energy is available, 
-                               prioritizing hydrogen over electricity production from RES
+            'strategy': str - 'full-time'. Electrolyzers operational 24/7, grid connection must be present. 
+                            - 'hydrogen-first'. Electrolyzers working only when renewable energy is available, 
+                               prioritizing production of hydrogen over electricity production from RES
                       
         output : electrolyzer object able to:
             abrosrb electricity and water and produce hydrogen and oxygen .use(e)
