@@ -288,6 +288,54 @@ class electrolyzer:
                 CellCurrDensity1  = 0
         
         return(hyd,e_absorbed,etaElectr,watCons,CellCurrDensity1,etaF)
+    
+    
+    # def useh2(self,h,h2):  !! WIP
+    #     """
+    #     Inverse function that computes the power consumption and Faraday efficiency
+    #     corresponding to a required amount of produced hydrogen by means of interpolating functions.
+
+    #     Parameters
+    #     ----------
+    #     h2 : float hydrogen to be produced in the timestep [kg]
+
+    #     Returns
+    #     -------
+    #     hyd: float hydrogen produced in the timestep [kg] (same as input 'h2')
+    #     e_absorbed : float electricity absorbed in the timestep [kWh]
+    #     etaElectr : module efficiency [-]
+    #     watCons : module water consumption [m^3]
+    #     CellCurrDensity1 : single cell current density [A/cm^2]
+    #     etaFaraday : Faraday efficiency [-]
+
+    #     """
+    #     if 0 <= h2 <= self.maxh2prod:
+            
+    #         hyd        = h2
+    #         e_absorbed = self.h2P(hyd)                                                                  # [kW] required power
+    #         etaF       = self.etaF(hyd)                                                                 # [-]  Faraday efficiency
+    #         CellCurrDensity1 = self.PI(e_absorbed)/self.CellArea                                        # [A/cm^2] Cell working current density
+    #         Current   = CellCurrDensity1*self.CellArea                                                  # [A] Stack operating current  
+    #         Vstack    = (e_absorbed/Current)*1000                                                       # [V] Stack operating voltage
+    #         etaElectr = self.nc*self.LHVh2*1e6*self.H2MolMass*etaF/(2*Vstack*self.FaradayConst)         # [-] Electrolyzer efficiency
+    #         HydroMol  = (etaF*self.nc*Current*3600)/(2*self.FaradayConst)*self.timestep                 # [mol/h] (Guilbert 2020)  
+    #         hyd_vol   = HydroMol*self.H2MolMass/self.rhoNrh2                                            # [Nm^3] hydrogen produced in the considered timestep   
+    #         # watCons   = hyd_vol*self.rhoStdh2*self.h2oMolMass/self.H2MolMass/etaElectr/self.rhoStdh2o   # [m^3] water used by the electrolyzer - volume calculated @ 15°C & Pamb  
+    #         watCons   = hyd_vol*self.rhoStdh2*self.watercons                                            # [m^3] water used by the electrolyzer - volume calculated @ 15°C & Pamb  
+        
+    #         if e_absorbed >=  self.MinInputPower :   # If absorbed energy is too low, produced hydrogen is zero
+                
+    #             pass
+            
+    #         else:
+                
+    #             hyd               = 0
+    #             e_absorbed        = 0
+    #             etaElectr         = 0
+    #             watCons           = 0
+    #             CellCurrDensity1  = 0
+        
+    #     return(hyd,e_absorbed,etaElectr,watCons,CellCurrDensity1,etaF)
         
              
     def plot_polarizationpts(self):
@@ -606,18 +654,25 @@ class electrolyzer:
         """
         tech_cost = {key: value for key, value in tech_cost.items()}
 
-        size = self.Npower * self.n_modules
+        size = self.Npower * self.n_modules 
         
-        if tech_cost['cost per unit'] == 'default price correlation':
-            C0 = 1500 # €/kW
-            scale_factor = 0.8 # 0:1
-            C = size * C0 **  scale_factor
+        if tech_cost['cost per unit'] == 'default price correlation': # ref: https://doi.org/10.1016/j.ijhydene.2023.04.100 PEMEL cost, 2030 year of reference
+            C0 = 1185.69 # €/kW
+            scale_factor = 0.925 # 0:1
+            C =  C0 * size ** scale_factor
         else:
             C = size * tech_cost['cost per unit']
+            
+        if tech_cost['OeM'] == 'default price correlation': # ref: https://doi.org/10.1016/j.ijhydene.2023.04.100, 2030 year of reference
+            C0 = 349.8 # €/kW
+            scale_factor = -0.305
+            OeM = (C0 * size ** scale_factor)*size
+        else:
+            OeM = tech_cost['OeM'] *C /100 # €
 
         tech_cost['total cost'] = tech_cost.pop('cost per unit')
         tech_cost['total cost'] = C
-        tech_cost['OeM'] = tech_cost['OeM'] *C /100 # €
+        tech_cost['OeM'] = OeM
 
         self.cost = tech_cost    
 
