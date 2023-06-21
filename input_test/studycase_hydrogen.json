@@ -18,7 +18,7 @@
 							      "wind": 	  {  "model"   : "simple",
                 							     "series"  : "windproduction.csv",
                                            "Npower"  : 80000,
-                                           "priority": 2        , 
+                                           "priority": 3        , 
                                            "owned"   : true},
 
                   		       "electrolyzer": { "Npower": 1000,
@@ -40,7 +40,7 @@
                                 			    },
                              "H tank":{
                                              "max capacity": 40000,
-                                             "pressure": 60,
+                                             "pressure": 300,
                                              "priority":6
                                 			  }               				      		
                            }
