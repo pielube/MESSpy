@@ -588,7 +588,7 @@ def LCOH (
         
         df1 = df.copy()
         df1 = df1/hydrogen_prod
-        df1 = df1.round(3)
+        df1 = df1.round(4)
         df1 = df1.drop(columns=df1.columns[(df1.loc['Capex'] == 0) & (df1.loc['Opex'] == 0)])    # removing elements not contributing to final LCOH value
         
         if plot == True:
@@ -601,7 +601,7 @@ def LCOH (
             df = df.drop(columns=df.columns[(df.loc['Capex'] == 0) & (df.loc['Opex'] == 0)])    # removing elements not contributing to final LCOH value
             df = df.drop(columns=[col for col in df.columns if 'sold' in col])
             df = df/hydrogen_prod
-            df = df.round(3)
+            df = df.round(4)
       
             colors = ['#0e4d92', '#2380b2', '#5da5c5', '#9cc2a5', '#c8e0a1', '#ebd279', '#e18b4f', '#ff0000', '#00ff00', '#0000ff']
             colors1 = ['#7fcdbb', '#edf8b1']       
