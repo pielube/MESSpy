@@ -80,6 +80,11 @@ def hydrogen_production(simulation_name,loc,var=None):
     ax.grid(alpha = 0.3, zorder = 0)
     ax.set_ylabel('Hydrogen [kg]')
     ax.set_xlabel('Time [h]')
+    xticks = list(np.linspace(0, len(demand) - 1, 13).astype(int))
+    # xticklabels = [str(value) for value in xticks]
+    xticklabels = ['          Jan','         Feb','          Mar','         Apr','         May','          Jun','         Jul','          Aug','           Sep','          Oct','          Nov','           Dec','']
+    ax.set_xticks(xticks)
+    ax.set_xticklabels(xticklabels)
     ax.legend()
     plt.title('Cumulative H$_\mathregular{2}$ production and demand')
     plt.show()
@@ -100,7 +105,8 @@ def renewables(simulation_name,simulation_years,loc,first_day,last_day,plot=Fals
         windsc  = np.zeros(simulation_years*8760)  # initializing the array to store wind energy self consumption values
         pvsc    = np.zeros(simulation_years*8760)  # initializing the array to store solar energy self consumption values
         demand  = np.zeros(simulation_years*8760)  # initializing the array to store the overall demand driven also by hydrogen technolgies
-            
+        x = np.arange(first_day*24,(last_day+1)*24)   
+        
         for tech_name in balances[loc]['electricity']:
         # for tech_name in rec.locations[loc].system: # in order to generalize 
             for i in range(len(balances[loc]['electricity'][tech_name])):
@@ -121,13 +127,17 @@ def renewables(simulation_name,simulation_years,loc,first_day,last_day,plot=Fals
             k = 1
             if plot == True:
                 fig, ax = plt.subplots(dpi=1000)
-                ax.plot(-demand[first_day*24:last_day*24+24], label = 'Demand', linewidth=k, zorder = 2)
-                ax.plot(windsc[first_day*24:last_day*24+24],  alpha = 1, zorder = 1, label = 'P$_{Wind SC}$', linewidth=k)
-                ax.plot(fromgrid[first_day*24:last_day*24+24], label = 'From grid', linewidth=0.8)
+                ax.plot(x,-demand[first_day*24:last_day*24+24], label = 'Demand', linewidth=k, zorder = 2)
+                ax.plot(x,windsc[first_day*24:last_day*24+24],  alpha = 1, zorder = 1, label = 'P$_{Wind SC}$', linewidth=k)
+                ax.plot(x,fromgrid[first_day*24:last_day*24+24], label = 'From grid', linewidth=0.8)
                 ax.grid(alpha = 0.3, zorder = 0)
+                if (last_day-first_day) <= 20:
+                    ax.set_xticks(list(range(first_day*24, (last_day+1)*24+1,24)))
+                    ax.set_xticklabels([str(x) for x in list(range(first_day*24, (last_day+1)*24+1,24))], rotation=45)
                 ax.set_ylabel('Power [kW]')
                 ax.set_xlabel('Time [h]')
                 ax.legend()
+                plt.tight_layout()
                 plt.show()
             
         elif 'wind' in balances[loc]['electricity'] and 'PV' in  balances[loc]['electricity']:
@@ -143,13 +153,15 @@ def renewables(simulation_name,simulation_years,loc,first_day,last_day,plot=Fals
             k = 1
             if plot == True:
                 fig, ax = plt.subplots(dpi=1000)
-                ax.plot(-demand[first_day*24:last_day*24+24], label = 'Demand', linewidth=k, zorder = 2)
-                ax.plot(windsc[first_day*24:last_day*24+24],  alpha = 1, zorder = 1, label = 'P$_{Wind SC}$', linewidth=k)
-                ax.plot(fromgrid[first_day*24:last_day*24+24], label = 'From grid', linewidth=0.8)
-                ax.plot(pvsc[first_day*24:last_day*24+24], label = 'P$_{PV SC}$', linewidth=k, zorder = 3)
+                ax.plot(x,-demand[first_day*24:last_day*24+24], label = 'Demand', linewidth=k, zorder = 2)
+                ax.plot(x,windsc[first_day*24:last_day*24+24],  alpha = 1, zorder = 1, label = 'P$_{Wind SC}$', linewidth=k)
+                ax.plot(x,fromgrid[first_day*24:last_day*24+24], label = 'From grid', linewidth=0.8)
+                ax.plot(x,pvsc[first_day*24:last_day*24+24], label = 'P$_{PV SC}$', linewidth=k, zorder = 3)
                 # ax.plot(pvsc[first_day*24:last_day*24+24]+windsc[first_day*24:last_day*24+24], label = 'P$_{Wind+PV SC}$', linewidth=k, zorder = 4)
                 ax.grid(alpha = 0.3, zorder = 0)
-                ax.set_ylabel('Power [kW]')
+                if (last_day-first_day) <= 20:
+                    ax.set_xticks(list(range(first_day*24, (last_day+1)*24+1,24)))
+                    ax.set_xticklabels([str(x) for x in list(range(first_day*24, (last_day+1)*24+1,24))], rotation=45)
                 ax.set_xlabel('Time [h]')
                 ax.legend()
                 plt.show()
@@ -167,6 +179,11 @@ def renewables(simulation_name,simulation_years,loc,first_day,last_day,plot=Fals
             ax.plot(gridcumulative, label = 'From grid', linewidth=0.8)
             ax.plot(pvcumulative, label = 'P$_{PV SC}$', linewidth=k, zorder = 3)
             ax.grid(alpha = 0.3, zorder = 0)
+            xticks = list(np.linspace(0, len(demandcumulative) - 1, 13).astype(int))
+            # xticklabels = [str(value) for value in xticks]
+            xticklabels = ['          Jan','         Feb','          Mar','         Apr','         May','          Jun','         Jul','          Aug','           Sep','          Oct','          Nov','           Dec','']
+            ax.set_xticks(xticks)
+            ax.set_xticklabels(xticklabels)
             ax.set_ylabel('Energy [kWh]')
             ax.set_xlabel('Time [h]')
             ax.legend()
@@ -279,6 +296,10 @@ def LOC_plot(simulation_name):
             plt.grid()
             plt.ylabel('LOC '+unit[tech])
             plt.xlabel('Time [hours]')
+            xticks = list(np.linspace(0, len(x) - 1, 13).astype(int))
+            # xticklabels = [str(value) for value in xticks]
+            xticklabels = ['          Jan','         Feb','          Mar','         Apr','         May','          Jun','         Jul','          Aug','           Sep','          Oct','          Nov','           Dec','']
+            plt.xticks(xticks,xticklabels,rotation=45)
             plt.title(location_name+' '+tech)
             plt.show()
             
@@ -620,8 +641,8 @@ def hourly_balances_electricity(simulation_name,location_name,first_day,last_day
         plt.legend(ncol=2, bbox_to_anchor = (1.01,-0.11))
         plt.ylabel("Hourly energy [kWh/h] ")
         plt.xlabel( "Time  [h] ")
-        if (last_day-first_day) <= 10: 
-            plt.xticks(list(range(first_day*24, (last_day+1)*24+1,24)), [str(x) for x in list(range(first_day*24, (last_day+1)*24+1,24))])
+        if (last_day-first_day) <= 10:
+            plt.xticks(list(range(first_day*24, (last_day+1)*24+1,24)), [str(x) for x in list(range(first_day*24, (last_day+1)*24+1,24))], rotation=45)
         # ax.xaxis.set_tick_params(bottom=True,labelbottom=True)
         #plt.xticks([0,6,12,18,24],['0','6','12','18','24'],fontsize=10,color='g')
         #plt.xticks([0,6,12,18,24,30,36,42,48],['0','6','12','18','24','30','36','42','48'],fontsize=10,color='g')
@@ -982,6 +1003,7 @@ def ele_param(simulation_name,first_day,last_day,plot=False):              # fun
                          plt.grid(alpha = 0.3)
                          plt.ylabel(parameter+' '+units[parameter])
                          plt.xlabel('Time [hours]')
+                         plt.xticks(list(range(first_day*24, (last_day+1)*24+1,24)), [str(x) for x in list(range(first_day*24, (last_day+1)*24+1,24))], rotation=45)
                          plt.title(location_name+' electrolyzer')
                          plt.show()
                  else:
@@ -1009,6 +1031,7 @@ def fc_param(simulation_name,first_day,last_day):
                plt.grid()
                plt.ylabel(parameter+' '+units[parameter])
                plt.xlabel('Time [hours]')
+               plt.xticks(list(range(first_day*24, (last_day+1)*24+1,24)), [str(x) for x in list(range(first_day*24, (last_day+1)*24+1,24))], rotation=45)
                plt.title(location_name+' fuel cell')
                plt.show() 
         
