@@ -96,6 +96,14 @@ class location:
                     self.energy_balance[carrier]['demand'] = - np.tile(pd.read_csv(path+'/loads/'+system[f"{carrier} demand"]['serie'])['kg'].to_numpy(),int(self.simulation_hours/8760))   # hourly energy carrier needed for the entire simulation
                     if carrier == 'hydrogen' or carrier == 'HP hydrogen':
                         self.hydrogen_demand = carrier  # demand can be defined as 'hydrogen demand' or 'HP hydrogen demand' depending on the required delivery pressure
+                        print(type(carrier))
+                        if self.system[carrier+' demand']['strategy'] == 'supply-led' and self.system[carrier+' demand']['serie'] == False :
+                            self.energy_balance[carrier]['demand'] = - np.tile(pd.read_csv(path+'/loads/'+system[f"{carrier} demand"]['serie'])['kg'].to_numpy(),int(self.simulation_hours/8760))   # hourly energy carrier needed for the entire simulation
+                        if self.system[carrier+' demand']['strategy'] == 'supply-led' and self.system[carrier+' demand']['serie'] != False :
+                            raise ValueError(f"Warning in {self.name} location: supply-led strategy is not consistent with providing a demand series.\n\
+                            Options to fix the problem: \n\
+                                (a) - Insert 'false' at {carrier} demand 'serie' in studycase.json\n\
+                                (b) - Change 'strategy' to 'demand-led' in studycase.json")
                 else:                                                                                                                                                                                                          
                     self.energy_balance[carrier]['demand'] = - np.tile(pd.read_csv(path+'/loads/'+system[f"{carrier} demand"]['serie'])['kWh'].to_numpy(),int(self.simulation_hours/8760))  # hourly energy carrier needed for the entire simulation
 
@@ -158,12 +166,23 @@ class location:
             self.energy_balance['oxygen']['electrolyzer']                   = np.zeros(self.simulation_hours) # array electrolyzer oxygen balance
             self.energy_balance['water']['electrolyzer']                    = np.zeros(self.simulation_hours) # array electrolyzer water balance
             self.energy_balance['hydrogen']['electrolyzer']                 = np.zeros(self.simulation_hours) # array electrolyzer hydrogen balance
-            if self.technologies['electrolyzer'].strategy == "full-time" and not self.system["electricity grid"]["draw"]:
+            if self.technologies['electrolyzer'].strategy == "full-time" and (not self.system["electricity grid"]["draw"] or not self.system['electrolyzer']['only_renewables']):
                 raise ValueError(f"Full-time electrolyzers operation considered without electricity grid connection in {self.name} location.\n\
                 Options to fix the problem: \n\
                     (a) - Insert electricity grid withdrawal in studycase.json\n\
-                    (b) - Change electrolyzers strategy in studycase.json")
-    
+                    (b) - Change electrolyzers strategy in studycase.json\n\
+                    (c) - Check electrolyzers for 'only_renewables' value in studycase.json to be 'false'\\ ")
+            if self.technologies['electrolyzer'].strategy == "full-time" and self.system[self.hydrogen_demand+' demand']['strategy'] == 'supply-led':  
+                if 'mechanical compressor' in self.system and 'tank' in self.system: # when electrolyzers working continuously in supply-mode there is no need for storage
+                    raise ValueError(f"Full-time electrolyzers operation considered in supply-led mode in {self.name} location. Compression and storage must not be considered\n\
+                    Options to fix the problem: \n\
+                        (a) - Remove 'mechanical compressor' and 'H tank' from studycase.json\\")
+            if self.technologies['electrolyzer'].strategy == "full-time" and self.system[self.hydrogen_demand+' demand']['strategy'] == 'demand-led':
+                raise ValueError(f"Warning in {self.name} location: full-time electrolyzers operation not consistent in demand-led mode.\n\
+                Feasible combinations: \n\
+                    (a) - hydrogen demand:'supply-led' & electrolyzer strategy:'full-time' \n\
+                    (b) - hydrogen demand:'demand-led' & electrolyzer strategy:'hydrogen-first' ")
+                
         if 'fuel cell' in self.system:
             self.technologies['fuel cell'] = fuel_cell(self.system['fuel cell'],self.simulation_hours) # Fuel cell object created and to 'technologies' dictionary
             self.energy_balance['electricity']['fuel cell']     = np.zeros(self.simulation_hours)     # array fuel cell electricity balance
@@ -671,7 +690,22 @@ class location:
                 if tech_name == f"{carrier} grid":
                     if eb[carrier] > 0 and self.system[f"{carrier} grid"]['feed'] or eb[carrier] < 0 and self.system[f"{carrier} grid"]['draw']:
                         self.energy_balance[carrier]['grid'][h] = - eb[carrier] # energy from grid(+) or into grid(-) 
-                        eb[carrier] += self.energy_balance[carrier]['grid'][h]  # elecricity balance update                                                                                  
+                        eb[carrier] += self.energy_balance[carrier]['grid'][h]  # electricity balance update      
+            
+            ### final check on energy balances at the end of every timestep
+            for carrier in eb:
+                if carrier == 'electricity' and ('wind' or 'PV' in self.system) and (not self.system['wind']['owned'] or not self.system['PV']['owned']):
+                    pass
+                if eb[carrier] != 0: 
+                    if eb[carrier] >0:  sign = 'positive'
+                    else:               sign = 'negative'
+                    raise ValueError(f'Warning: {carrier} balance at the end of timestep {h} shows {sign} value. \n\
+                    It means there is an overproduction not fed to grid or demand is not satisfied.\n\
+                    Options to fix the problem: \n\
+                        (a) - Include {carrier} grid[\'draw\']: true if negative or {carrier} grid[\'feed\']: true if positive in studycase.json \n\
+                        (b) - Vary components size or demand series in studycase.json')
+
+            
             
         
         
