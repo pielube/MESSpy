@@ -620,6 +620,8 @@ def hourly_balances_electricity(simulation_name,location_name,first_day,last_day
         plt.legend(ncol=2, bbox_to_anchor = (1.01,-0.11))
         plt.ylabel("Hourly energy [kWh/h] ")
         plt.xlabel( "Time  [h] ")
+        if (last_day-first_day) <= 10: 
+            plt.xticks(list(range(first_day*24, (last_day+1)*24+1,24)), [str(x) for x in list(range(first_day*24, (last_day+1)*24+1,24))])
         # ax.xaxis.set_tick_params(bottom=True,labelbottom=True)
         #plt.xticks([0,6,12,18,24],['0','6','12','18','24'],fontsize=10,color='g')
         #plt.xticks([0,6,12,18,24,30,36,42,48],['0','6','12','18','24','30','36','42','48'],fontsize=10,color='g')

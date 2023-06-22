@@ -360,16 +360,41 @@ class location:
                 
                 elif self.technologies['electrolyzer'].strategy == 'full-time': # electrolyzer working continuously at each time step of the simulation
                     if "electricity grid" in self.system and self.system["electricity grid"]["draw"]:  # to assure full-time operation the system must be connected to the grid
+                        # if self.system[self.hydrogen_demand+' demand']['strategy'] == 'supply-led':    
                         producible_hyd = 9999999999999999999
                         self.energy_balance['hydrogen']['electrolyzer'][h],     \
                         self.energy_balance['electricity']['electrolyzer'][h],  \
                         self.energy_balance['oxygen']['electrolyzer'][h],       \
                         self.energy_balance['water']['electrolyzer'][h]         = self.technologies['electrolyzer'].use(h,eb['electricity'],producible_hyd)      # [:2] # hydrogen supplied by electrolyzer(+) # electricity absorbed by the electorlyzer(-) 
-                        
+                    
                         eb['hydrogen']      += self.energy_balance['hydrogen']['electrolyzer'][h]
                         eb['electricity']   += self.energy_balance['electricity']['electrolyzer'][h]
                         eb['oxygen']        += self.energy_balance['oxygen']['electrolyzer'][h]
                         eb['water']         += self.energy_balance['water']['electrolyzer'][h]
+                        
+                        # if 'H tank' in self.system: 
+                        #     self.energy_balance['hydrogen']['H tank'][h] = self.technologies['H tank'].use(h,eb['hydrogen'])
+                        #     eb['hydrogen'] += self.energy_balance['hydrogen']['H tank'][h]
+                            
+                    # elif self.system[self.hydrogen_demand+' demand']['strategy'] == 'demand-led':     # only availabke with a minimum constant demand
+                        
+                        
+                    #     if 'H tank' in self.system and 'HPH tank' not in self.system:
+                    #           producible_hyd  = self.technologies['H tank'].max_capacity-self.technologies['H tank'].LOC[h] + abs(eb['hydrogen']) # the tank can't be full
+                    #           if producible_hyd < self.technologies['H tank'].max_capacity*0.00001: # to avoid unnecessary iteration
+                    #               producible_hyd = 0
+                    #           if producible_hyd > 0:
+                    #               self.energy_balance['hydrogen']['electrolyzer'][h],   \
+                    #               self.energy_balance['electricity']['electrolyzer'][h],\
+                    #               self.energy_balance['oxygen']['electrolyzer'][h],     \
+                    #               self.energy_balance['water']['electrolyzer'][h]        = self.technologies['electrolyzer'].useh2(h,producible_hyd)      # [:2] # hydrogen supplied by electrolyzer(+) # electricity absorbed by the electorlyzer(-) 
+                               
+                    #               eb['hydrogen']      += self.energy_balance['hydrogen']['electrolyzer'][h]
+                    #               eb['electricity']   += self.energy_balance['electricity']['electrolyzer'][h]
+                    #               eb['oxygen']        += self.energy_balance['oxygen']['electrolyzer'][h]
+                    #               eb['water']         += self.energy_balance['water']['electrolyzer'][h]
+                            
+                             
    
                 if h == (self.simulation_hours - 1) and ('hydrogen demand' in self.system or 'HP hydrogen demand' in self.system):
                     if self.system[self.hydrogen_demand+' demand']['strategy'] == 'supply-led':  # activates only at the final step of simulation

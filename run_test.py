@@ -31,11 +31,11 @@ name_economic = 'From Rec0 to Rec' # str name for economic_assesment_results fil
 path = r'./input_test' # change the path with r'./input_dev' if you are working on your own run_dev
 #path = r'./input_dev'
 
-file_studycase = 'studycase'
-file_refcase = 'refcase'
-file_general = 'general'
-file_tech_cost = 'tech_cost'
-file_energy_market = 'energy_market'
+file_studycase      = 'studycase'
+file_refcase        = 'refcase'
+file_general        = 'general'
+file_tech_cost      = 'tech_cost'
+file_energy_market  = 'energy_market'
 file_emissions      = 'emissions'
 
 # Opening input files:
