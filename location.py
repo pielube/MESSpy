@@ -96,7 +96,6 @@ class location:
                     self.energy_balance[carrier]['demand'] = - np.tile(pd.read_csv(path+'/loads/'+system[f"{carrier} demand"]['serie'])['kg'].to_numpy(),int(self.simulation_hours/8760))   # hourly energy carrier needed for the entire simulation
                     if carrier == 'hydrogen' or carrier == 'HP hydrogen':
                         self.hydrogen_demand = carrier  # demand can be defined as 'hydrogen demand' or 'HP hydrogen demand' depending on the required delivery pressure
-                        print(type(carrier))
                         if self.system[carrier+' demand']['strategy'] == 'supply-led' and self.system[carrier+' demand']['serie'] == False :
                             self.energy_balance[carrier]['demand'] = - np.tile(pd.read_csv(path+'/loads/'+system[f"{carrier} demand"]['serie'])['kg'].to_numpy(),int(self.simulation_hours/8760))   # hourly energy carrier needed for the entire simulation
                         if self.system[carrier+' demand']['strategy'] == 'supply-led' and self.system[carrier+' demand']['serie'] != False :
@@ -694,7 +693,7 @@ class location:
             
             ### final check on energy balances at the end of every timestep
             for carrier in eb:
-                if carrier == 'electricity' and ('wind' or 'PV' in self.system) and (not self.system['wind']['owned'] or not self.system['PV']['owned']):
+                if carrier == 'electricity' and any(key in self.system for key in ['wind', 'PV']) and (self.system.get('wind', {}).get('owned', False) or self.system.get('PV', {}).get('owned', False)):
                     pass
                 if eb[carrier] != 0: 
                     if eb[carrier] >0:  sign = 'positive'
@@ -704,9 +703,3 @@ class location:
                     Options to fix the problem: \n\
                         (a) - Include {carrier} grid[\'draw\']: true if negative or {carrier} grid[\'feed\']: true if positive in studycase.json \n\
                         (b) - Vary components size or demand series in studycase.json')
-
-            
-            
-        
-        
-
