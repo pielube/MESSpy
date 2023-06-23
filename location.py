@@ -729,8 +729,9 @@ class location:
                 pass
             tol = 0.00
             if eb[carrier] != 0:
+                maximum = []
                 for arr in self.energy_balance[carrier]:
-                    print(arr)
+                    maximum.append()max(self.energy_balance[carrier][arr]
                 if eb[carrier] >0:  sign = 'positive'
                 else:               sign = 'negative'
                 raise ValueError(f'Warning: {carrier} balance at the end of timestep {h} shows {sign} value of {round(eb[carrier],2)} \n\
