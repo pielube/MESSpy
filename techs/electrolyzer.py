@@ -485,7 +485,7 @@ class electrolyzer:
                 u=3  #TO BE DONE
                 
             elif self.model == 'PEM General':
-                if hydrog < self.maxh2prod:         # if requested hydrogen is lower than the maximum one generable by a single module
+                if hydrog <= self.maxh2prod:      # if requested hydrogen is lower than the maximum amount producible by a single module
                     hyd,e_absorbed,etaElectr,watCons,CellCurrden,etaFaraday = electrolyzer.h2power(self,hydrog)
                     oxygen = hyd*self.oxy                 # [kg/h] Oxygen produced as electorlysis by-product 
                     if hyd > 0:
@@ -496,11 +496,11 @@ class electrolyzer:
                     self.cell_currdens[h] = CellCurrden
                     self.wat_cons[h]      = watCons
                                         
-                if hydrog > self.maxh2prod:      # if requested hydrogen is higher than the maximum one generable by a single module, i.e., more modules can be used      
+                elif self.maxh2prod < hydrog <= self.maxh2prod*self.n_modules :      # if requested hydrogen is higher than the maximum one generable by a single module, i.e., more modules can be used      
                     hyd,e_absorbed,etaElectr,watCons,CellCurrden,etaFaraday = electrolyzer.h2power(self,self.maxh2prod) # hydrogen to be produced by the single module  
                     hyd_11 = np.zeros(self.n_modules+1)      # creating the array where index represents nr of modules and value is the produced hydrogen summing all the modules production
                     for i in range (self.n_modules+1):
-                        hyd_11[i] = hyd*i                  # Saving the producible hydrogen for each number of n_modules_used
+                        hyd_11[i] = hyd*i                    # Saving the producible hydrogen for each number of n_modules_used
                         if hyd_11[i] > hydrog and hyd_11[i-1] < hydrog: # if, using i modules, the total amount of producible hydrogen is higher than the target one 
                             n_modules_used = i-1                
                             hyd_1 = hyd_11[n_modules_used]                 # Hydrogen produced using i-1 modules
@@ -523,15 +523,15 @@ class electrolyzer:
                             self.n_modules_used[h] = n_modules_used
                             break
                         
-                    if self.maxh2prod*self.n_modules <= hydrog:                             # if, using n_modules, the total amount of producible hydrogen is lower than the target one  
-                        hyd_1 = hyd*self.n_modules                       # total amount of H2 produced by modules working at full load
-                        e_absorbed_1 = e_absorbed*self.n_modules         # total power absorbed    // // // // // 
-                        watCons = watCons*self.n_modules               # total water consumption // // // // // 
-                        oxygen = hyd*self.oxy                                    # [kg/h] Oxygen produced as electorlysis by-product   
-                        self.n_modules_used[h] = self.n_modules
-                        self.EFF[h] = etaElectr                          # work efficiency of modules working at nominal power 
-                        self.cell_currdens[h] = CellCurrden
-                        self.wat_cons[h] = watCons
+                elif hydrog >= self.maxh2prod*self.n_modules:         # if, using n_modules, the total amount of producible hydrogen is lower than the target one  
+                    hyd_1 = hyd*self.n_modules                      # total amount of H2 produced by modules working at full load
+                    e_absorbed_1 = e_absorbed*self.n_modules        # total power absorbed    // // // // // 
+                    watCons = watCons*self.n_modules                # total water consumption // // // // // 
+                    oxygen = hyd*self.oxy                           # [kg/h] Oxygen produced as electorlysis by-product   
+                    self.n_modules_used[h] = self.n_modules
+                    self.EFF[h] = etaElectr                         # work efficiency of modules working at nominal power 
+                    self.cell_currdens[h] = CellCurrden
+                    self.wat_cons[h] = watCons
                    
                     
         elif self.strategy == 'full-time':   # if electrolyzers are supposed to work full-time for their operation
@@ -702,7 +702,8 @@ if __name__ == "__main__":
                   "Npower": 1000,
                   "number of modules": 4,
                   "stack model": 'PEM General',
-                  "strategy": 'hydrogen-first'
+                  "strategy": 'hydrogen-first',
+                  "only_renewables":True
                 }
     
     sim_hours = 36                               # [h] simulated period of time - usually it's 1 year minimum
@@ -724,7 +725,7 @@ if __name__ == "__main__":
     
     for i in range(len(flow)):
         
-        hyd[i],eabsorbed[i],oxygen[i],water[i] = el.use(i,storable_hydrogen,e=flow[i])
+        hyd[i],eabsorbed[i],oxygen[i],water[i] = el.use(i,storable_hydrogen=storable_hydrogen,e=flow[i])
     
     fig, ax = plt.subplots(dpi=600)
     ax.bar(-eabsorbed,el.n_modules_used,color='tab:green',width=60,zorder=3)
@@ -764,7 +765,7 @@ if __name__ == "__main__":
     
     for i in range(len(flow1)):
         
-        hyd[i],eabsorbed[i],oxygen[i],water[i] = el.use(i,storable_hydrogen,e=flow1[i])
+        hyd[i],eabsorbed[i],oxygen[i],water[i] = el.use(i,storable_hydrogen=storable_hydrogen,e=flow1[i])
         
     plt.figure(dpi=600)
     plt.plot(flow1,el.EFF)
@@ -793,7 +794,7 @@ if __name__ == "__main__":
     
     for i in range(len(flow)):
         
-        hyd[i],eabsorbed[i],oxygen[i],water[i] = el.use(i,storable_hydrogen,e=flow[i])
+        hyd[i],eabsorbed[i],oxygen[i],water[i] = el.use(i,storable_hydrogen=storable_hydrogen,e=flow[i])
         
     fig, ax = plt.subplots(dpi=1000)
     ax2 = ax.twinx() 

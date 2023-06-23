@@ -4,29 +4,36 @@
                                                  "priority": 1,
                                                  "strategy": "demand-led"  },
                                                  
-                            	"electricity demand": { "serie": "electric_load.csv",
-                                                     "priority": 2}, 	    
+	    
                         				           				
-                            "electricity grid": { "draw": true,
-                                                  "feed": true,
+                            "electricity grid": { "draw": false,
+                                                  "feed": false,
+                                                  "priority":6  },
+                                                  
+                            "water grid": {       "draw": true,
+                                                  "feed": false,
                                                   "priority":8  },
+                            
+                            "hydrogen grid": {       "draw": true,
+                                                     "feed": true,
+                                                     "priority":9  },
                                                    
                             "oxygen grid": { "draw": false,
                                              "feed": true,
-                                             "priority": 7  },
+                                             "priority":  7 },
 							                     				
 							      "wind": 	  {  "model"   : "simple",
                 							     "series"  : "windproduction.csv",
-                                           "Npower"  : 80000,
-                                           "priority": 3, 
-                                           "owned"   : true},
+                                           "Npower"  : 180000,
+                                           "priority": 2, 
+                                           "owned"   : false},
 
                   		       "electrolyzer": { "Npower": 1000,
-                              	                "number of modules": 60,
+                              	                "number of modules": 160,
                                       	         "stack model": "PEM General",
                                       	         "strategy": "hydrogen-first",
                                       	         "only_renewables": true,
-                                              	 "priority":4},
+                                              	 "priority":3},
                                               	 
                             "mechanical compressor":{
                              		            "P_out": 300,
@@ -37,12 +44,12 @@
                                                "pressure losses IC": 0.02,
                                                "T_IC": 308.15,
                                                "n_stages": 3,
-                                               "priority":5
+                                               "priority":4
                                 			    },
                              "H tank":{
-                                             "max capacity": 4000,
+                                             "max capacity": 80000,
                                              "pressure": 300,
-                                             "priority":6
+                                             "priority":5
                                 			  }               				      		
                            }
 }   
