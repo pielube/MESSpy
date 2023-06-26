@@ -510,7 +510,7 @@ class electrolyzer:
                             self.cell_currdens[h] = CellCurrden
                             
                             hyd_remained = hydrog-hyd_1
-                            hyd,e_absorbed,etaElectr,watCons,CellCurrden,etaFaraday = electrolyzer.h2power(self,hyd_remained) # remained hydrogen to be produced by the last module
+                            hyd,e_absorbed,etaElectr,watCons,CellCurrden,etaFaraday = electrolyzer.h2power(self,hyd_remained) # hydrogen left to be produced by the last module
                             if hyd > 0:
                                 n_modules_used = n_modules_used+1       # considering the module working at partial load
                                 self.EFF_last_module[h] = etaElectr     # work efficiency of the last module working with the remaining power
@@ -524,13 +524,14 @@ class electrolyzer:
                             break
                         
                 elif hydrog >= self.maxh2prod*self.n_modules:         # if, using n_modules, the total amount of producible hydrogen is lower than the target one  
-                    hyd_1 = hyd*self.n_modules                      # total amount of H2 produced by modules working at full load
-                    e_absorbed_1 = e_absorbed*self.n_modules        # total power absorbed    // // // // // 
-                    watCons = watCons*self.n_modules                # total water consumption // // // // // 
+                    hyd1,e_absorbed1,etaElectr,watCons1,CellCurrden1,etaFaraday1 = electrolyzer.h2power(self,self.maxh2prod) # hydrogen to be produced by the single module  
+                    hyd = hyd1*self.n_modules                      # total amount of H2 produced by modules working at full load
+                    e_absorbed = e_absorbed1*self.n_modules        # total power absorbed    // // // // // 
+                    watCons = watCons1*self.n_modules                # total water consumption // // // // // 
                     oxygen = hyd*self.oxy                           # [kg/h] Oxygen produced as electorlysis by-product   
                     self.n_modules_used[h] = self.n_modules
                     self.EFF[h] = etaElectr                         # work efficiency of modules working at nominal power 
-                    self.cell_currdens[h] = CellCurrden
+                    self.cell_currdens[h] = CellCurrden1
                     self.wat_cons[h] = watCons
                    
                     

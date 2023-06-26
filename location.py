@@ -182,6 +182,11 @@ class location:
                 Feasible combinations: \n\
                     (a) - hydrogen demand:'supply-led' & electrolyzer strategy:'full-time' \n\
                     (b) - hydrogen demand:'demand-led' & electrolyzer strategy:'hydrogen-first' ")
+            if self.system['electrolyzer']['only_renewables'] == False and self.system["electricity grid"]["draw"] == False:
+                raise ValueError(f"If 'only_renewables' strategy for electrolyzers operation is set 'false', grid connection in {self.name} location must be allowed.\n\
+                Options to fix the problem: \n\
+                    (a) - Insert electricity grid withdrawal in studycase.json\n\
+                    (b) - Change electrolyzers 'only_renewables' strategy in studycase.json\n\\ ")
                 
         if 'fuel cell' in self.system:
             self.technologies['fuel cell'] = fuel_cell(self.system['fuel cell'],self.simulation_hours) # Fuel cell object created and to 'technologies' dictionary
@@ -369,26 +374,26 @@ class location:
                             eb['water']         += self.energy_balance['water']['electrolyzer'][h]
                             
                 elif self.technologies['electrolyzer'].strategy == 'hydrogen-first' and self.technologies['electrolyzer'].only_renewables == False: # electrolyzer working both with energy from renewables and from grid, but giving precedence to electricity from renewables
-                    if eb['electricity'] > 0: # electrolyzer activated only when renewable energy is available
-                        if 'hydrogen grid' in self.system and self.system["hydrogen grid"]["feed"] and 'H tank' not in self.system: # hydrogen can be fed into an hydrogen grid
-                            producible_hyd = 9999999999999999999 
-                        # elif 'H tank' in self.system and self.system['hydrogen demand']['strategy'] != 'supply-led':   # hydrogen can only be stored into an H tank 
-                        elif 'H tank' in self.system and 'HPH tank' not in self.system and self.system[self.hydrogen_demand+' demand']['strategy'] != 'supply-led':   # hydrogen can only be stored into an H tank 
-                            producible_hyd  = self.technologies['H tank'].max_capacity-self.technologies['H tank'].LOC[h] # the tank can't be full
-                            if producible_hyd < self.technologies['H tank'].max_capacity*0.00001: # to avoid unnecessary iteration
-                                producible_hyd = 0
-                        elif 'H tank' in self.system and 'HPH tank' not in self.system and self.system[self.hydrogen_demand+' demand']['strategy'] == 'supply-led':   # hydrogen can only be stored into an H tank 
-                            producible_hyd = 9999999999999999999   # electrolyzer can produce continuously as the storage capacity is infinite. Tank is dimensioned at the end of simulation
-                        elif 'H tank' in self.system and 'HPH tank' in self.system:
-                            # storable_hydrogen_lp    = self.technologies['LPH tank'].max_capacity-self.technologies['LPH tank'].LOC[h] # the tank can't be full
-                            producible_hyd   = self.technologies['H tank'].max_capacity-self.technologies['H tank'].LOC[h] # the tank can't be full                        
-                        else:
-                            producible_hyd = max(0,-eb['hydrogen']) # hydrogen is consumed by a technology which have higher priority than tank
-                        if producible_hyd > 0:
-                            self.energy_balance['hydrogen']['electrolyzer'][h],   \
-                            self.energy_balance['electricity']['electrolyzer'][h],\
-                            self.energy_balance['oxygen']['electrolyzer'][h],     \
-                            self.energy_balance['water']['electrolyzer'][h]        = self.technologies['electrolyzer'].use(h,storable_hydrogen=producible_hyd,e=eb['electricity'])      # [:2] # hydrogen supplied by electrolyzer(+) # electricity absorbed by the electorlyzer(-) 
+
+                    if 'hydrogen grid' in self.system and self.system["hydrogen grid"]["feed"] and 'H tank' not in self.system: # hydrogen can be fed into an hydrogen grid
+                        producible_hyd = 9999999999999999999 
+                    # elif 'H tank' in self.system and self.system['hydrogen demand']['strategy'] != 'supply-led':   # hydrogen can only be stored into an H tank 
+                    elif 'H tank' in self.system and 'HPH tank' not in self.system and self.system[self.hydrogen_demand+' demand']['strategy'] != 'supply-led':   # hydrogen can only be stored into an H tank 
+                        producible_hyd  = self.technologies['H tank'].max_capacity-self.technologies['H tank'].LOC[h] # the tank can't be full
+                        if producible_hyd < self.technologies['H tank'].max_capacity*0.00001: # to avoid unnecessary iteration
+                            producible_hyd = 0
+                    elif 'H tank' in self.system and 'HPH tank' not in self.system and self.system[self.hydrogen_demand+' demand']['strategy'] == 'supply-led':   # hydrogen can only be stored into an H tank 
+                        producible_hyd = 9999999999999999999   # electrolyzer can produce continuously as the storage capacity is infinite. Tank is dimensioned at the end of simulation
+                    elif 'H tank' in self.system and 'HPH tank' in self.system:
+                        # storable_hydrogen_lp    = self.technologies['LPH tank'].max_capacity-self.technologies['LPH tank'].LOC[h] # the tank can't be full
+                        producible_hyd   = self.technologies['H tank'].max_capacity-self.technologies['H tank'].LOC[h] # the tank can't be full                        
+                    else:
+                        producible_hyd = max(0,-eb['hydrogen']) # hydrogen is consumed by a technology which have higher priority than tank
+                    if producible_hyd > 0:
+                        self.energy_balance['hydrogen']['electrolyzer'][h],   \
+                        self.energy_balance['electricity']['electrolyzer'][h],\
+                        self.energy_balance['oxygen']['electrolyzer'][h],     \
+                        self.energy_balance['water']['electrolyzer'][h]        = self.technologies['electrolyzer'].use(h,storable_hydrogen=producible_hyd,e=eb['electricity'])      # [:2] # hydrogen supplied by electrolyzer(+) # electricity absorbed by the electorlyzer(-) 
                             
                     available_hyd = self.technologies['H tank'].LOC[h] + self.technologies['H tank'].max_capacity - self.technologies['H tank'].used_capacity
                     if available_hyd + self.energy_balance['hydrogen']['electrolyzer'][h] < -eb['hydrogen']:     # hydrogen produced from electrolyzer with only renewables and the tank are not sufficient to cover the hydrogen demand in this hour --> need for grid interaction
@@ -402,6 +407,7 @@ class location:
                         eb['electricity']   += self.energy_balance['electricity']['electrolyzer'][h]
                         eb['oxygen']        += self.energy_balance['oxygen']['electrolyzer'][h]
                         eb['water']         += self.energy_balance['water']['electrolyzer'][h]
+
                     else:
                         eb['hydrogen']      += self.energy_balance['hydrogen']['electrolyzer'][h]
                         eb['electricity']   += self.energy_balance['electricity']['electrolyzer'][h]
@@ -506,7 +512,8 @@ class location:
                                             break
                                         else: 
                                             a1=a11    
-                                    
+                                    # if h== 131:
+                                        # pass
                                     # Electorlyzer balances update and overwriting
                                     self.energy_balance['hydrogen']['electrolyzer'][h],   \
                                     self.energy_balance['electricity']['electrolyzer'][h],\
@@ -740,6 +747,9 @@ class location:
                 if abs(eb[carrier]) > abs(m*tol):
                     if eb[carrier] >0:  sign = 'positive'
                     else:               sign = 'negative'
+                    # print(m*tol)
+                    # print(eb[carrier])
+                    # print(maxvalues)
                     raise ValueError(f'Warning: {carrier} balance at the end of timestep {h} shows {sign} value of {round(eb[carrier],2)} \n\
                     It means there is an overproduction not fed to grid or demand is not satisfied.\n\
                     Options to fix the problem: \n\

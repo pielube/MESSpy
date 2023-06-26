@@ -69,17 +69,18 @@ def hydrogen_production(simulation_name,loc,var=None):
     
     simulation_hours    = len(balances[loc]['hydrogen']['electrolyzer'])
     constantflow        = sum(balances[loc]['hydrogen']['electrolyzer'])/simulation_hours  # [kg/h] constant flow rate deliverable by the system if operaten in supply-led mode
-    # demand              = [constantflow]*simulation_hours  # [kg/]
-    demand              = [constantflow * (i + 1) for i in range(simulation_hours)]
+    demand_constant     = [constantflow * (i + 1) for i in range(simulation_hours)]
+    demand_variable     = -np.cumsum(balances[loc]['hydrogen']['demand'])
     production          = np.cumsum(balances[loc]['hydrogen']['electrolyzer'])
     
     fig, ax = plt.subplots(dpi=1000)
-    ax.plot(demand, label = 'constant demand')
+    ax.plot(demand_constant, label = 'constant demand')
+    ax.plot(demand_variable, label = 'variable demand')
     ax.plot(production, label = 'production')
     ax.grid(alpha = 0.3, zorder = 0)
     ax.set_ylabel('Hydrogen [kg]')
     ax.set_xlabel('Time [h]')
-    xticks = list(np.linspace(0, len(demand) - 1, 13).astype(int))
+    xticks = list(np.linspace(0, simulation_hours - 1, 13).astype(int))
     # xticklabels = [str(value) for value in xticks]
     xticklabels = ['          Jan','         Feb','          Mar','         Apr','         May','          Jun','         Jul','          Aug','           Sep','          Oct','          Nov','           Dec','']
     ax.set_xticks(xticks)

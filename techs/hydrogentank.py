@@ -4,6 +4,7 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(os.getcwd(),os.path.pardir)))   # temorarily adding constants module path 
 import constants as c
 from CoolProp.CoolProp import PropsSI
+import matplotlib.pyplot as plt
 
 class H_tank:    
     
@@ -44,17 +45,17 @@ class H_tank:
         output : hydrogen supplied or absorbed that hour [kg]
         """
         if self.max_capacity:
+            
             if hyd >= 0:                                         # charge H tank
                 
-                charge = min(hyd,self.max_capacity-self.LOC[h])  # how much hydrogen can H tank absorb?
+                charge = min(hyd,self.max_capacity-self.LOC[h])  # how much hydrogen can H tank absorb? minimum between h2 produced and available capacity in tank
                 self.LOC[h+1] = self.LOC[h]+charge               # charge H tank
                 
                 if self.LOC[h+1] > self.used_capacity: # update used capacity
                     self.used_capacity = self.LOC[h+1]      
-                
                 return(-charge) # return hydrogen absorbed
                 
-            else: # discharge H tank (this logic allows to back-calculate the LOC[0], it's useful for long term storage systems)
+            else: # discharge H tank (this logic allows to back-calculate LOC[0], it's useful for long term storage systems)
                 
                 if (self.used_capacity==self.max_capacity):  # the max_capacity has been reached, so LOC[h+1] can't become negative 
                        
@@ -68,7 +69,6 @@ class H_tank:
                     if self.LOC[h+1] < 0:                                                  # if the level of charge has become negative
                         self.used_capacity += - self.LOC[h+1]                              # incrase the used capacity
                         self.LOC[:h+2] += - self.LOC[h+1]                                  # traslate the past LOC array
-                        
                 return(discharge) # return hydrogen supplied
             
         else: 
