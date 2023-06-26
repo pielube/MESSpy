@@ -36,7 +36,6 @@ def total_balances(simulation_name,loc,var=None):
 
         if var == 'hydrogen' and 'mechanical compressor' in balances[loc][var]:
             balances[loc][var].pop('mechanical compressor')  # dict.values() to be removed as they alter the total hydrogen balance and ar enot supposed to do so. 
-            print(sum(balances[loc][var]['electrolyzer']))
             
     for carrier in carriers:
         print('\nTotal '+carrier+' balances '+loc+':\n') 

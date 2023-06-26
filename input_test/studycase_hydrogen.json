@@ -7,7 +7,7 @@
 	    
                         				           				
                             "electricity grid": { "draw": false,
-                                                  "feed": false,
+                                                  "feed": true,
                                                   "priority":6  },
                                                   
                             "water grid": {       "draw": true,

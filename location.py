@@ -722,20 +722,26 @@ class location:
                     if eb[carrier] > 0 and self.system[f"{carrier} grid"]['feed'] or eb[carrier] < 0 and self.system[f"{carrier} grid"]['draw']:
                         self.energy_balance[carrier]['grid'][h] = - eb[carrier] # energy from grid(+) or into grid(-) 
                         eb[carrier] += self.energy_balance[carrier]['grid'][h]  # electricity balance update      
-            
+
+#%%            
         ### final check on energy balances at the end of every timestep
         for carrier in eb:
-            if carrier == 'electricity' and any(key in self.system for key in ['wind', 'PV']) and (self.system.get('wind', {}).get('owned', False) or self.system.get('PV', {}).get('owned', False)):
-                pass
-            tol = 0.00
+            if carrier == 'electricity':
+                if 'wind' in self.system and self.system['wind']['owned'] == False:  # if RES generation plant not owned, extra production is not accounted as part of balances
+                    continue
+                if 'PV' in self.system and self.system['PV']['owned'] == False:     # // // 
+                    continue
+            tol = 0.0001  # [-] tolerance on error
             if eb[carrier] != 0:
-                maximum = []
+                maxvalues = []
                 for arr in self.energy_balance[carrier]:
-                    maximum.append()max(self.energy_balance[carrier][arr]
-                if eb[carrier] >0:  sign = 'positive'
-                else:               sign = 'negative'
-                raise ValueError(f'Warning: {carrier} balance at the end of timestep {h} shows {sign} value of {round(eb[carrier],2)} \n\
-                It means there is an overproduction not fed to grid or demand is not satisfied.\n\
-                Options to fix the problem: \n\
-                    (a) - Include {carrier} grid[\'draw\']: true if negative or {carrier} grid[\'feed\']: true if positive in studycase.json \n\
-                    (b) - Vary components size or demand series in studycase.json')
+                    maxvalues.append(max(self.energy_balance[carrier][arr]))
+                m = max(maxvalues)
+                if abs(eb[carrier]) > abs(m*tol):
+                    if eb[carrier] >0:  sign = 'positive'
+                    else:               sign = 'negative'
+                    raise ValueError(f'Warning: {carrier} balance at the end of timestep {h} shows {sign} value of {round(eb[carrier],2)} \n\
+                    It means there is an overproduction not fed to grid or demand is not satisfied.\n\
+                    Options to fix the problem: \n\
+                        (a) - Include {carrier} grid[\'draw\']: true if negative or {carrier} grid[\'feed\']: true if positive in studycase.json \n\
+                        (b) - Vary components size or demand series in studycase.json')
