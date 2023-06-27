@@ -5,7 +5,7 @@
                                                  "strategy": "demand-led"  },
 	    
                             "electricity grid": { "draw": true,
-                                                  "feed": false,
+                                                  "feed": true,
                                                   "priority":6  },
                                                   
                             "water grid": {       "draw": true,
@@ -24,11 +24,11 @@
                 							     "series"  : "windproduction.csv",
                                                  "Npower"  : 200000,
                                                  "priority": 2, 
-                                                 "owned"   : false},
+                                                 "owned"   : true},
 
                   		       "electrolyzer": { 
                                       		     "Npower": 1000,
-                                  	             "number of modules": 180,
+                                  	             "number of modules": 100,
                                       	         "stack model": "PEM General",
                                       	         "strategy": "hydrogen-first",
                                       	         "only_renewables": false,
@@ -45,7 +45,7 @@
                                                     "n_stages": 3,
                                                     "priority":4},
                              "H tank":{
-                                       "max capacity": 40,
+                                       "max capacity": 60000,
                                        "pressure": 300,
                                        "priority":5}               				      		
                            }

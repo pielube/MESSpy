@@ -70,19 +70,19 @@ def hydrogen_production(simulation_name,loc,var=None):
     simulation_hours    = len(balances[loc]['hydrogen']['electrolyzer'])
     constantflow        = sum(balances[loc]['hydrogen']['electrolyzer'])/simulation_hours  # [kg/h] constant flow rate deliverable by the system if operaten in supply-led mode
     demand_constant     = [constantflow * (i + 1) for i in range(simulation_hours)]
-    demand_variable     = -np.cumsum(balances[loc]['hydrogen']['demand'])
+    # demand_variable     = -np.cumsum(balances[loc]['hydrogen']['demand'])
     production          = np.cumsum(balances[loc]['hydrogen']['electrolyzer'])
     
     fig, ax = plt.subplots(dpi=1000)
     ax.plot(demand_constant, label = 'constant demand')
-    ax.plot(demand_variable, label = 'variable demand')
+    # ax.plot(demand_variable, label = 'variable demand')
     ax.plot(production, label = 'production')
     ax.grid(alpha = 0.3, zorder = 0)
     ax.set_ylabel('Hydrogen [kg]')
     ax.set_xlabel('Time [h]')
     xticks = list(np.linspace(0, simulation_hours - 1, 13).astype(int))
     # xticklabels = [str(value) for value in xticks]
-    xticklabels = ['          Jan','         Feb','          Mar','         Apr','         May','          Jun','         Jul','          Aug','           Sep','          Oct','          Nov','           Dec','']
+    xticklabels = ['         Jan','         Feb','          Mar','         Apr','         May','          Jun','        Jul','          Aug','           Sep','          Oct','          Nov','           Dec','']
     ax.set_xticks(xticks)
     ax.set_xticklabels(xticklabels)
     ax.legend()
@@ -134,7 +134,7 @@ def renewables(simulation_name,simulation_years,loc,first_day,last_day,plot=Fals
                 if (last_day-first_day) <= 20:
                     ax.set_xticks(list(range(first_day*24, (last_day+1)*24+1,24)))
                     ax.set_xticklabels([str(x) for x in list(range(first_day*24, (last_day+1)*24+1,24))], rotation=45)
-                ax.set_ylabel('Power [kW]')
+                ax.set_ylabel('Energy [kWh]')
                 ax.set_xlabel('Time [h]')
                 ax.legend()
                 plt.tight_layout()
@@ -163,6 +163,7 @@ def renewables(simulation_name,simulation_years,loc,first_day,last_day,plot=Fals
                     ax.set_xticks(list(range(first_day*24, (last_day+1)*24+1,24)))
                     ax.set_xticklabels([str(x) for x in list(range(first_day*24, (last_day+1)*24+1,24))], rotation=45)
                 ax.set_xlabel('Time [h]')
+                ax.set_ylabel('Energy [kWh]')
                 ax.legend()
                 plt.show()
         
