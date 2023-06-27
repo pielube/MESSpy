@@ -48,9 +48,17 @@ class H_tank:
             
             if hyd >= 0:                                         # charge H tank
                 
-                charge = min(hyd,self.max_capacity-self.LOC[h])  # how much hydrogen can H tank absorb? minimum between h2 produced and available capacity in tank
+                charge = min(hyd,self.max_capacity-self.LOC[h])  # how much hydrogen can H tank absorb? Minimum between h2 produced and available capacity in tank -> maximum capacity - Level od Charge (always a positive value, shifted above 0 every time it goes beyond)
                 self.LOC[h+1] = self.LOC[h]+charge               # charge H tank
                 
+                
+                # self.used_capacity -> parameter in which is stored the memory of the tank charging story.
+                #                       It is not representative of the used capacity at time h.
+                #                       It represents the maximum level reached inside the tank up to time h of the simulation.
+                #                       Once self.used_capacity reaches the value of self.max.capacity it is no longer possible to allow 
+                #                       the tank's LOC to move towards negative values depending on the hydrogen demand.
+                #                       From this point onwards, the value of self.used_capacity remains the same until the end of the simulation. 
+                                       
                 if self.LOC[h+1] > self.used_capacity: # update used capacity
                     self.used_capacity = self.LOC[h+1]      
                 return(-charge) # return hydrogen absorbed
@@ -62,7 +70,10 @@ class H_tank:
                     discharge = min(-hyd,self.LOC[h]) # how much hydrogen can H tank supply?
                     self.LOC[h+1] = self.LOC[h]-discharge # discharge H tank
             
-                else: # the max_capacity has not yet been reached, so LOC[h+1] may become negative and then the past LOC may be shifted upwards  
+                else:   # the max_capacity has not yet been reached, so LOC[h+1] may become negative and then the past LOC can be shifted upwards to positive values. 
+                        # The history of LOC during simulation is created by taking the self.used_capacity parameter into account. 
+                        # Once the maximum capacity is reached for the first time, no more shifts to negative values are permitted and LOC
+                        # remains the only parameter to represent the actual hydrogen amount in side the tank.
                                                       
                     discharge = min(-hyd,self.LOC[h]+self.max_capacity-self.used_capacity) # how much hydrogen can H tank supply?
                     self.LOC[h+1] = self.LOC[h]-discharge                                  # discharge H tank
@@ -71,7 +82,9 @@ class H_tank:
                         self.LOC[:h+2] += - self.LOC[h+1]                                  # traslate the past LOC array
                 return(discharge) # return hydrogen supplied
             
-        else: 
+        else:   # Tjis option is activated when hydrogen tank is sized at the end of simulation as a result of 'supply-led' operation strategy.
+                # A costant mass-flow rate demand is created based on the clumulative production of electrolyzers througout the year. 
+                # Tank size in this case smoothes surplus or deficit of production during operation, allowing for a constant rate deliver. 
             charge = hyd - constant_demand        # how much hydrogen can H tank absorb?
             self.LOC[h+1] = self.LOC[h]+charge    # charge H tank
             if h == (len(self.LOC)-2):            # at the end of simulation. LOC array has self.simulation_hours + 1 values
