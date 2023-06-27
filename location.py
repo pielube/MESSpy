@@ -428,29 +428,6 @@ class location:
                         eb['oxygen']        += self.energy_balance['oxygen']['electrolyzer'][h]
                         eb['water']         += self.energy_balance['water']['electrolyzer'][h]
                         
-                        # if 'H tank' in self.system: 
-                        #     self.energy_balance['hydrogen']['H tank'][h] = self.technologies['H tank'].use(h,eb['hydrogen'])
-                        #     eb['hydrogen'] += self.energy_balance['hydrogen']['H tank'][h]
-                            
-                    # elif self.system[self.hydrogen_demand+' demand']['strategy'] == 'demand-led':     # only availabke with a minimum constant demand
-                        
-                        
-                    #     if 'H tank' in self.system and 'HPH tank' not in self.system:
-                    #           producible_hyd  = self.technologies['H tank'].max_capacity-self.technologies['H tank'].LOC[h] + abs(eb['hydrogen']) # the tank can't be full
-                    #           if producible_hyd < self.technologies['H tank'].max_capacity*0.00001: # to avoid unnecessary iteration
-                    #               producible_hyd = 0
-                    #           if producible_hyd > 0:
-                    #               self.energy_balance['hydrogen']['electrolyzer'][h],   \
-                    #               self.energy_balance['electricity']['electrolyzer'][h],\
-                    #               self.energy_balance['oxygen']['electrolyzer'][h],     \
-                    #               self.energy_balance['water']['electrolyzer'][h]        = self.technologies['electrolyzer'].useh2(h,producible_hyd)      # [:2] # hydrogen supplied by electrolyzer(+) # electricity absorbed by the electorlyzer(-) 
-                               
-                    #               eb['hydrogen']      += self.energy_balance['hydrogen']['electrolyzer'][h]
-                    #               eb['electricity']   += self.energy_balance['electricity']['electrolyzer'][h]
-                    #               eb['oxygen']        += self.energy_balance['oxygen']['electrolyzer'][h]
-                    #               eb['water']         += self.energy_balance['water']['electrolyzer'][h]
-                            
-                             
    
                 if h == (self.simulation_hours - 1) and ('hydrogen demand' in self.system or 'HP hydrogen demand' in self.system):
                     if self.system[self.hydrogen_demand+' demand']['strategy'] == 'supply-led':  # activates only at the final step of simulation
@@ -511,9 +488,8 @@ class location:
                                         if abs(a1-a11) < abs_err or i > maxiter:    # strict tolerance for convergence 
                                             break
                                         else: 
-                                            a1=a11    
-                                    # if h== 131:
-                                        # pass
+                                            a1=a11  
+                                            
                                     # Electorlyzer balances update and overwriting
                                     self.energy_balance['hydrogen']['electrolyzer'][h],   \
                                     self.energy_balance['electricity']['electrolyzer'][h],\
@@ -731,7 +707,7 @@ class location:
                         eb[carrier] += self.energy_balance[carrier]['grid'][h]  # electricity balance update      
 
 #%%            
-        ### final check on energy balances at the end of every timestep
+        ### FINAL CHECK. Check on energy balances at the end of every timestep
         for carrier in eb:
             if carrier == 'electricity':
                 if 'wind' in self.system and self.system['wind']['owned'] == False:  # if RES generation plant not owned, extra production is not accounted as part of balances
@@ -747,9 +723,6 @@ class location:
                 if abs(eb[carrier]) > abs(m*tol):
                     if eb[carrier] >0:  sign = 'positive'
                     else:               sign = 'negative'
-                    # print(m*tol)
-                    # print(eb[carrier])
-                    # print(maxvalues)
                     raise ValueError(f'Warning: {carrier} balance at the end of timestep {h} shows {sign} value of {round(eb[carrier],2)} \n\
                     It means there is an overproduction not fed to grid or demand is not satisfied.\n\
                     Options to fix the problem: \n\
