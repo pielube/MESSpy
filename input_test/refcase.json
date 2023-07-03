@@ -13,7 +13,8 @@
 							"Max field length": 5,
 							"peakP": 1,
 							"serie": "TMY",
-							"priority": 2}},
+							"priority": 2,
+							"owned": true}},
 							
 							
 "prosumer_2": { "electricity demand": { "serie": "load_test_2.csv",
