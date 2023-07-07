@@ -285,7 +285,8 @@ def NPV(file_studycase,name_studycase,name_refcase,economic_data,simulation_year
         
             
             
-def LCOH (
+def LCOH (  
+            balances_pp,
             structure,    
             name_studycase, 
             economic_data, 
@@ -295,12 +296,13 @@ def LCOH (
             revenues    = False, 
             refund      = False,
             plot        = True,
-            print_      = True, 
-            
+            print_      = True,
             ):
     """
     Levelized Cost Of Hydrogen Calculation
     ----------
+    balances_pp: dictionary containing total balances calculation after calling the post process function renewables_results 
+    
     name_studycase: str name of study case results file.pkl
 
     economic_data: dictionary
@@ -329,44 +331,41 @@ def LCOH (
 
     """       
     years_factor = int(economic_data['investment years'] / simulation_years) # this factor is useful to match the length of the energy simulation with the length of the economic investment
-    
-    # open energy balances of studycase
-    with open('Results/balances_'+name_studycase+'.pkl', 'rb') as f:        balances = pickle.load(f)
 
     # open cost of componenets of studycase
     with open('Results/tech_cost_'+name_studycase+'.pkl', 'rb') as f:       tc = pickle.load(f)   # ricontrollare tc nel caso dell'analisi di sensitività, probabilmente non lo carica bene. 
 
     # Check for hydrogen carrier to be included in location balances
-    if all(len(balances[location_name]['hydrogen']) != 0 for location_name in tc):    # if hydrogen dictionary has values for at least one location
+    if all(len(balances_pp[location_name]['hydrogen']) != 0 for location_name in tc):    # if hydrogen dictionary has values for at least one location
         pass
     else:
         print("Hydrogen carrier not included in the considered case study - LCOH calculation not available")
         return
     
-    results = {}    # dictionary initialising global lcoh results of each location
+    results_pp = {}    # dictionary initialising global lcoh results of each location
     lcoh    = {}    # dictionary initialising specific lcoh results of each location
     
     for location_name in tc:           # for each location
         
-        results[location_name] = {}           # dictionary initialise economic results
-        lcoh[location_name] = {}           # dictionary initialise economic results
+        results_pp[location_name] = {}           # dictionary initialise economic results_pp
+        lcoh[location_name] = {}           # dictionary initialise economic results_pp
         
         # initialise cash flow:     
-        results[location_name]['CF'] = {  'OeM': np.zeros(economic_data['investment years']),
+        results_pp[location_name]['CF'] = {  'OeM': np.zeros(economic_data['investment years']),
                                           'Purchase': {},
                                           'Sale': {},
                                           'Refund': np.zeros(economic_data['investment years']),
                                           'Tot': np.zeros(economic_data['investment years'])} 
     
-        results[location_name]['I0'] = {} # initialise initial investment
+        results_pp[location_name]['I0'] = {} # initialise initial investment
         
         lcoh[location_name]['Capex'] = {}
         lcoh[location_name]['Opex'] = {}
         
         for tech_name in tc[location_name]:              # considering each technology in the location
 
-            results[location_name]['I0'][tech_name] = tc[location_name][tech_name]['total cost'] # I0   
-            results[location_name]['CF']['OeM'][:] += - tc[location_name][tech_name]['OeM'] # OeM
+            results_pp[location_name]['I0'][tech_name] = tc[location_name][tech_name]['total cost'] # I0   
+            results_pp[location_name]['CF']['OeM'][:] += - tc[location_name][tech_name]['OeM'] # OeM
             
             lcoh[location_name]['Capex'][tech_name] = np.concatenate(([tc[location_name][tech_name]['total cost']], np.full(economic_data['investment years'], 0))) # Capex array
             lcoh[location_name]['Opex'][tech_name]  = np.repeat(tc[location_name][tech_name]['OeM'],economic_data['investment years']) # Opex array  
@@ -378,12 +377,12 @@ def LCOH (
                     age = age[location_name][tech_name][0]
                     for a in age:
                         rep_time = int(a/8760)
-                        results[location_name]['CF']['OeM'][rep_time] += - results[location_name]['I0'][tech_name] * tc[location_name][tech_name]['replacement']['rate']/100 # subtract technology replacement to location Cash Flow
+                        results_pp[location_name]['CF']['OeM'][rep_time] += - results_pp[location_name]['I0'][tech_name] * tc[location_name][tech_name]['replacement']['rate']/100 # subtract technology replacement to location Cash Flow
                         lcoh[location_name]['Capex'][tech_name] += lcoh[location_name]['Capex'][tech_name] * tc[location_name][tech_name]['replacement']['rate']/100 # subtract technology replacement to location Cash Flow
             else: # if replacement time is given
                 rep_time = tc[location_name][tech_name]['replacement']['years']
                 while rep_time < economic_data['investment years']: # if tech_name replacement happens before the end of the simulation
-                    results[location_name]['CF']['OeM'][rep_time-1] += - np.float64(results[location_name]['I0'][tech_name])*np.float(tc[location_name][tech_name]['replacement']['rate'])/np.float(100) # subtract technology replacement to location Cash Flow. -1 subtracted to index because the array is shifted of 1 position during LCOH calculation -> CF[1:]  = results[location_name]['CF']['Tot'].copy()    # [€] Cash Flows
+                    results_pp[location_name]['CF']['OeM'][rep_time-1] += - np.float64(results_pp[location_name]['I0'][tech_name])*np.float(tc[location_name][tech_name]['replacement']['rate'])/np.float(100) # subtract technology replacement to location Cash Flow. -1 subtracted to index because the array is shifted of 1 position during LCOH calculation -> CF[1:]  = results_pp[location_name]['CF']['Tot'].copy()    # [€] Cash Flows
                     lcoh[location_name]['Capex'][tech_name][rep_time] += np.float64(lcoh[location_name]['Capex'][tech_name][0])*np.float(tc[location_name][tech_name]['replacement']['rate'])/np.float64(100) # subtract technology replacement to location Cash Flow. np.float type added to avoid overflow problems 
                     rep_time += tc[location_name][tech_name]['replacement']['years']
             
@@ -392,104 +391,94 @@ def LCOH (
                 if tc[location_name][tech_name]['refund']['years'] == 0 and tc[location_name][tech_name]['refund']['rate'] == 0:  # no refunds considered
                     pass
                 elif tc[location_name][tech_name]['refund']['years'] == 0 and tc[location_name][tech_name]['refund']['rate'] != 0:
-                    results[location_name]['I0'][tech_name] = results[location_name]['I0'][tech_name]*((100-tc[location_name][tech_name]['refund']['rate'])/100)
+                    results_pp[location_name]['I0'][tech_name] = results_pp[location_name]['I0'][tech_name]*((100-tc[location_name][tech_name]['refund']['rate'])/100)
                     lcoh[location_name]['Capex'][tech_name] = lcoh[location_name]['Capex'][tech_name]*((100-tc[location_name][tech_name]['refund']['rate'])/100)
                 else:
-                    yearly_refund = results[location_name]['I0'][tech_name]*tc[location_name][tech_name]['refund']['rate']/100 / tc[location_name][tech_name]['refund']['years'] # yearly refund [€]
+                    yearly_refund = results_pp[location_name]['I0'][tech_name]*tc[location_name][tech_name]['refund']['rate']/100 / tc[location_name][tech_name]['refund']['years'] # yearly refund [€]
                     refunds = np.zeros(economic_data['investment years']) # array initialise
                     refunds[:min(economic_data['investment years'],tc[location_name][tech_name]['refund']['years'])] = yearly_refund # array repeat yearly refund 
-                    results[location_name]['CF']['Refund'] += refunds # add refund to Cash Flow
+                    results_pp[location_name]['CF']['Refund'] += refunds # add refund to Cash Flow
                     lcoh[location_name]['Opex'][tech_name] -= refunds # add refund to Opex expenditures
                 
-                results[location_name]['CF']['Tot'] += - results[location_name]['CF']['Refund']
+                results_pp[location_name]['CF']['Tot'] += - results_pp[location_name]['CF']['Refund']
                 
         # energy sold and purchased in study case 
-        for carrier in balances[location_name]:                           # for each carrier (electricity, hydrogen, gas, heat)
+        for carrier in balances_pp[location_name]:                           # for each carrier (electricity, hydrogen, gas, heat)
             
-            if 'grid' in balances[location_name][carrier]:  
+            if 'grid' in balances_pp[location_name][carrier]:  
                 
                 if type(economic_data[carrier]['sale']) == str: # if the price series is given
                     sale_serie = np.tile(pd.read_csv(path+'/energy_price/'+economic_data[carrier]['sale'])['0'].to_numpy(),int(simulation_years))  
-                    sold = balances[location_name][carrier]['grid'] * sale_serie
+                    sold = balances_pp[location_name][carrier]['grid'] * sale_serie
                 else: # if the price is always the same 
-                    sold = balances[location_name][carrier]['grid']*economic_data[carrier]['sale'] 
+                    sold = balances_pp[location_name][carrier]['grid']*economic_data[carrier]['sale'] 
                
                 sold = np.tile(sold,years_factor)
                 sold = np.reshape(sold,(-1,8760))
-                results[location_name]['CF']['Sale'][carrier]   = - sold.sum(axis=1,where=sold<0)
+                results_pp[location_name]['CF']['Sale'][carrier]   = - sold.sum(axis=1,where=sold<0)
                 lcoh[location_name]['Opex'][carrier +' sold']   =   sold.sum(axis=1,where=sold<0) 
-
-                if type(economic_data[carrier]['purchase']) == str: # if the price series is given
-                    purchase_serie = np.tile(pd.read_csv(path+'/energy_price/'+economic_data[carrier]['purchase'])['0'].to_numpy(),int(simulation_years))  
-                    purchase = balances[location_name][carrier]['grid'] * purchase_serie
-                else: # if the price is always the same 
-                    purchase = balances[location_name][carrier]['grid']*economic_data[carrier]['purchase']
-               
-                purchase = np.tile(purchase,years_factor)
-                purchase = np.reshape(purchase,(-1,8760))
-                results[location_name]['CF']['Purchase'][carrier]   = - purchase.sum(axis=1,where=purchase>0)
-                lcoh[location_name]['Opex'][carrier +' purchased']  =   purchase.sum(axis=1,where=purchase>0) 
-
                 
-            
-            if carrier == 'electricity':
-                if 'wind electricity' in balances[location_name]['electricity'] and structure[location_name]['wind']['owned'] == False:   
-                
-                    # if type(economic_data[carrier]['wind electricity']['sale']) == str: # if the price series is given
-                    #     sale_serie = np.tile(pd.read_csv(path+'/energy_price/'+economic_data[carrier]['sale'])['0'].to_numpy(),int(simulation_years))  
-                    #     sold = balances[location_name][carrier]['wind electricity'] * sale_serie
-                    # else: # if the price is always the same 
-                    #     sold = balances[location_name][carrier]['wind electricity']*economic_data['wind electricity']['sale'] 
+                if carrier != 'electricity':
+                    if type(economic_data[carrier]['purchase']) == str: # if the price series is given
+                        purchase_serie = np.tile(pd.read_csv(path+'/energy_price/'+economic_data[carrier]['purchase'])['0'].to_numpy(),int(simulation_years))  
+                        purchase = balances_pp[location_name][carrier]['grid'] * purchase_serie
+                    else: # if the price is always the same 
+                        purchase = balances_pp[location_name][carrier]['grid']*economic_data[carrier]['purchase']
                    
-                    # sold = np.tile(sold,years_factor)
-                    # sold = np.reshape(sold,(-1,8760))
-                    # results[location_name]['CF']['Sale'][carrier] = - sold.sum(axis=1,where=sold<0)
+                    purchase = np.tile(purchase,years_factor)
+                    purchase = np.reshape(purchase,(-1,8760))
+                    results_pp[location_name]['CF']['Purchase'][carrier]   = - purchase.sum(axis=1,where=purchase>0)
+                    lcoh[location_name]['Opex'][carrier +' purchased']  =   purchase.sum(axis=1,where=purchase>0) 
+                else:
+                    if type(economic_data[carrier]['purchase']) == str: # if the price series is given
+                        purchase_serie = np.tile(pd.read_csv(path+'/energy_price/'+economic_data[carrier]['purchase'])['0'].to_numpy(),int(simulation_years))  
+                        el_purchased_hyd = balances_pp[location_name][carrier]['hyd grid electricity'] * purchase_serie
+                    else: # if the price is always the same 
+                        el_purchased_hyd = balances_pp[location_name][carrier]['hyd grid electricity']*economic_data[carrier]['purchase']
+
+                    el_purchased_hyd = np.tile(el_purchased_hyd,years_factor)
+                    el_purchased_hyd = np.reshape(el_purchased_hyd,(-1,8760))
+                    results_pp[location_name]['CF']['Purchase'][carrier]   = - el_purchased_hyd.sum(axis=1)
+                    lcoh[location_name]['Opex'][carrier +' purchased']  =  el_purchased_hyd.sum(axis=1) 
+  
+            if carrier == 'electricity':
+                if 'hyd wind electricity' in balances_pp[location_name]['electricity'] and structure[location_name]['wind']['owned'] == False:   
                     
                     if type(economic_data['wind electricity']['purchase']) == str: # if the price series is given
                         purchase_serie = np.tile(pd.read_csv(path+'/energy_price/'+economic_data[carrier]['purchase'])['0'].to_numpy(),int(simulation_years))  
-                        purchase = balances[location_name][carrier]['wind electricity'] * purchase_serie
+                        purchase = balances_pp[location_name][carrier]['hyd wind electricity'] * purchase_serie
                     else: # if the price is always the same 
-                        purchase = balances[location_name][carrier]['wind electricity']*economic_data['wind electricity']['purchase']
+                        purchase = balances_pp[location_name][carrier]['hyd wind electricity']*economic_data['wind electricity']['purchase']
                    
                     purchase = np.tile(purchase,years_factor)
                     purchase = np.reshape(purchase,(-1,8760))
-                    results[location_name]['CF']['Purchase'][carrier] += - purchase.sum(axis=1,where=purchase>0)
+                    results_pp[location_name]['CF']['Purchase'][carrier] += - purchase.sum(axis=1,where=purchase>0)
                     lcoh[location_name]['Opex']['wind electricity purchased']  =  purchase.sum(axis=1,where=purchase>0)
                 
-                if 'pv electricity' in balances[location_name]['electricity'] and structure[location_name]['PV']['owned'] == False:  
-                
-                #     if type(economic_data[carrier]['sale']) == str: # if the price series is given
-                #         sale_serie = np.tile(pd.read_csv(path+'/energy_price/'+economic_data[carrier]['sale'])['0'].to_numpy(),int(simulation_years))  
-                #         sold = balances[location_name][carrier]['pv electricity'] * sale_serie
-                #     else: # if the price is always the same 
-                #         sold = balances[location_name][carrier]['pv electricity']*economic_data[carrier]['sale'] 
-                   
-                #     sold = np.tile(sold,years_factor)
-                #     sold = np.reshape(sold,(-1,8760))
-                #     results[location_name]['CF']['Sale'][carrier] = - sold.sum(axis=1,where=sold<0)
-                    
+                if 'hyd pv electricity' in balances_pp[location_name]['electricity'] and structure[location_name]['PV']['owned'] == False:  
+
                     if type(economic_data['pv electricity']['purchase']) == str: # if the price series is given
                         purchase_serie = np.tile(pd.read_csv(path+'/energy_price/'+economic_data[carrier]['purchase'])['0'].to_numpy(),int(simulation_years))  
-                        purchase = balances[location_name][carrier]['pv electricity'] * purchase_serie
+                        purchase = balances_pp[location_name][carrier]['hyd pv electricity'] * purchase_serie
                     else: # if the price is always the same 
-                        purchase = balances[location_name][carrier]['pv electricity']*economic_data['pv electricity']['purchase']
+                        purchase = balances_pp[location_name][carrier]['hyd pv electricity']*economic_data['pv electricity']['purchase']
                    
                     purchase = np.tile(purchase,years_factor)
                     purchase = np.reshape(purchase,(-1,8760))
-                    results[location_name]['CF']['Purchase'][carrier] += - purchase.sum(axis=1,where=purchase>0)
+                    results_pp[location_name]['CF']['Purchase'][carrier] += - purchase.sum(axis=1,where=purchase>0)
                     lcoh[location_name]['Opex']['pv electricity purchased']  =  purchase.sum(axis=1,where=purchase>0)
         
         # CF update considering inflation on each carrier
         for carrier in economic_data['inflation rate']:
             f = economic_data['inflation rate'][carrier]
             
-            if carrier in results[location_name]['CF']['Purchase']:
+            if carrier in results_pp[location_name]['CF']['Purchase']:
                 for y in range(economic_data['investment years']):
-                    results[location_name]['CF']['Purchase'][carrier][y] = results[location_name]['CF']['Purchase'][carrier][y]*(1+f)**y
+                    results_pp[location_name]['CF']['Purchase'][carrier][y] = results_pp[location_name]['CF']['Purchase'][carrier][y]*(1+f)**y
                     
-            if carrier in results[location_name]['CF']['Sale']:
+            if carrier in results_pp[location_name]['CF']['Sale']:
                 for y in range(economic_data['investment years']):
-                    results[location_name]['CF']['Sale'][carrier][y] = results[location_name]['CF']['Sale'][carrier][y]*(1+f)**y
+                    results_pp[location_name]['CF']['Sale'][carrier][y] = results_pp[location_name]['CF']['Sale'][carrier][y]*(1+f)**y
         
             for k in lcoh[location_name]['Opex']: 
                 if carrier in k:
@@ -497,13 +486,13 @@ def LCOH (
                         lcoh[location_name]['Opex'][k][y] = lcoh[location_name]['Opex'][k][y]*(1+f)**y
                         
         # Building Cash Flow final array while changing sign to revenews and expenditures as needed in LCOH formula
-        for carrier in results[location_name]['CF']['Purchase']:
-            results[location_name]['CF']['Tot'] -= results[location_name]['CF']['Purchase'][carrier]
+        for carrier in results_pp[location_name]['CF']['Purchase']:
+            results_pp[location_name]['CF']['Tot'] -= results_pp[location_name]['CF']['Purchase'][carrier]
             
         if revenues:        # if revenues have to be included in LCOH calculation
-            for carrier in results[location_name]['CF']['Sale']:
+            for carrier in results_pp[location_name]['CF']['Sale']:
                 if carrier in revenues:
-                    results[location_name]['CF']['Tot'] -= results[location_name]['CF']['Sale'][carrier]
+                    results_pp[location_name]['CF']['Tot'] -= results_pp[location_name]['CF']['Sale'][carrier]
             # lcoh dictionary
             keys_to_remove = []
             for carrier in list(lcoh[location_name]['Opex'].keys()):
@@ -519,13 +508,13 @@ def LCOH (
             for key in keys_to_remove:
                     del lcoh[location_name]['Opex'][key]   
                                 
-        results[location_name]['CF']['Tot'] +=  - results[location_name]['CF']['OeM']       
+        results_pp[location_name]['CF']['Tot'] +=  - results_pp[location_name]['CF']['OeM']       
                                             
         # calculate I0
-        results[location_name]['I0']['Tot'] = 0
-        for tech_name in results[location_name]['I0']:
+        results_pp[location_name]['I0']['Tot'] = 0
+        for tech_name in results_pp[location_name]['I0']:
             if tech_name != 'Tot':
-                results[location_name]['I0']['Tot'] += results[location_name]['I0'][tech_name]   
+                results_pp[location_name]['I0']['Tot'] += results_pp[location_name]['I0'][tech_name]   
                 
         for key in lcoh[location_name]['Opex']:
             lcoh[location_name]['Opex'][key] = np.insert(lcoh[location_name]['Opex'][key], 0, 0) # shifting Opex value to year 1 while only Capex is considered in year 0.
@@ -536,11 +525,11 @@ def LCOH (
         # LCOH calculation
         
         # Hydrogen produced each year via electrolysis
-        produced_hydrogen = [0] + [sum(balances[location_name]['hydrogen']['electrolyzer'])]*economic_data['investment years']  # [kg/y] - No H2 produced in period 0
+        produced_hydrogen = [0] + [sum(balances_pp[location_name]['hydrogen']['electrolyzer'])]*economic_data['investment years']  # [kg/y] - No H2 produced in period 0
         r       = economic_data['interest rate']                # [%] interest rate 
-        I0      = results[location_name]['I0']['Tot']           # [€] Initial investment at time = 0
+        I0      = results_pp[location_name]['I0']['Tot']           # [€] Initial investment at time = 0
         CF      = np.zeros(economic_data['investment years'] +1)                     # Creating an empty array of year_factor + 1 dimension for Cash Flows in order to insert only I0 as first element
-        CF[1:]  = results[location_name]['CF']['Tot'].copy()    # [€] Cash Flows
+        CF[1:]  = results_pp[location_name]['CF']['Tot'].copy()    # [€] Cash Flows
         CF[0]   = I0
         if economic_data['decommissioning'] > 0:
             CF = np.append(CF, I0*economic_data['decommissioning'])
@@ -557,7 +546,7 @@ def LCOH (
         
         LCOH = round(sum(num)/sum(den),3)
         
-        results[location_name]['LCOH'] = {'Value [€/kgH2]'          : LCOH,
+        results_pp[location_name]['LCOH'] = {'Value [€/kgH2]'          : LCOH,
                                           'Discounted Expenditures' : num,
                                           'Discounted Production'   : den}
                 
@@ -675,8 +664,8 @@ def LCOH (
             # plt.tight_layout()
             plt.show()        
         
-        # save results in Results/economic_assesment.pkl
-        with open(f"Results/LCOH_assessment_{name_output}.pkl", 'wb') as f:  pickle.dump(results,f)
+        # save results_pp in results_pp/economic_assesment.pkl
+        with open(f"results/LCOH_assessment_{name_output}.pkl", 'wb') as f:  pickle.dump(results_pp,f)
         
         if print_ == True:
             print(f"The LCOH calculated for the considered scenario results in {LCOH} €/kgH2")

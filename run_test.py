@@ -31,8 +31,8 @@ name_economic = 'From Rec0 to Rec' # str name for economic_assesment_results fil
 path = r'./input_test' # change the path with r'./input_dev' if you are working on your own run_dev
 #path = r'./input_dev'
 
-file_studycase      = 'studycase'
-file_refcase        = 'refcase'
+file_studycase      = 'studycase_hydrogen'
+file_refcase        = 'refcase_hydrogen'
 file_general        = 'general'
 file_tech_cost      = 'tech_cost'
 file_energy_market  = 'energy_market'
@@ -85,10 +85,10 @@ some post-process are alredy avaiable as examples in postprocess_test
 you should create your own postprocess_dev.py
 """
 
-pp.total_balances(name_studycase,'prosumer_1','electricity')
-pp.total_balances(name_studycase,'prosumer_2','electricity')
-pp.total_balances(name_studycase,'prosumer_2','hydrogen')
-pp.total_balances(name_studycase,'consumer_1','electricity')
+# pp.total_balances(name_studycase,'prosumer_1','electricity')
+# pp.total_balances(name_studycase,'prosumer_2','electricity')
+# pp.total_balances(name_studycase,'prosumer_2','hydrogen')
+# pp.total_balances(name_studycase,'consumer_1','electricity')
 
 #pp.total_balances(name_refcase,'consumer_2','electricity')
 #pp.total_balances(name_refcase,'consumer_2','heating water')
@@ -96,19 +96,20 @@ pp.total_balances(name_studycase,'consumer_1','electricity')
 #pp.total_balances(name_studycase,'consumer_2','electricity')
 #pp.total_balances(name_studycase,'consumer_2','heating water')
 
-pp.REC_electricity_balance(name_studycase)
+# pp.REC_electricity_balance(name_studycase)
 
 pp.LOC_plot(name_studycase)
 
 pp.NPV_plot(name_economic)
-
-# pp.renewables(name_studycase,general['simulation years'],'Industrial_Facility_1',40,50,plot=True)
-# LCOH(studycase,name_studycase,energy_market,general['simulation years'],path,name_economic, revenues = ['oxygen'], refund = True) 
-# pp.ghg_emissions(name_studycase,'Industrial_Facility_1', emissions, '2025', print_ = True)
+ 
+balances_pp = pp.renewables_results(studycase,name_studycase,general['simulation years'],'Industrial_Facility_1', emissions, '2025',235,237, print_ = True, plot = True, ghg = True,save=True)
+balances_pp = pp.renewables_results(studycase,name_studycase,general['simulation years'],'Industrial_Facility_1', emissions, '2025',120,125, print_ = False, plot = True, ghg = False,save=False)
+balances_pp = pp.renewables_results(studycase,name_studycase,general['simulation years'],'Industrial_Facility_1', emissions, '2025',220,240, print_ = False, plot = True, ghg = False,save=False)
+LCOH(balances_pp,studycase,name_studycase,energy_market,general['simulation years'],path,name_economic, revenues = False, refund = True)
 
 # pp.hourly_balances_electricity(name_studycase,'Industrial_Facility_1',40,50)
-pp.hourly_balances_electricity(name_studycase,'prosumer_1', 20, 21)
-pp.hourly_balances_electricity(name_studycase,'prosumer_2', 2, 3)
+# pp.hourly_balances_electricity(name_studycase,'prosumer_1', 20, 21)
+# pp.hourly_balances_electricity(name_studycase,'prosumer_2', 2, 3)
 
 #pp.hourly_balances_electricity(name_studycase,'consumer_1', 2, 3)
 #pp.hourly_balances_electricity(name_studycase,'consumer_2', 2, 3)
