@@ -6,5 +6,6 @@
             	'sales': [€/kWh] (electricity and gas) or [€/kg] (hydrogen)
 'interest rate': 0-1 [rate/year]
 'inflation rate': -1-1 [rate/year] cost evolution of each carrier
+'decommissioning': 0-1 [-] system dismantling as a % of initial construction costs (Total CAPEX)
 'investment year': time horizon for which to evaluate the economic analysis (must be a multiple of simulation_year in general.json)
         

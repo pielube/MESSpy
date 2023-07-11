@@ -50,16 +50,19 @@ class wind:
             produce electricity .use(h)
         """
         
-        self.params = params
-        self.ts = ts
-        self.cost = False # will be updated with tec_cost()
-        self.simulation_hours = simulation_hours
-
+        self.params             = params
+        self.ts                 = ts
+        self.cost               = False # will be updated with tec_cost()
+        self.simulation_hours   = simulation_hours
+        self.property           = params['owned']   # bool value to take into account if the plant is owned or only electricity purchase is considered. 
+                                                    # Main impact on economic assessment and key parameters
         
         if params['model'] not in ['betz','detailed','simple']:
-            print('Error: wrong wind turbine model')
+            print('Error: the wrong wind turbine model has been selected')
 
         if self.params['model'] == 'simple':
+            
+            self.series             = params["series"]  #  selected dataset for wind hourly production
                            
             'Data Extraction - Wind power generation'
             main = False                        # check
@@ -74,7 +77,7 @@ class wind:
                 os.chdir(f"{path}\\production") # if code is being executed from main
                 main = True
             
-            self.wind_prod = (pd.read_csv("Windproduction.csv", skiprows =3,\
+            self.wind_prod = (pd.read_csv(self.series,skiprows =3,\
                              usecols = ["electricity"]).values).reshape(-1,)    # importing hourly wind production data for 
                                                                                 # the selected location. Expressed as ratio kWprod/1KWrated
             self.prod_1kw = np.tile(self.wind_prod, int(self.simulation_hours/8760))  # creating the production series needed for the entire simulation

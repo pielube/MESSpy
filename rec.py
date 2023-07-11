@@ -40,10 +40,9 @@ class REC:
         
         """
     
-    
-        # Check if new input files have to been donloaded from PV gis ##############################################################################################
+        # Check if new input files have to been downloaded from PV gis ##############################################################################################
         check = True # Used to check if TMY have to been downloaded from PVgis or the old one can be used
-        check_pv = True # Used to check if PV_production series hate to been downloaded from PVgis or the old one can be used
+        check_pv = True # Used to check if PV_production series have to been downloaded from PVgis or the old one can be used
         directory = './previous_simulation'
         if not os.path.exists(directory): os.makedirs(directory)
 
@@ -106,7 +105,6 @@ class REC:
                         self.energy_balance['electricity']['into grid'][h] += self.locations[location_name].energy_balance['electricity']['grid'][h] # electricity fed into the grid from the whole rec at hour h
                     else:                                                     
                         self.energy_balance['electricity']['from grid'][h] += self.locations[location_name].energy_balance['electricity']['grid'][h] # electricity withdrawn from the grid the whole rec at hour h
-                
                 
             ### solve smart heatpumps (REC_surplus == True)
             HPs_available = []
@@ -175,6 +173,7 @@ class REC:
                         self.energy_balance['electricity']['into grid'][h] += - self.locations[location_name].energy_balance['electricity']['battery'][h] # update grid balance (rec)
                     else:
                         self.energy_balance['electricity']['from grid'][h] += - self.locations[location_name].energy_balance['electricity']['battery'][h] # update grid balance (rec)
+                
 
     def save(self,simulation_name):
         """
@@ -223,6 +222,10 @@ class REC:
                 parameters[location_name][tech_name] = {}      
                 if self.locations[location_name].technologies['electrolyzer'].model == 'PEM General':
                     parameters[location_name][tech_name]['efficiency'] = self.locations[location_name].technologies[tech_name].EFF
+                    parameters[location_name][tech_name]['hourly capacity factor'] =   ((-balances[location_name]['electricity'][tech_name])/             \
+                                                                                (self.locations[location_name].technologies[tech_name].MaxPowerStack))*100
+                    parameters[location_name][tech_name]['capacity factor'] =   ((-balances[location_name]['electricity'][tech_name].sum())/             \
+                                                                                (self.locations[location_name].technologies[tech_name].MaxPowerStack*self.simulation_hours))*100
                     
             tech_name = 'fuel cell'
             if tech_name in self.locations[location_name].technologies:
@@ -243,13 +246,14 @@ class REC:
             
             tech_cost[location_name] = {}
             for tech_name in self.locations[location_name].technologies:
-                if self.locations[location_name].technologies[tech_name].cost:
+                if self.locations[location_name].technologies[tech_name].cost and (not hasattr(self.locations[location_name].technologies[tech_name], 'property') or self.locations[location_name].technologies[tech_name].property) :
                     tech_cost[location_name][tech_name] = self.locations[location_name].technologies[tech_name].cost
+        
         
         directory = './results'
         if not os.path.exists(directory): os.makedirs(directory)
         
-        with open('results/balances_'+simulation_name+".pkl", 'wb') as f: pickle.dump(balances, f)      
+        with open('results/balances_'+simulation_name+".pkl", 'wb') as f: pickle.dump(balances, f)       # WIP va aggiunta questa prima di results stringa perchè vengano salvati i risultati nelle cartelle apposite './input_dev/Scenario1/results'
         with open('results/tech_params_'+simulation_name+".pkl", 'wb') as f: pickle.dump(parameters, f)
         with open('results/LOC_'+simulation_name+".pkl", 'wb') as f: pickle.dump(LOC, f)             
         with open('results/ageing_'+simulation_name+".pkl", 'wb') as f: pickle.dump(ageing, f)   

@@ -374,7 +374,7 @@ class Absorber:
         e_absorbed = min(self.Npower,q_in)                          
         self.q_used[h] = e_absorbed
         self.q_cool[h] = e_absorbed*self.COP        # [kWh] when timestep is kept at 1 h kWh = kW   
-        return (self.q_cool[h])                     # [kWh] cold energy produced by the absorber
+        return (self.q_cool[h],e_absorbed)                     # [kWh] cold energy produced by the absorber
     
     
     def tech_cost(self,tech_cost):

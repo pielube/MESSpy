@@ -168,17 +168,25 @@ class hydrogen_compressor:
     def abs_validationplot(self):
 
         print('---------------absorption process validation-----------------')
-        plt.figure(dpi=1000)
-        plt.plot(self.conc_abs_data, self.pressione_abs_data, label='Ti-Zr-V-Data', linewidth=3)
-        plt.plot(self.conc_abs_smooth, self.pressione_abs_data, label='Ti-Zr-V-model', linewidth=3)
-        plt.legend(loc='lower right', fontsize=10)
-        plt.grid()
+        plt.figure(dpi=1000, figsize = (6,5))
+        plt.plot(self.conc_abs_data, self.pressione_abs_data, label='Experimental', linewidth=1.9,color = '#eb4034', linestyle = '--', zorder =2)
+        plt.scatter(self.conc_abs_data, self.pressione_abs_data, edgecolors='k', color ='#eb4034', zorder = 3, s=20)
+        plt.plot(self.conc_abs_smooth, self.pressione_abs_data, label='Model', linewidth=1.9, color ='cornflowerblue', zorder = 1)
+        plt.legend(loc='lower center', fontsize=10)
+        plt.grid(which='both', zorder = 0, alpha = 0.3, )
         plt.xlim(0,2)
-        plt.xlabel('Concentrazione [wt%]')
+        plt.xlabel('Concentration [wt%]')
         plt.ylim(0.1,100)
-        plt.ylabel('Pressione [bar]')
+        plt.ylabel('P$_{abs}$ [bar]')
         plt.yscale('log')
-        plt.title('ABSORPTION CURVE')
+        plt.axvline(self.conc_abs_data[11], ymax =0.8, linestyle = '--', c='k')
+        # plt.axvline(self.conc_abs_data[11], ymax =self.pressione_abs_data[11]/max(self.pressione_abs_data), linestyle = '--', c='k')
+        # plt.axvline(self.conc_abs_data[25], ymax =self.pressione_abs_data[26]/max(self.pressione_abs_data), linestyle = '--', c='k')
+        plt.axvline(1.6, ymax = 0.86, linestyle = '--', c='k')
+        plt.text(0.25, 2, r'$\mathit{\alpha}$', fontsize=18)
+        plt.text(0.85, 2, r'$\mathit{\alpha + \beta}$', fontsize=18)
+        plt.text(1.65, 2, r'$\mathit{\beta}$', fontsize=18)
+        plt.savefig('AbsorptionValidation.png')
         plt.show()
 
         MSE = np.zeros(self.Npoints)                    # mean square error
@@ -212,18 +220,25 @@ class hydrogen_compressor:
 
         print('--------------validazione desorbimento-------------')
 
-        plt.figure(dpi=1000)
-        plt.plot(self.conc_des_data, self.pressione_des_data, label='Ti-Zr-V-data', linewidth=4)
-        plt.plot(self.conc_des, self.pressione_des_data, label='Ti-Zr-V-Data',linewidth=4)
-        plt.legend(loc='lower right', fontsize=10)
-        plt.grid()
+        plt.figure(dpi=1000, figsize = (6,5))
+        plt.plot(self.conc_des_data, self.pressione_des_data, label='Experimental', linewidth=1.9,color = '#eb4034', linestyle = '--', zorder =2)
+        plt.scatter(self.conc_des_data, self.pressione_des_data, edgecolors='k', color ='#eb4034', zorder = 3, s=20)
+        plt.plot(self.conc_des, self.pressione_des_data, label='Model', linewidth=1.9, color ='cornflowerblue', zorder = 1)
+        plt.legend(loc='lower center', fontsize=10)
+        plt.grid(which='both', zorder = 0, alpha = 0.3, )
         plt.xlim(0,1.75)
         plt.xticks(np.arange(0,2, 0.25))
-        plt.xlabel('Concentrazione [wt%]')
-        plt.ylim(70, 250)
-        plt.ylabel('Pressione [bar]')
+        plt.xlabel('Concentration [wt%]')
+        # plt.ylim(70, 250)
+        plt.axvline(0.455, ymax = 0.42, linestyle = '--', c='k')
+        plt.axvline(1.46, ymax = 0.7, linestyle = '--', c='k')
+        plt.text(0.25, 80, r'$\mathit{\alpha}$', fontsize=18)
+        plt.text(0.85, 100, r'$\mathit{\alpha + \beta}$', fontsize=18)
+        plt.text(1.65, 100, r'$\mathit{\beta}$', fontsize=18)
+        plt.ylabel('P$_{des}$ [bar]')
         plt.yscale('log')
-        plt.title('DESORPTION CURVE')
+        # plt.title('DESORPTION CURVE')
+        plt.savefig('DesorptionValidation.png')
         plt.show()
 
         MSE = np.zeros(self.Npoints)                     # mean square error
@@ -405,18 +420,35 @@ class hydrogen_compressor:
         Beta=[2.706,2.500,2.371,2.247,2.128,2.013,1.903,1.747,1.599,1.369]       # [-]
         DeltaConc=[1.399,1.415,1.426,1.437,1.448,1.459,1.470,1.487,1.503,1.531]  # [wt%]
         x=np.linspace(2.706,1.369,100)                                           # [-]
+        Beta1 = [1.3647, 1.4972, 1.6478, 1.7984, 1.949, 2.0996, 2.2482, 2.4008, 2.5474, 2.698] # valori estratti a mano da grafico tesi Niccolò 
+        Efficienza = [0.0222, 0.0291, 0.0362, 0.0428, 0.049, 0.0548, 0.0602, 0.0654, 0.070, 0.0748]
 
         self.interp_beta=interp1d(Beta, DeltaConc, kind='cubic', bounds_error=None, fill_value='extrapolate')
 
-        plt.figure(dpi=1000)
-        plt.title('MHHC Performance')
-        plt.plot(self.DeltaConc, self.Beta, label=r'$\beta_{Model}$')
-        plt.plot(DeltaConc, Beta, linestyle='None', marker='.',mec='r',markersize=10)
-        plt.plot(self.interp_beta(x), x, label=r'$\beta_{data}$', marker='.', markersize=2)
-        plt.xlabel(r'$\Delta$Conc [wt%]')
-        plt.ylabel(r'$\beta$ [-]')
-        plt.grid()
-        plt.legend(loc='lower left',fontsize=10)
+        # plt.figure(dpi=1000, figsize = (6,5))
+        fig,ax = plt.subplots(dpi=1000, figsize = (6,5))
+        ax2 = ax.twinx()
+        ax3 = ax.twinx() 
+        ax3.spines["right"].set_position(("axes", 1.15)) # posizione dell'asse
+        ax3.spines["right"].set_visible(True) # rendi visibili le spine
+        # ax3.spines["right"].set_color('#FF8C00') # colore delle spine
+        # plt.title('MHHC Performance')
+        ax.plot(self.Beta, self.DeltaConc, label=r'$\Delta_{conc}$', c='#F55072')
+        ax2.plot(self.Beta, self.Work_Polytropic, label=r'Power', c='#3BBDD4')
+        ax3.plot(Beta1, Efficienza, label=r'$\eta$', c='#4D6AEB')
+        ax3.set_ylim(0,0.1)
+        # plt.plot(DeltaConc, Beta, linestyle='None', marker='.',mec='r',markersize=10)
+        # plt.plot(self.interp_beta(x), x, label=r'$\beta_{data}$', marker='.', markersize=2)
+        ax.set_ylabel(r'$\Delta$Concentration [wt%]')
+        ax2.set_ylabel(r'Power [kW]')
+        ax3.set_ylabel(r'Efficiency [-]')
+        ax.set_xlabel(r'$\beta$ [-]')
+        ax.grid(alpha= 0.3)
+        h1, l1 = ax.get_legend_handles_labels()
+        h2, l2 = ax2.get_legend_handles_labels()
+        h3, l3 = ax3.get_legend_handles_labels()
+        ax.legend(h1+h2+h3, l1+l2+l3, loc='upper center', ncols= 3)
+        plt.savefig('PerformancePlot1.png')
         plt.show()
 
 
@@ -429,12 +461,13 @@ class hydrogen_compressor:
         beta=p_out/p_in  #[-]   compression ratio
 
         Q_requested=((((((self.H2AbsAlloyMass*(self.interp_beta(beta))/100)/self.H2MolMass)*self.DeltaH_formazione_DES/1000 + (self.DES_Temp-self.ABS_Temp)*self.CvMH*(self.MetalTankMass+self.H2AbsAlloyMass))/500)/3600)*1000)#*self.n_compressor #[kW] heat requested
-        
+        # print(Q_requested)
         H2percycle_h = ((self.H2AbsAlloyMass*(self.interp_beta(beta))/100)/(c.H2SDENSITY*self.CycleTime/3600))#*self.n_compressor #- (Q_requested/(c.LHVH2*1000))*3600/c.H2SDENSITY  #[Sm^3/h]   flow rate that can be desorbed in the time interval considered (one hour) NET VALUE
         
         Work_Polytropic = (((((self.PolytropicCoeff/(self.PolytropicCoeff-1))*p_in*0.27593*((beta)**((self.PolytropicCoeff-1)/self.PolytropicCoeff)-1))/10)*(2*self.H2AbsAlloyMass*(self.interp_beta(beta))/100)/3600)*1000)#*self.n_compressor  #[kW] work supplied to hydrogen in the form of pressure
-
+        # print(Work_Polytropic)
         ETA_Polytropic = Work_Polytropic/Q_requested #[-] compressor efficiency
+        # print(ETA_Polytropic)
 
         self.H2_kg = H2percycle_h*c.H2SDENSITY
        
@@ -452,7 +485,7 @@ class hydrogen_compressor:
             hyd_compressed = hyd
             Q_requested = Q_requested*n_compressor_used
 
-        return (hyd_compressed,-Q_requested)
+        return (hyd_compressed,-Q_requested,ETA_Polytropic)
 
 ##########################################################################################
 
@@ -470,36 +503,56 @@ if __name__ == "__main__":
 
     mhhc=hydrogen_compressor(inp_test, sim_hours)
     mhhc.plot_absdesplot()                     # mhhc abs-des curve
-    mhhc.plot_performancemhhc()                # mhhc performance curve
+    # mhhc.plot_performancemhhc()                # mhhc performance curve
     mhhc.abs_validationplot()                  # mhhc absorption validation curve
     mhhc.des_validationplot()                  # mhhc desorption validation curve
+    storable_hydrogen = 10000
 
-
-    hyd_to_be_compressed = np.linspace(0,100,sim_hours)                   # Hydrogen to be compressed by the MHHC
+    hyd_to_be_compressed = np.linspace(0.5,2.5,sim_hours)                   # Hydrogen to be compressed by the MHHC
     hyd_compressed = np.zeros(sim_hours)
     Q_requested = np.zeros(sim_hours)
+    # n_compressors_used = []
+    eff = np.zeros(sim_hours)
     for i in range (len(hyd_to_be_compressed)):
-        hyd_compressed[i],Q_requested[i] = mhhc.use(i,hyd_to_be_compressed[i])
+        hyd_compressed[i],Q_requested[i], eff[i] = mhhc.use(i,hyd_to_be_compressed[i], storable_hydrogen)
         n_compressors_used = mhhc.n_compressors_used
     
-
-    # create figure and axis objects with subplots()
-    fig,ax = plt.subplots(dpi=600)
-    ax.plot(hyd_to_be_compressed,n_compressors_used,color="red",marker="o")
-    ax.set_xlabel("Hydrogen to be compressed [kg]", fontsize = 14)
-    ax.set_ylabel("N. compressors used",color="red",fontsize=14)
-    # twin object for two different y-axis on the sample plot
-    props = dict(boxstyle='round', facecolor='wheat', alpha=0.8)
-    plt.text(hyd_to_be_compressed[-1]/20,n_compressors_used[-1]-n_compressors_used[-1]/10,'Hyd compressed by one MHHC=%.3f kg' % (mhhc.H2_kg),fontsize=10,va='bottom',backgroundcolor='none', bbox=props)
+    '-------Figura paper!-----'
+    fig,ax = plt.subplots(dpi=1000, figsize = (6,5))
     ax2 = ax.twinx()
-    ax2.plot(hyd_to_be_compressed,hyd_compressed,color="blue",marker="o")
-    ax2.set_ylabel("Hydrogen compressed [kg]",color="blue",fontsize=14)
-    ax.grid()
-    plt.show()
+    # ax2.plot(hyd_compressed, eff, label=r'$\eta$', c='#3BBDD4' )
+    ax.plot(hyd_compressed, -Q_requested, label=r'Heat', c='#F55072', linewidth= 1.5)
+    ax2.bar(hyd_compressed,n_compressors_used,width=0.03,zorder=3,edgecolor='k',label='Modules', alpha =0.8) 
+    ax.set_ylim(0,None)
+    ax2.set_ylim(0,6)
+    ax.set_ylabel(r'P$_{th,req}$ [kW]')
+    ax2.set_ylabel(r'N$_{modules}$ [-]')
+    ax.set_xlabel('ṁ$_{H2}$ [kg/h]')
+    ax.grid(alpha= 0.3)
+    h1, l1 = ax.get_legend_handles_labels()
+    h2, l2 = ax2.get_legend_handles_labels()
+    ax.legend(h1+h2, l1+l2, loc='upper center', ncols= 2)
+    plt.savefig('PerformancePlot2.png')
+    # plt.show()
     
-    fig,ax = plt.subplots(dpi=600)
-    ax.plot(hyd_compressed,-Q_requested,color="red",marker="o")
-    ax.set_xlabel("Hydrogen compressed [kg]", fontsize = 14)
-    ax.set_ylabel("Necessary heat [kW]",color="red",fontsize=14)
-    ax.grid()
-    plt.show()
+
+    # # create figure and axis objects with subplots()
+    # fig,ax = plt.subplots(dpi=600)
+    # ax.plot(hyd_to_be_compressed,n_compressors_used,color="red",marker="o")
+    # ax.set_xlabel("Hydrogen to be compressed [kg]", fontsize = 14)
+    # ax.set_ylabel("N. compressors used",color="red",fontsize=14)
+    # # twin object for two different y-axis on the sample plot
+    # props = dict(boxstyle='round', facecolor='wheat', alpha=0.8)
+    # plt.text(hyd_to_be_compressed[-1]/20,n_compressors_used[-1]-n_compressors_used[-1]/10,'Hyd compressed by one MHHC=%.3f kg' % (mhhc.H2_kg),fontsize=10,va='bottom',backgroundcolor='none', bbox=props)
+    # ax2 = ax.twinx()
+    # ax2.plot(hyd_to_be_compressed,hyd_compressed,color="blue",marker="o")
+    # ax2.set_ylabel("Hydrogen compressed [kg]",color="blue",fontsize=14)
+    # ax.grid()
+    # plt.show()
+    
+    # fig,ax = plt.subplots(dpi=600)
+    # ax.plot(hyd_compressed,-Q_requested,color="red",marker="o")
+    # ax.set_xlabel("Hydrogen compressed [kg]", fontsize = 14)
+    # ax.set_ylabel("Necessary heat [kW]",color="red",fontsize=14)
+    # ax.grid()
+    # plt.show()

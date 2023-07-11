@@ -13,7 +13,8 @@
 							"Max field length": 30,
 							"peakP": 5,
 							"serie": "TMY",
-							"priority": 2},		     
+							"priority": 2,
+							"owned": true},		     
             				      				
 				"battery": {"nominal capacity": 3,
 							"max E-rate": 0.5,
@@ -34,19 +35,30 @@
                                         
                 "hydrogen grid": {  "draw": false,
                                     "feed": true,
-                                    "priority": 7},   	
+                                    "priority": 7},
+                                    
+                "water grid": {     "draw": true,
+                                    "feed": false,
+                                    "priority": 8},
+                                    
+                "oxygen grid": {    "draw": false,
+                                    "feed": true,
+                                    "priority": 9},   	
                                     			
 				"PV": {		"tilt": 30,
 							"azimuth": 10,
 							"losses": 10,
 							"peakP": 3,
 							"serie": 2015,
-    						"priority": 2},			
+    						"priority": 2,
+    						"owned": true},			
              							
 				"electrolyzer": {	"Npower": 2,
 									"number of modules":1,
 									"stack model": "PEM General",
-									"priority": 3},
+									"priority": 3,
+									"strategy":"hydrogen-first",
+									"only_renewables": true},
 									
 				"fuel cell": {	"Npower": 1,
 								"number of modules":1,

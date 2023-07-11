@@ -36,6 +36,9 @@ class PV:
         """
         
         self.cost = False # will be updated with tec_cost()
+        if 'owned' in parameters:
+            self.property = parameters['owned']         # bool value to take into account if the plant is owned or only electricity purchase is considered. 
+                                                        # Main impact on economic assessment and key parameters
 
         if parameters['serie'] == "TMY" or type(parameters['serie']) == int:
             ### If PV serie have already been downloaded and saved as file.csv, this file is used
@@ -145,11 +148,19 @@ class PV:
             
         else:
             # read production serie if "TMY" not have to be used
-            pv = pd.read_csv(path+'/production/'+parameters['serie'])['P'].to_numpy()
-            pv = pv * (1-parameters['losses'])          # add losses
-            pv = pv/1000                             # Wh -> kWh
-            self.production = np.tile(pv,int(simulation_hours/8760))
-        
+            if parameters['peakP'] != 0:
+                self.peakP = parameters['peakP']
+                pv = pd.read_csv(path+'/production/'+parameters['serie'])['P'].to_numpy()
+                pv = pv * (1-parameters['losses'])          # add losses
+                pv = pv*self.peakP                          # kWh
+                self.production = np.tile(pv,int(simulation_hours/8760))
+                
+            else:
+                pv = pd.read_csv(path+'/production/'+parameters['serie'])['P'].to_numpy()
+                pv = pv * (1-parameters['losses'])          # add losses
+                pv = pv/1000                                # Wh -> kWh
+                self.production = np.tile(pv,int(simulation_hours/8760))
+                            
         if 'Max field width' and 'Max field length' in parameters:   
             # Covered Surface calculation
             # Considering modules having size 1m x 1,5m and power 250W it means that, for each kWp, four modules are needed, thus covering 6 m2 of surface (4m width and 1,5m high)
