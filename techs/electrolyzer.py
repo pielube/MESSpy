@@ -123,7 +123,7 @@ class electrolyzer:
             self.CTCcathode          = 0.45             # [-] Charge transfer coefficient - Cathode //      //      //
             self.CurrDensityMin      = 0.005            # [A/cm^2]
             self.OperatingTemp       = 273.15 + 70      # [K]
-            self.OperatingPress      = 6000000          # [Pa]
+            self.OperatingPress      = 3000000          # [Pa]
             self.MinInputPower       = 0.1*self.Npower  # [kW] minimum input power chosen as 10% of module nominal power 
             self.MaxPowerStack       = self.n_modules*self.Npower  # [kW] electrolyzer stack total power
             
