@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import plotly.io as pio
 import plotly.graph_objects as go
+import matplotlib.patches as mpatches
 
         
 def total_balances(simulation_name,loc,var=None):
@@ -91,7 +92,7 @@ def hydrogen_production(simulation_name,loc,var=None):
    
     
     
-def renewables_results(studycase,simulation_name,simulation_years,loc,emission_intensity,ref_year,first_day,last_day,print_=False,plot=False,ghg=False,save=False):
+def renewables_results(studycase,simulation_name,simulation_years,loc,emission_intensity,ref_year,first_day,last_day,print_=False,plot=False,plot_cum=False,ghg=False,save=False):
     
     """
     Total balances figures and ghg emissions (green index) calculation
@@ -148,7 +149,7 @@ def renewables_results(studycase,simulation_name,simulation_years,loc,emission_i
             for tech_name in system: # (which is ordered py priority)
                 if tech_name == 'electricity demand':
                     tech_name = 'demand'
-                if tech_name in balances[loc]['electricity'] and tech_name != 'PV' and tech_name != 'wind':
+                if tech_name in balances[loc]['electricity'] and all(num <= 0 for num in balances[loc]['electricity'][tech_name]) and tech_name != 'collective self consumption':
                     windsc[tech_name] = np.zeros(simulation_years*8760)  # initializing the array to store wind energy self consumption values for tech_name technology
                     from_grid[tech_name] = np.zeros(simulation_years*8760)
                     for i in range(len(balances[loc]['electricity'][tech_name])):
@@ -192,7 +193,7 @@ def renewables_results(studycase,simulation_name,simulation_years,loc,emission_i
             for tech_name in system: # (which is ordered py priority)
                 if tech_name == 'electricity demand':
                     tech_name = 'demand'
-                if tech_name in balances[loc]['electricity'] and tech_name != 'PV' and tech_name != 'wind':
+                if tech_name in balances[loc]['electricity'] and all(num <= 0 for num in balances[loc]['electricity'][tech_name]) and tech_name != 'collective self consumption':
                     pvsc[tech_name] = np.zeros(simulation_years*8760)  # initializing the array to store wind energy self consumption values for tech_name technology
                     from_grid[tech_name] = np.zeros(simulation_years*8760)
                     for i in range(len(balances[loc]['electricity'][tech_name])):
@@ -239,7 +240,7 @@ def renewables_results(studycase,simulation_name,simulation_years,loc,emission_i
                 for tech_name in system: # (which is ordered py priority)
                     if tech_name == 'electricity demand':
                         tech_name = 'demand'
-                    if tech_name in balances[loc]['electricity'] and tech_name != 'PV' and tech_name != 'wind':
+                    if tech_name in balances[loc]['electricity'] and all(num <= 0 for num in balances[loc]['electricity'][tech_name]) and tech_name != 'collective self consumption':
                         pvsc[tech_name] = np.zeros(simulation_years*8760)  # initializing the array to store pv energy self consumption values for tech_name technology
                         windsc[tech_name] = np.zeros(simulation_years*8760)  # initializing the array to store wind energy self consumption values for tech_name technology
                         from_grid[tech_name] = np.zeros(simulation_years*8760)
@@ -285,7 +286,7 @@ def renewables_results(studycase,simulation_name,simulation_years,loc,emission_i
                 for tech_name in system: # (which is ordered py priority)
                     if tech_name == 'electricity demand':
                         tech_name = 'demand'
-                    if tech_name in balances[loc]['electricity'] and tech_name != 'PV' and tech_name != 'wind':
+                    if tech_name in balances[loc]['electricity'] and all(num <= 0 for num in balances[loc]['electricity'][tech_name]) and tech_name != 'collective self consumption':
                         pvsc[tech_name] = np.zeros(simulation_years*8760)  # initializing the array to store pv energy self consumption values for tech_name technology
                         windsc[tech_name] = np.zeros(simulation_years*8760)  # initializing the array to store wind energy self consumption values for tech_name technology
                         from_grid[tech_name] = np.zeros(simulation_years*8760)
@@ -346,7 +347,7 @@ def renewables_results(studycase,simulation_name,simulation_years,loc,emission_i
         
         # Calculating the electricity consumed to run the technologies interacting with hydrogen (only those having negative values, thus absorbing electricity)
         for tech_name in tech_name1:
-            if tech_name in balances[loc]['electricity']:
+            if tech_name in balances[loc]['electricity'] and all(num <= 0 for num in balances[loc]['electricity'][tech_name]):
                 for i in range(len(balances[loc]['electricity'][tech_name])):
                     if balances[loc]['electricity'][tech_name][i] < 0:
                         tot_demand_for_hyd[i] += -balances[loc]['electricity'][tech_name][i]
@@ -371,18 +372,22 @@ def renewables_results(studycase,simulation_name,simulation_years,loc,emission_i
         if save == True:
             with open('results/balances_pp_'+simulation_name+".pkl", 'wb') as f: pickle.dump(balances_pp, f)
 
-        if plot == True:
+        if plot_cum == True:
             k=1
-            fig, ax = plt.subplots(dpi=1000)
             grid_cumulative_for_hyd = np.cumsum(el_from_grid_hyd)
             demand_cumulative_for_hyd = np.cumsum(tot_demand_for_hyd)
+            if sum(el_from_wind_hyd) != 0:
+                wind_sc_cumulative_for_hyd = np.cumsum(el_from_wind_hyd)
+            if sum(el_from_pv_hyd) != 0:
+                pv_sc_cumulative_for_hyd = np.cumsum(el_from_pv_hyd)
+                
+            # Cumulative lines
+            fig, ax = plt.subplots(dpi=300)
             ax.plot(demand_cumulative_for_hyd, label = 'Electricity Dem for H2 chain', linewidth=k, zorder = 2)
             ax.plot(grid_cumulative_for_hyd, label = 'From grid', linewidth=k-0.2)
             if sum(el_from_wind_hyd) != 0:
-                wind_sc_cumulative_for_hyd = np.cumsum(el_from_wind_hyd)
                 ax.plot(wind_sc_cumulative_for_hyd,  alpha = 1, zorder = 1, label = 'P$_{Wind SC}$', linewidth=k)
             if sum(el_from_pv_hyd) != 0:
-                pv_sc_cumulative_for_hyd = np.cumsum(el_from_pv_hyd)
                 ax.plot(pv_sc_cumulative_for_hyd, label = 'P$_{PV SC}$', linewidth=k, zorder = 3)
             ax.grid(alpha = 0.3, zorder = 0)
             xticks = list(np.linspace(0, len(demand_cumulative_for_hyd) - 1, 13).astype(int))
@@ -393,7 +398,50 @@ def renewables_results(studycase,simulation_name,simulation_years,loc,emission_i
             ax.set_xlabel('Time [h]')
             ax.legend()
             plt.show()
-         
+            
+            # Coloured areas
+            fig, ax = plt.subplots(dpi=300)
+            el_dem_H2_chain, = ax.plot(demand_cumulative_for_hyd, label='Electricity Dem for H2 chain', linewidth=k, zorder=2)
+            if sum(el_from_wind_hyd) != 0 and sum(el_from_pv_hyd) == 0:
+                ax.fill_between(range(len(demand_cumulative_for_hyd)), wind_sc_cumulative_for_hyd, color='green', alpha=0.3)
+                ax.fill_between(range(len(demand_cumulative_for_hyd)), wind_sc_cumulative_for_hyd+grid_cumulative_for_hyd, wind_sc_cumulative_for_hyd, color='red', alpha=0.3)
+                red_patch = mpatches.Patch(color='red', alpha=0.3, label='From grid')
+                green_patch = mpatches.Patch(color='green', alpha=0.3, label='Wind$_{SC}$')
+                ax.legend(handles=[el_dem_H2_chain, red_patch, green_patch])
+            if sum(el_from_pv_hyd) != 0 and sum(el_from_wind_hyd) == 0:
+                ax.fill_between(range(len(demand_cumulative_for_hyd)), pv_sc_cumulative_for_hyd, color='green', alpha=0.3)
+                ax.fill_between(range(len(demand_cumulative_for_hyd)), pv_sc_cumulative_for_hyd+grid_cumulative_for_hyd, pv_sc_cumulative_for_hyd, color='red', alpha=0.3)
+                red_patch = mpatches.Patch(color='red', alpha=0.3, label='From grid')
+                green_patch = mpatches.Patch(color='green', alpha=0.3, label='PV$_{SC}$')
+                ax.legend(handles=[el_dem_H2_chain, red_patch, green_patch])
+            if sum(el_from_wind_hyd) != 0 and sum(el_from_pv_hyd) != 0:
+                if list(system.keys()).index('PV') < list(system.keys()).index('wind'): # PV comes before wind
+                    ax.fill_between(range(len(demand_cumulative_for_hyd)), pv_sc_cumulative_for_hyd, color='green', alpha=0.3)
+                    ax.fill_between(range(len(demand_cumulative_for_hyd)), pv_sc_cumulative_for_hyd+wind_sc_cumulative_for_hyd, pv_sc_cumulative_for_hyd, color='orange', alpha=0.3)
+                    ax.fill_between(range(len(demand_cumulative_for_hyd)), pv_sc_cumulative_for_hyd+wind_sc_cumulative_for_hyd+grid_cumulative_for_hyd, pv_sc_cumulative_for_hyd+wind_sc_cumulative_for_hyd, color='red', alpha=0.3)
+                    red_patch = mpatches.Patch(color='red', alpha=0.3, label='From grid')
+                    green_patch = mpatches.Patch(color='green', alpha=0.3, label='PV$_{SC}$')
+                    orange_patch = mpatches.Patch(color='orange', alpha=0.3, label='Wind$_{SC}$')
+                    ax.legend(handles=[el_dem_H2_chain, red_patch, green_patch, orange_patch])
+                else:
+                    ax.fill_between(range(len(demand_cumulative_for_hyd)), wind_sc_cumulative_for_hyd, color='green', alpha=0.3)
+                    ax.fill_between(range(len(demand_cumulative_for_hyd)), wind_sc_cumulative_for_hyd+pv_sc_cumulative_for_hyd, wind_sc_cumulative_for_hyd, color='orange', alpha=0.3)
+                    ax.fill_between(range(len(demand_cumulative_for_hyd)), wind_sc_cumulative_for_hyd+pv_sc_cumulative_for_hyd+grid_cumulative_for_hyd, wind_sc_cumulative_for_hyd+pv_sc_cumulative_for_hyd, color='red', alpha=0.3)
+                    red_patch = mpatches.Patch(color='red', alpha=0.3, label='From grid')
+                    green_patch = mpatches.Patch(color='green', alpha=0.3, label='Wind$_{SC}$')
+                    orange_patch = mpatches.Patch(color='orange', alpha=0.3, label='PV$_{SC}$')
+                    ax.legend(handles=[el_dem_H2_chain, red_patch, green_patch, orange_patch])
+            
+            ax.grid(alpha=0.3, zorder=0)
+            xticks = list(np.linspace(0, len(demand_cumulative_for_hyd) - 1, 13).astype(int))
+            xticklabels = ['          Jan','         Feb','          Mar','         Apr','         May','          Jun','         Jul','          Aug','           Sep','          Oct','          Nov','           Dec','']
+            ax.set_xticks(xticks)
+            ax.set_xticklabels(xticklabels)
+            ax.set_ylabel('Energy [kWh]')
+            ax.set_xlabel('Time [h]')            
+            plt.show()
+            
+            
         # Greenhouse gas emissions
         if ghg == True:
             el_from_grid_hyd_tot = sum(el_from_grid_hyd)
@@ -700,7 +748,7 @@ def storage_control(simulation_name,e_cost=0.30,H_cost=0.05):
             print(location_name)
             print('H tank initial LOC = '+str(round(LOC[location_name]['H tank'][0],2))+ ' kg')
             print('H tank final LOC = '+str(round(LOC[location_name]['H tank'][-1],2))+' kg')
-            print('cost of hydrogen = '+str(round((LOC[location_name]['H tank'][0]-LOC[location_name]['H tank'][-1])*H_cost,2))+ ' €')
+            # print('cost of hydrogen = '+str(round((LOC[location_name]['H tank'][0]-LOC[location_name]['H tank'][-1])*H_cost,2))+ ' €')
             print("\n")
             
     
@@ -1395,7 +1443,10 @@ def fc_param(simulation_name,first_day,last_day):
         param = pickle.load(f)
         
     units = {'current density': '[A/cm2]',
-             'cell voltage'   : '[V]'
+             'cell voltage'   : '[V]',
+             'efficiency'     : '[-]',
+             'efficiency last module': '[-]',
+             'number modules used':    '[-]'
              } 
         
     for location_name in param:

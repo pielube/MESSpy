@@ -1,10 +1,10 @@
 {
 
-"Industrial_Facility_1": { "hydrogen demand": { "serie"   : "hydrogen_demand_constant.csv",
+"prosumer_1": { "hydrogen demand": { "serie"   : "hydrogen_demand_constant.csv",
                                                  "priority": 1,
                                                  "strategy": "demand-led"  },
 	    
-                            "electricity grid": { "draw": true,
+                            "electricity grid": { "draw": false,
                                                   "feed": true,
                                                   "priority":6  },
                                                   
@@ -31,7 +31,7 @@
                                   	             "number of modules": 100,
                                       	         "stack model": "PEM General",
                                       	         "strategy": "hydrogen-first",
-                                      	         "only_renewables": false,
+                                      	         "only_renewables": true,
                                               	 "priority":3},
                                               	 
                             "mechanical compressor":{

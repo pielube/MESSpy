@@ -331,14 +331,14 @@ class Compressor:
                 if 'flow_rate' in parameters:       # if flow rate is defined as input - compressor nominal power is defined as a consequence
                     self.maxflowrate = parameters['flow_rate']                            # [kg/h] hourly mass flow rate
                     self.Npower = round(self.maxflowrate/3600*sum(self.comp_lav_spec))    # [kW] compressor nominal power 
-                    self.IC_power_list = self.maxflowrate/3600 * sum(self.delta_H)             # [kW] Total heat to be removed by the cooling system
+                    self.IC_power_list = self.maxflowrate/3600 * self.delta_H             # [kW] Total heat to be removed by the cooling system
                 elif self.maxflowrate:   
                     self.Npower = round(self.maxflowrate/3600*sum(self.comp_lav_spec))    # [kW] compressor nominal power 
-                    self.IC_power_list = self.maxflowrate/3600 * sum(self.delta_H)             # [kW] Total heat to be removed by the cooling system
+                    self.IC_power_list = self.maxflowrate/3600 * self.delta_H             # [kW] Total heat to be removed by the cooling system
                 elif 'Power' in parameters:         # if nominal power is defined as input - compressor mass flow rate is defined as a consequence
                     self.Npower = parameters['Power']
                     self.maxflowrate = self.Npower/sum(self.comp_lav_spec)     # [kg/s] Nominal mas flow rate
-                    self.IC_power_list = self.maxflowrate * sum(self.delta_H)      # [kJ] Total heat to be removed by the cooling system
+                    self.IC_power_list = self.maxflowrate * self.delta_H       # [kJ] Total heat to be removed by the cooling system
 
     ##########################################################################################################################################################
                     
@@ -1239,7 +1239,7 @@ class Compressor:
 
         if self.model == 'simple compressor':
             exchange_rate   = 0.91                                           # [2015USD/2023€]  exchange rate between USD and €
-            correlation1    = (51901*(self.maxflowrate**0.65))*exchange_rate # Ref: https://www.sciencedirect.com/science/article/pii/S0360319919330022?via%3Dihub
+            correlation1    = (51901*(1236**0.65))*exchange_rate # Ref: https://www.sciencedirect.com/science/article/pii/S0360319919330022?via%3Dihub
             correlation = correlation1
         elif self.model != 'simple compressor':
             size = self.Npower
