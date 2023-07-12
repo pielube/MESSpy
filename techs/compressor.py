@@ -1239,7 +1239,7 @@ class Compressor:
 
         if self.model == 'simple compressor':
             exchange_rate   = 0.91                                           # [2015USD/2023€]  exchange rate between USD and €
-            correlation1    = (51901*(1236**0.65))*exchange_rate # Ref: https://www.sciencedirect.com/science/article/pii/S0360319919330022?via%3Dihub
+            correlation1    = (51901*(self.maxflowrate**0.65))*exchange_rate # Ref: https://www.sciencedirect.com/science/article/pii/S0360319919330022?via%3Dihub
             correlation = correlation1
         elif self.model != 'simple compressor':
             size = self.Npower
