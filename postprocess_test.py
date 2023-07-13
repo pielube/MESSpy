@@ -90,9 +90,327 @@ def hydrogen_production(simulation_name,loc,var=None):
     plt.title('Cumulative H$_\mathregular{2}$ production and demand')
     plt.show()
    
+    print("\nAnnual produced hydrogen is equal to "+str(round((sum(balances[loc]['hydrogen']['electrolyzer'])/1e3),2))+" t/y ensuring a hourly hydrogen deliverable equal to "+str(round((constantflow),2))+" kg/h")
+  
     
+def plot_post_process(balances_pp,studycase,loc,first_day,last_day):
     
-def renewables_results(studycase,simulation_name,simulation_years,loc,emission_intensity,ref_year,first_day,last_day,print_=False,plot=False,plot_cum=False,ghg=False,save=False):
+    """
+    Total balances figures and ghg emissions (green index) calculation
+    ----------
+    balances_pp : dictionary cointaining energy balances elaborated during post process
+            
+    studycase : dictionary (all the inputs are optional)
+        'location_1_name': inputs required to create a location object (see Location.py)
+        'location_2_name': 
+            ...
+        'location_n_name':
+    
+    loc : str - location_name
+    
+    first_day : int - first day to start the balances bar plot
+    
+    last_day : int - last day to finish the balances bar plot
+
+    """     
+    
+    if 'wind' not in balances_pp[loc]['electricity'] and 'PV' not in balances_pp[loc]['electricity']:    # if no renewables are included in the location        
+        print("No renewable energy sources are present in the considered case study\nRES plots not available\n")
+        return
+    else:
+        balances = balances_pp[loc]['electricity']
+        x = np.arange(first_day*24,(last_day+1)*24)
+        width=0.9
+        system = dict(sorted(studycase[loc].items(), key=lambda item: item[1]['priority'])) # ordered by priority
+        
+        
+    if 'wind' in balances and 'PV' not in balances:
+        for tech_name_plot in balances['tech from grid']:                    
+            fig = plt.figure(dpi=300)
+            from mpl_toolkits.axisartist.axislines import SubplotZero
+            ax = SubplotZero(fig, 1, 1, 1)
+            fig.add_subplot(ax)
+            ax.axis["xzero"].set_visible(True)
+            ax.axis["xzero"].label.set_visible(False)
+            ax.axis["xzero"].major_ticklabels.set_visible(False)
+            for n in ["bottom","top", "right"]:ax.axis[n].set_visible(True)
+            ax.grid(axis='y', alpha = 0.5, zorder = -4)
+            ax.bar(x, balances['tech windsc'][tech_name_plot][first_day*24:last_day*24+24], width,  label='Wind self consumption', color='yellowgreen')
+            ax.bar(x, balances['tech from grid'][tech_name_plot][first_day*24:last_day*24+24], width, bottom=balances['tech windsc'][tech_name_plot][first_day*24:last_day*24+24], label='From grid', color='red')
+            plt.title(tech_name_plot+' days '+str(first_day)+'-'+str(last_day))
+            plt.plot(x,-balances[tech_name_plot][first_day*24:last_day*24+24],'k',label='load')     
+            plt.legend(ncol=2, bbox_to_anchor = (1.01,-0.11))
+            plt.ylabel("Hourly energy [kWh/h] ")
+            plt.xlabel( "Time  [h] ")
+            if (last_day-first_day) <= 10:
+                plt.xticks(list(range(first_day*24, (last_day+1)*24+1,24)), [str(x) for x in list(range(first_day*24, (last_day+1)*24+1,24))], rotation=45)
+            plt.show()
+            
+                
+    elif 'PV' in balances and 'wind' not in balances:
+        for tech_name_plot in balances['tech from grid']:      
+            fig = plt.figure(dpi=300)
+            from mpl_toolkits.axisartist.axislines import SubplotZero
+            ax = SubplotZero(fig, 1, 1, 1)
+            fig.add_subplot(ax)
+            ax.axis["xzero"].set_visible(True)
+            ax.axis["xzero"].label.set_visible(False)
+            ax.axis["xzero"].major_ticklabels.set_visible(False)
+            for n in ["bottom","top", "right"]: ax.axis[n].set_visible(True)
+            ax.grid(axis='y', alpha = 0.5, zorder = -4)
+            ax.bar(x, balances['tech pvsc'][tech_name_plot][first_day*24:last_day*24+24], width,  label='PV self consumption', color='yellowgreen')
+            ax.bar(x, balances['tech from grid'][tech_name_plot][first_day*24:last_day*24+24], width, bottom=balances['tech pvsc'][tech_name_plot][first_day*24:last_day*24+24], label='From grid', color='red')
+            plt.title(tech_name_plot+' days '+str(first_day)+'-'+str(last_day))
+            plt.plot(x,-balances[tech_name_plot][first_day*24:last_day*24+24],'k',label='load')     
+            plt.legend(ncol=2, bbox_to_anchor = (1.01,-0.11))
+            plt.ylabel("Hourly energy [kWh/h] ")
+            plt.xlabel( "Time  [h] ")
+            if (last_day-first_day) <= 10:
+                plt.xticks(list(range(first_day*24, (last_day+1)*24+1,24)), [str(x) for x in list(range(first_day*24, (last_day+1)*24+1,24))], rotation=45)
+            plt.show()
+
+
+    elif 'PV' in balances and 'wind' in balances:
+        
+        if list(system.keys()).index('PV') < list(system.keys()).index('wind'): # PV comes before wind
+            for tech_name_plot in balances['tech from grid']:
+                fig = plt.figure(dpi=300)
+                from mpl_toolkits.axisartist.axislines import SubplotZero
+                ax = SubplotZero(fig, 1, 1, 1)
+                fig.add_subplot(ax)
+                ax.axis["xzero"].set_visible(True)
+                ax.axis["xzero"].label.set_visible(False)
+                ax.axis["xzero"].major_ticklabels.set_visible(False)
+                for n in ["bottom","top", "right"]:
+                    ax.axis[n].set_visible(True)
+                ax.grid(axis='y', alpha = 0.5, zorder = -4)
+                ax.bar(x, balances['tech pvsc'][tech_name_plot][first_day*24:last_day*24+24], width,  label='PV self consumption', color='yellowgreen')
+                ax.bar(x, balances['tech windsc'][tech_name_plot][first_day*24:last_day*24+24], width, bottom=balances['tech pvsc'][tech_name_plot][first_day*24:last_day*24+24], label='wind self consumption', color='orange')
+                ax.bar(x, balances['tech from grid'][tech_name_plot][first_day*24:last_day*24+24], width, bottom=balances['tech pvsc'][tech_name_plot][first_day*24:last_day*24+24]+balances['tech windsc'][tech_name_plot][first_day*24:last_day*24+24], label='From grid', color='red')
+                plt.title(tech_name_plot+' days '+str(first_day)+'-'+str(last_day))
+                plt.plot(x,-balances[tech_name_plot][first_day*24:last_day*24+24],'k',label='load')     
+                plt.legend(ncol=2, bbox_to_anchor = (1.01,-0.11))
+                plt.ylabel("Hourly energy [kWh/h] ")
+                plt.xlabel( "Time  [h] ")
+                if (last_day-first_day) <= 10:
+                    plt.xticks(list(range(first_day*24, (last_day+1)*24+1,24)), [str(x) for x in list(range(first_day*24, (last_day+1)*24+1,24))], rotation=45)
+                plt.show()
+        
+        else:
+            for tech_name_plot in balances['tech from grid']:
+                fig = plt.figure(dpi=300)
+                from mpl_toolkits.axisartist.axislines import SubplotZero
+                ax = SubplotZero(fig, 1, 1, 1)
+                fig.add_subplot(ax)
+                ax.axis["xzero"].set_visible(True)
+                ax.axis["xzero"].label.set_visible(False)
+                ax.axis["xzero"].major_ticklabels.set_visible(False)
+                for n in ["bottom","top", "right"]:
+                    ax.axis[n].set_visible(True)
+                ax.grid(axis='y', alpha = 0.5, zorder = -4)
+                ax.bar(x, balances['tech windsc'][tech_name_plot][first_day*24:last_day*24+24], width,  label='wind self consumption', color='orange')
+                ax.bar(x, balances['tech pvsc'][tech_name_plot][first_day*24:last_day*24+24], width, bottom=balances['tech windsc'][tech_name_plot][first_day*24:last_day*24+24], label='PV self consumption', color='yellowgreen')
+                ax.bar(x, balances['tech from grid'][tech_name_plot][first_day*24:last_day*24+24], width, bottom=balances['tech pvsc'][tech_name_plot][first_day*24:last_day*24+24]+balances['tech windsc'][tech_name_plot][first_day*24:last_day*24+24], label='From grid', color='red')
+                plt.title(tech_name_plot+' days '+str(first_day)+'-'+str(last_day))
+                plt.plot(x,-balances[tech_name_plot][first_day*24:last_day*24+24],'k',label='load')     
+                plt.legend(ncol=2, bbox_to_anchor = (1.01,-0.11))
+                plt.ylabel("Hourly energy [kWh/h] ")
+                plt.xlabel( "Time  [h] ")
+                if (last_day-first_day) <= 10:
+                    plt.xticks(list(range(first_day*24, (last_day+1)*24+1,24)), [str(x) for x in list(range(first_day*24, (last_day+1)*24+1,24))], rotation=45)
+                plt.show()
+                
+            
+    # Hourly energy balances   
+    if 'PV' in balances:
+        pv = balances['PV'][first_day*24:last_day*24+24]
+    
+    if 'wind' in balances:
+        wind = balances['wind'][first_day*24:last_day*24+24]
+        
+    if 'grid' in balances:                
+        into_grid = np.zeros(24*(last_day-first_day+1))
+        from_grid = np.zeros(24*(last_day-first_day+1)) 
+        for i,e in enumerate(balances['grid'][first_day*24:last_day*24+24]):
+            if e > 0:
+                from_grid[i] = e
+            else:
+                into_grid[i] = e 
+    
+    if 'battery' in balances:
+        charge_battery = np.zeros(24*(last_day-first_day+1))
+        discharge_battery = np.zeros(24*(last_day-first_day+1))
+        for i,e in enumerate(balances['battery'][first_day*24:last_day*24+24]):
+            if e > 0:
+                discharge_battery[i] = e
+            else:
+                charge_battery[i] = e 
+    
+    if 'electrolyzer' in balances:
+        ele = balances['electrolyzer'][first_day*24:last_day*24+24]
+    
+    if 'mechanical compressor' in balances:
+        compressor = balances['mechanical compressor'][first_day*24:last_day*24+24]
+    
+    if 'fuel cell' in balances:
+        fc = balances['fuel cell'][first_day*24:last_day*24+24]
+        
+    x = np.arange(first_day*24,(last_day+1)*24)
+    
+    fig = plt.figure(dpi=1000)
+    from mpl_toolkits.axisartist.axislines import SubplotZero
+    ax = SubplotZero(fig, 1, 1, 1)
+    fig.add_subplot(ax)
+    ax.axis["xzero"].set_visible(True)
+    ax.axis["xzero"].label.set_visible(False)
+    ax.axis["xzero"].major_ticklabels.set_visible(False)
+
+    for n in ["bottom","top", "right"]:
+        ax.axis[n].set_visible(True)
+    ax.grid(axis='y', alpha = 0.5, zorder = -4)
+    
+    if 'demand' in balances:
+        load = -balances['demand'][first_day*24:last_day*24+24]+balances['hyd tot electricity'][first_day*24:last_day*24+24]
+        el_demand = balances['demand'][first_day*24:last_day*24+24]
+        ax.bar(x, el_demand, width, label='To el-devices', color='grey')
+    else:
+        load = balances['hyd tot electricity'][first_day*24:last_day*24+24]  
+        el_demand = np.zeros(24*(last_day-first_day+1))
+        
+    if 'PV' in balances and 'wind' in balances:
+        if list(system.keys()).index('PV') < list(system.keys()).index('wind'): # PV comes before wind
+            prioritised_res_1 = pv
+            label_res_1 = 'PV'
+            prioritised_res_2 = wind
+            label_res_2 = 'Wind'
+        else:
+            prioritised_res_1 = wind
+            label_res_1 = 'Wind'
+            prioritised_res_2 = pv
+            label_res_2 = 'PV'
+ 
+        ax.bar(x, np.minimum(load,prioritised_res_1), width,  label= label_res_1+' self consumption', color='yellowgreen')
+        ax.bar(x, np.maximum(prioritised_res_1-load,np.zeros(len(prioritised_res_1))), width, bottom=load, label= label_res_1+' surplus', color='cornflowerblue')
+        ax.bar(x, np.maximum(np.minimum(prioritised_res_1+prioritised_res_2,load)-prioritised_res_1,np.zeros(len(prioritised_res_1))), width, bottom= prioritised_res_1, label= label_res_2+' self consumption', color='tab:green')
+        ax.bar(x, np.maximum(prioritised_res_1-load+prioritised_res_2,np.zeros(len(prioritised_res_1)))-np.maximum(prioritised_res_1-load,np.zeros(len(prioritised_res_1))), width, bottom=load+np.maximum(prioritised_res_1-load,np.zeros(len(prioritised_res_1))),label= label_res_2+' surplus', color='tab:blue')
+        
+        if not 'battery' in balances and not 'electrolyzer' in balances:
+            ax.bar(x, from_grid, width ,bottom=prioritised_res_1+prioritised_res_2, label='from grid', color='tomato')
+            ax.bar(x, into_grid, width, bottom=el_demand, label='into grid', color='orange')
+            
+        if 'battery' in balances:
+            ax.bar(x, from_grid, width, bottom=prioritised_res_1+prioritised_res_2+discharge_battery, label='from grid', color='tomato')
+            ax.bar(x, discharge_battery, width, bottom = prioritised_res_1+prioritised_res_2, label='discharge battery',  color='purple')
+            ax.bar(x, into_grid, width, bottom=charge_battery+el_demand , label='into grid', color='orange')
+            ax.bar(x, charge_battery, width,  bottom=el_demand, label='charge battery',  color='violet')
+ 
+        if 'electrolyzer' in balances and 'fuel cell' in balances:
+            ax.bar(x, from_grid, width ,bottom=prioritised_res_1+prioritised_res_2+fc, label='from grid', color='tomato')
+            ax.bar(x, fc, width, bottom = prioritised_res_1+prioritised_res_2, label='from fuel cell',  color='peru')
+            if 'mechanical compressor' in balances:
+                ax.bar(x, ele, width, bottom = el_demand, label='to electrolyzer',  color='chocolate')
+                ax.bar(x, compressor, width, bottom = ele+el_demand, label='to compressor',  color='maroon')
+                ax.bar(x, into_grid, width, bottom= ele+compressor +el_demand, label='into grid', color='orange')
+            else:
+                ax.bar(x, into_grid, width,bottom=ele+el_demand , label='into grid', color='orange')
+                ax.bar(x, ele, width, bottom = el_demand,  label='to electrolyzer',  color='chocolate')
+                                
+        if 'electrolyzer' in balances and not 'fuel cell' in balances:
+            ax.bar(x, from_grid, width ,bottom=prioritised_res_1+prioritised_res_2, label='from grid', color='tomato')
+            if 'mechanical compressor' in balances:
+                ax.bar(x, ele, width, bottom = el_demand, label='to electrolyzer',  color='chocolate')
+                ax.bar(x, compressor, width, bottom = ele+el_demand, label='to compressor',  color='maroon')
+                ax.bar(x, into_grid, width, bottom= ele+compressor+el_demand , label='into grid', color='orange')
+            else:
+                ax.bar(x, into_grid, width,bottom=ele+el_demand , label='into grid', color='orange')
+                ax.bar(x, ele, width, bottom = el_demand, label='to electrolyzer',  color='chocolate')
+                
+    elif 'PV' in balances and not 'wind' in balances:
+        ax.bar(x, np.minimum(load,pv), width,  label='PV self consumption', color='yellowgreen')
+        ax.bar(x, np.maximum(pv-load,np.zeros(len(pv))), width, bottom=load, label='PV surplus', color='cornflowerblue')
+        
+        if not 'battery' in balances and not 'electrolyzer' in balances:
+            ax.bar(x, from_grid, width ,bottom=pv, label='from grid', color='tomato')
+            ax.bar(x, into_grid, width, bottom=el_demand, label='into grid', color='orange')
+            
+        if 'battery' in balances:
+            ax.bar(x, from_grid, width, bottom=pv+discharge_battery, label='from grid', color='tomato')
+            ax.bar(x, discharge_battery, width, bottom = pv, label='discharge battery',  color='purple')
+            ax.bar(x, into_grid, width, bottom=charge_battery+el_demand , label='into grid', color='orange')
+            ax.bar(x, charge_battery, width, bottom=el_demand, label='charge battery',  color='violet')
+       
+        if 'electrolyzer' in balances and 'fuel cell' in balances:
+            ax.bar(x, from_grid, width ,bottom=pv+fc, label='from grid', color='tomato')
+            ax.bar(x, fc, width, bottom = pv, label='from fuel cell',  color='peru')
+            if 'mechanical compressor' in balances:
+                ax.bar(x, ele, width, bottom = el_demand, label='to electrolyzer',  color='chocolate')
+                ax.bar(x, compressor, width, bottom = ele+el_demand, label='to compressor',  color='maroon')
+                ax.bar(x, into_grid, width, bottom= ele+compressor+el_demand , label='into grid', color='orange')
+            else:
+                ax.bar(x, into_grid, width,bottom=ele+el_demand , label='into grid', color='orange')
+                ax.bar(x, ele, width, bottom=el_demand, label='to electrolyzer',  color='chocolate')
+                                
+        if 'electrolyzer' in balances and not 'fuel cell' in balances:
+            ax.bar(x, from_grid, width ,bottom=pv, label='from grid', color='tomato')
+            if 'mechanical compressor' in balances:
+                ax.bar(x, ele, width, bottom = el_demand,  label='to electrolyzer',  color='chocolate')
+                ax.bar(x, compressor, width, bottom = ele+el_demand, label='to compressor',  color='maroon')
+                ax.bar(x, into_grid, width, bottom= ele+compressor+el_demand , label='into grid', color='orange')
+            else:
+                ax.bar(x, into_grid, width,bottom=ele+el_demand, label='into grid', color='orange')
+                ax.bar(x, ele, width, bottom=el_demand, label='to electrolyzer',  color='chocolate')
+       
+    elif 'wind' in balances and not 'PV' in balances:
+        ax.bar(x, np.minimum(load,wind), width,  label='Wind self consumption', color='yellowgreen')
+        ax.bar(x, np.maximum(wind-load,np.zeros(len(wind))), width, bottom=load, label='Wind surplus', color='cornflowerblue')
+        
+        if not 'battery' in balances and not 'electrolyzer' in balances:
+            ax.bar(x, from_grid, width ,bottom=wind, label='from grid', color='tomato')
+            ax.bar(x, into_grid, width,  bottom=el_demand,label='into grid', color='orange')
+            
+        if 'battery' in balances:
+            ax.bar(x, from_grid, width, bottom=wind+discharge_battery, label='from grid', color='tomato')
+            ax.bar(x, discharge_battery, width, bottom = wind, label='discharge battery',  color='purple')
+            ax.bar(x, into_grid, width, bottom=charge_battery+el_demand , label='into grid', color='orange')
+            ax.bar(x, charge_battery, width, bottom=el_demand, label='charge battery',  color='violet')
+        
+        if 'electrolyzer' in balances and 'fuel cell' in balances:
+            ax.bar(x, from_grid, width ,bottom=wind+fc, label='from grid', color='tomato')
+            ax.bar(x, fc, width, bottom = wind, label='from fuel cell',  color='peru')
+            if 'mechanical compressor' in balances:
+                ax.bar(x, ele, width, bottom = el_demand,  label='to electrolyzer',  color='chocolate')
+                ax.bar(x, compressor, width, bottom = ele+el_demand, label='to compressor',  color='maroon')
+                ax.bar(x, into_grid, width, bottom= ele+compressor+el_demand , label='into grid', color='orange')
+            else:
+                ax.bar(x, into_grid, width,bottom=ele+el_demand , label='into grid', color='orange')
+                ax.bar(x, ele, width, bottom=el_demand, label='to electrolyzer',  color='chocolate')
+                                
+        if 'electrolyzer' in balances and not 'fuel cell' in balances:
+            ax.bar(x, from_grid, width ,bottom=wind, label='from grid', color='tomato')
+            if 'mechanical compressor' in balances:
+                ax.bar(x, ele, width,  bottom = el_demand,  label='to electrolyzer',  color='chocolate')
+                ax.bar(x, compressor, width, bottom = ele+el_demand, label='to compressor',  color='maroon')
+                ax.bar(x, into_grid, width, bottom= ele+compressor+el_demand , label='into grid', color='orange')
+            else:
+                ax.bar(x, into_grid, width,bottom=ele+el_demand , label='into grid', color='orange')
+                ax.bar(x, ele, width, bottom = el_demand, label='to electrolyzer',  color='chocolate')
+       
+       
+    plt.title(loc+' days '+str(first_day)+'-'+str(last_day))
+    plt.plot(x,load,'k',label='load')     
+    plt.legend(ncol=2, bbox_to_anchor = (1.01,-0.11))
+    plt.ylabel("Hourly energy [kWh/h] ")
+    plt.xlabel( "Time  [h] ")
+    if (last_day-first_day) <= 10:
+        plt.xticks(list(range(first_day*24, (last_day+1)*24+1,24)), [str(x) for x in list(range(first_day*24, (last_day+1)*24+1,24))], rotation=45)
+    # ax.xaxis.set_tick_params(bottom=True,labelbottom=True)
+    #plt.xticks([0,6,12,18,24],['0','6','12','18','24'],fontsize=10,color='g')
+    #plt.xticks([0,6,12,18,24,30,36,42,48],['0','6','12','18','24','30','36','42','48'],fontsize=10,color='g')
+    #plt.yticks([-2,-1,0,1,2],['-2','-1','0','1','2'])
+    plt.show() 
+    
+        
+def energy_balance_results(studycase,simulation_name,simulation_years,loc,emission_intensity,ref_year,print_=False,plot=False,ghg=False):
     
     """
     Total balances figures and ghg emissions (green index) calculation
@@ -112,12 +430,8 @@ def renewables_results(studycase,simulation_name,simulation_years,loc,emission_i
     emission_intensity : dict
     
     ref_year: str -> necessary to specify the reference year for grid intensity
-    
-    first_day : int - first day to start the balances bar plot
-    
-    last_day : int - last day to finish the balances bar plot
                         
-    output:  balances_pp: dictionary containing total balances calculation useful for LCOH calculation
+    output:  balances_pp: dictionary containing total balances calculation useful for LCOH calculation, NPV calculation and post process plots
 
     """  
 
@@ -128,10 +442,12 @@ def renewables_results(studycase,simulation_name,simulation_years,loc,emission_i
         return
 
     else: 
-        x = np.arange(first_day*24,(last_day+1)*24)
         windsc = {}
         pvsc = {}
         from_grid = {}
+        wind_autoconsumption = np.zeros(simulation_years*8760)
+        pv_autoconsumption = np.zeros(simulation_years*8760)
+        
         if 'PV' in balances[loc]['electricity']:
             pv_still_available = balances[loc]['electricity']['PV'].copy()
         else:
@@ -157,36 +473,15 @@ def renewables_results(studycase,simulation_name,simulation_years,loc,emission_i
                             windsc[tech_name][i] = np.minimum(wind_still_available[i],-balances[loc]['electricity'][tech_name][i])
                             from_grid[tech_name][i] = -balances[loc]['electricity'][tech_name][i] - windsc[tech_name][i]
                             wind_still_available[i] = wind_still_available[i] - windsc[tech_name][i]
+                            wind_autoconsumption[i] += windsc[tech_name][i]
                     if print_ == True:
-                        print('\nwindsc_'+str(tech_name)+' = '+str((sum(windsc[tech_name]))/1e6)+' GWh') 
-                        print('from_grid_'+str(tech_name)+' = '+str((sum(from_grid[tech_name]))/1e6)+' GWh')
+                        print('\nwindsc_'+str(tech_name)+' = '+str(round((sum(windsc[tech_name])/1e3),2))+' MWh') 
+                        print('from_grid_'+str(tech_name)+' = '+str(round((sum(from_grid[tech_name])/1e3),2))+' MWh')
                     
             wind_surplus = wind_still_available
             if print_ == True:
-                print('\nwind_surplus = '+str((sum(wind_surplus))/1e6)+' GWh')
-            
-            for tech_name_plot in from_grid:                    
-                if plot == True:
-                    width=0.9
-                    fig = plt.figure(dpi=300)
-                    from mpl_toolkits.axisartist.axislines import SubplotZero
-                    ax = SubplotZero(fig, 1, 1, 1)
-                    fig.add_subplot(ax)
-                    ax.axis["xzero"].set_visible(True)
-                    ax.axis["xzero"].label.set_visible(False)
-                    ax.axis["xzero"].major_ticklabels.set_visible(False)
-                    for n in ["bottom","top", "right"]:ax.axis[n].set_visible(True)
-                    ax.grid(axis='y', alpha = 0.5, zorder = -4)
-                    ax.bar(x, windsc[tech_name_plot][first_day*24:last_day*24+24], width,  label='Wind self consumption', color='yellowgreen')
-                    ax.bar(x, from_grid[tech_name_plot][first_day*24:last_day*24+24], width, bottom=windsc[tech_name_plot][first_day*24:last_day*24+24], label='From grid', color='red')
-                    plt.title(tech_name_plot+' days '+str(first_day)+'-'+str(last_day))
-                    plt.plot(x,-balances[loc]['electricity'][tech_name_plot][first_day*24:last_day*24+24],'k',label='load')     
-                    plt.legend(ncol=2, bbox_to_anchor = (1.01,-0.11))
-                    plt.ylabel("Hourly energy [kWh/h] ")
-                    plt.xlabel( "Time  [h] ")
-                    if (last_day-first_day) <= 10:
-                        plt.xticks(list(range(first_day*24, (last_day+1)*24+1,24)), [str(x) for x in list(range(first_day*24, (last_day+1)*24+1,24))], rotation=45)
-                    plt.show()
+                print('\nwind_autoconsumption = '+str(round((sum(wind_autoconsumption)/1e3),2))+' MWh')
+                print('wind_surplus = '+str(round((sum(wind_surplus)/1e3),2))+' MWh')
 
                     
         elif 'PV' in balances[loc]['electricity'] and 'wind' not in balances[loc]['electricity']:    
@@ -201,38 +496,17 @@ def renewables_results(studycase,simulation_name,simulation_years,loc,emission_i
                             pvsc[tech_name][i] = np.minimum(pv_still_available[i],-balances[loc]['electricity'][tech_name][i])
                             from_grid[tech_name][i] = -balances[loc]['electricity'][tech_name][i] - pvsc[tech_name][i]
                             pv_still_available[i] = pv_still_available[i] - pvsc[tech_name][i]
+                            pv_autoconsumption[i] += pvsc[tech_name][i]
                     if print_ == True:
-                        print('\npvsc_'+str(tech_name)+' = '+str((sum(pvsc[tech_name]))/1e6)+' GWh') 
-                        print('from_grid_'+str(tech_name)+' = '+str((sum(from_grid[tech_name]))/1e6)+' GWh')
+                        print('\npvsc_'+str(tech_name)+' = '+str(round((sum(pvsc[tech_name])/1e3),2))+' MWh') 
+                        print('from_grid_'+str(tech_name)+' = '+str(round((sum(from_grid[tech_name])/1e3),2))+' MWh')
                         
             pv_surplus = pv_still_available
             if print_ == True:
-                print('\npv_surplus = '+str((sum(pv_surplus))/1e6)+' GWh')
-            
-            for tech_name_plot in from_grid:      
-                if plot == True:
-                    width=0.9
-                    fig = plt.figure(dpi=300)
-                    from mpl_toolkits.axisartist.axislines import SubplotZero
-                    ax = SubplotZero(fig, 1, 1, 1)
-                    fig.add_subplot(ax)
-                    ax.axis["xzero"].set_visible(True)
-                    ax.axis["xzero"].label.set_visible(False)
-                    ax.axis["xzero"].major_ticklabels.set_visible(False)
-                    for n in ["bottom","top", "right"]: ax.axis[n].set_visible(True)
-                    ax.grid(axis='y', alpha = 0.5, zorder = -4)
-                    ax.bar(x, pvsc[tech_name_plot][first_day*24:last_day*24+24], width,  label='PV self consumption', color='yellowgreen')
-                    ax.bar(x, from_grid[tech_name_plot][first_day*24:last_day*24+24], width, bottom=pvsc[tech_name_plot][first_day*24:last_day*24+24], label='From grid', color='red')
-                    plt.title(tech_name_plot+' days '+str(first_day)+'-'+str(last_day))
-                    plt.plot(x,-balances[loc]['electricity'][tech_name_plot][first_day*24:last_day*24+24],'k',label='load')     
-                    plt.legend(ncol=2, bbox_to_anchor = (1.01,-0.11))
-                    plt.ylabel("Hourly energy [kWh/h] ")
-                    plt.xlabel( "Time  [h] ")
-                    if (last_day-first_day) <= 10:
-                        plt.xticks(list(range(first_day*24, (last_day+1)*24+1,24)), [str(x) for x in list(range(first_day*24, (last_day+1)*24+1,24))], rotation=45)
-                    plt.show()
+                print('\npv_autoconsumption = '+str(round((sum(pv_autoconsumption)/1e3),2))+' MWh')
+                print('pv_surplus = '+str(round((sum(pv_surplus)/1e3),2))+' MWh')
 
-    
+
         elif 'PV' in balances[loc]['electricity'] and 'wind' in balances[loc]['electricity']:
             
             if list(system.keys()).index('PV') < list(system.keys()).index('wind'): # PV comes before wind
@@ -251,36 +525,13 @@ def renewables_results(studycase,simulation_name,simulation_years,loc,emission_i
                                 from_grid[tech_name][i] = -balances[loc]['electricity'][tech_name][i] - pvsc[tech_name][i] - windsc[tech_name][i]
                                 pv_still_available[i] = pv_still_available[i] - pvsc[tech_name][i]
                                 wind_still_available[i] = wind_still_available[i] - windsc[tech_name][i]
+                                pv_autoconsumption[i] += pvsc[tech_name][i]
+                                wind_autoconsumption[i] += windsc[tech_name][i]
                         if print_ == True:
-                            print('\npvsc_'+str(tech_name)+' = '+str((sum(pvsc[tech_name]))/1e6)+' GWh')
-                            print('windsc_'+str(tech_name)+' = '+str((sum(windsc[tech_name]))/1e6)+' GWh') 
-                            print('from_grid_'+str(tech_name)+' = '+str((sum(from_grid[tech_name]))/1e6)+' GWh')
-                            
-                for tech_name_plot in from_grid:
-                    if plot == True:
-                        width=0.9
-                        fig = plt.figure(dpi=300)
-                        from mpl_toolkits.axisartist.axislines import SubplotZero
-                        ax = SubplotZero(fig, 1, 1, 1)
-                        fig.add_subplot(ax)
-                        ax.axis["xzero"].set_visible(True)
-                        ax.axis["xzero"].label.set_visible(False)
-                        ax.axis["xzero"].major_ticklabels.set_visible(False)
-                        for n in ["bottom","top", "right"]:
-                            ax.axis[n].set_visible(True)
-                        ax.grid(axis='y', alpha = 0.5, zorder = -4)
-                        ax.bar(x, pvsc[tech_name_plot][first_day*24:last_day*24+24], width,  label='PV self consumption', color='yellowgreen')
-                        ax.bar(x, windsc[tech_name_plot][first_day*24:last_day*24+24], width, bottom=pvsc[tech_name_plot][first_day*24:last_day*24+24], label='wind self consumption', color='orange')
-                        ax.bar(x, from_grid[tech_name_plot][first_day*24:last_day*24+24], width, bottom=pvsc[tech_name_plot][first_day*24:last_day*24+24]+windsc[tech_name_plot][first_day*24:last_day*24+24], label='From grid', color='red')
-                        plt.title(tech_name_plot+' days '+str(first_day)+'-'+str(last_day))
-                        plt.plot(x,-balances[loc]['electricity'][tech_name_plot][first_day*24:last_day*24+24],'k',label='load')     
-                        plt.legend(ncol=2, bbox_to_anchor = (1.01,-0.11))
-                        plt.ylabel("Hourly energy [kWh/h] ")
-                        plt.xlabel( "Time  [h] ")
-                        if (last_day-first_day) <= 10:
-                            plt.xticks(list(range(first_day*24, (last_day+1)*24+1,24)), [str(x) for x in list(range(first_day*24, (last_day+1)*24+1,24))], rotation=45)
-                        plt.show()
-                            
+                            print('\npvsc_'+str(tech_name)+' = '+str(round((sum(pvsc[tech_name])/1e3),2))+' MWh')
+                            print('windsc_'+str(tech_name)+' = '+str(round((sum(windsc[tech_name])/1e3),2))+' MWh') 
+                            print('from_grid_'+str(tech_name)+' = '+str(round((sum(from_grid[tech_name])/1e3),2))+' MWh')
+                             
             else:
                 
                 for tech_name in system: # (which is ordered py priority)
@@ -297,42 +548,20 @@ def renewables_results(studycase,simulation_name,simulation_years,loc,emission_i
                                 from_grid[tech_name][i] = -balances[loc]['electricity'][tech_name][i] - windsc[tech_name][i] - pvsc[tech_name][i]
                                 pv_still_available[i] = pv_still_available[i] - pvsc[tech_name][i]
                                 wind_still_available[i] = wind_still_available[i] - windsc[tech_name][i]
+                                pv_autoconsumption[i] += pvsc[tech_name][i]
+                                wind_autoconsumption[i] += windsc[tech_name][i]
                         if print_ == True:
-                            print('\nwindsc_'+str(tech_name)+' = '+str((sum(windsc[tech_name]))/1e6)+' GWh')
-                            print('pvsc_'+str(tech_name)+' = '+str((sum(pvsc[tech_name]))/1e6)+' GWh') 
-                            print('from_grid_'+str(tech_name)+' = '+str((sum(from_grid[tech_name]))/1e6)+' GWh')
+                            print('\nwindsc_'+str(tech_name)+' = '+str(round((sum(windsc[tech_name])/1e3),2))+' MWh')
+                            print('pvsc_'+str(tech_name)+' = '+str(round((sum(pvsc[tech_name])/1e3),2))+' MWh') 
+                            print('from_grid_'+str(tech_name)+' = '+str(round((sum(from_grid[tech_name])/1e3),2))+' MWh')
 
-            
-                for tech_name_plot in from_grid:
-                    if plot == True:
-                        width=0.9
-                        fig = plt.figure(dpi=300)
-                        from mpl_toolkits.axisartist.axislines import SubplotZero
-                        ax = SubplotZero(fig, 1, 1, 1)
-                        fig.add_subplot(ax)
-                        ax.axis["xzero"].set_visible(True)
-                        ax.axis["xzero"].label.set_visible(False)
-                        ax.axis["xzero"].major_ticklabels.set_visible(False)
-                        for n in ["bottom","top", "right"]:
-                            ax.axis[n].set_visible(True)
-                        ax.grid(axis='y', alpha = 0.5, zorder = -4)
-                        ax.bar(x, windsc[tech_name_plot][first_day*24:last_day*24+24], width,  label='wind self consumption', color='orange')
-                        ax.bar(x, pvsc[tech_name_plot][first_day*24:last_day*24+24], width, bottom=windsc[tech_name_plot][first_day*24:last_day*24+24], label='PV self consumption', color='yellowgreen')
-                        ax.bar(x, from_grid[tech_name_plot][first_day*24:last_day*24+24], width, bottom=pvsc[tech_name_plot][first_day*24:last_day*24+24]+windsc[tech_name_plot][first_day*24:last_day*24+24], label='From grid', color='red')
-                        plt.title(tech_name_plot+' days '+str(first_day)+'-'+str(last_day))
-                        plt.plot(x,-balances[loc]['electricity'][tech_name_plot][first_day*24:last_day*24+24],'k',label='load')     
-                        plt.legend(ncol=2, bbox_to_anchor = (1.01,-0.11))
-                        plt.ylabel("Hourly energy [kWh/h] ")
-                        plt.xlabel( "Time  [h] ")
-                        if (last_day-first_day) <= 10:
-                            plt.xticks(list(range(first_day*24, (last_day+1)*24+1,24)), [str(x) for x in list(range(first_day*24, (last_day+1)*24+1,24))], rotation=45)
-                        plt.show()
-        
             wind_surplus = wind_still_available
             pv_surplus = pv_still_available
             if print_ == True:
-                print('\nwind_surplus = '+str((sum(wind_surplus))/1e6)+' GWh')
-                print('\npv_surplus = '+str((sum(pv_surplus))/1e6)+' GWh')
+                print('\nwind_autoconsumption = '+str(round((sum(wind_autoconsumption)/1e3),2))+' MWh')
+                print('pv_autoconsumption = '+str(round((sum(pv_autoconsumption)/1e3),2))+' MWh')
+                print('wind_surplus = '+str(round((sum(wind_surplus)/1e3),2))+' MWh')
+                print('pv_surplus = '+str(round((sum(pv_surplus)/1e3),2))+' MWh')
             
   
         # Saving all technologies interacting with hydrogen
@@ -358,21 +587,22 @@ def renewables_results(studycase,simulation_name,simulation_years,loc,emission_i
                             el_from_pv_hyd[i] += pvsc[tech_name][i] 
         
         balances_pp = balances.copy()
-        balances_pp[loc]['electricity']['hyd grid electricity'] = {}
+        balances_pp[loc]['electricity']['hyd tot electricity'] = tot_demand_for_hyd
         balances_pp[loc]['electricity']['hyd grid electricity'] = el_from_grid_hyd
+        balances_pp[loc]['electricity']['tech from grid'] = from_grid
         
-        if sum(el_from_wind_hyd) != 0:
-            balances_pp[loc]['electricity']['hyd wind electricity'] = {}
+        if 'wind' in balances[loc]['electricity']:
+            balances_pp[loc]['electricity']['tech windsc']             = windsc
             balances_pp[loc]['electricity']['hyd wind electricity']    = el_from_wind_hyd
-        if sum(el_from_pv_hyd) != 0:
-            balances_pp[loc]['electricity']['hyd pv electricity'] = {}
-            balances_pp[loc]['electricity']['hyd pv electricity']      = el_from_pv_hyd
+            balances_pp[loc]['electricity']['wind surplus']            = wind_surplus
+            balances_pp[loc]['electricity']['wind autoconsumption']    = wind_autoconsumption
+        if 'PV' in balances[loc]['electricity']:        
+            balances_pp[loc]['electricity']['tech pvsc']             = pvsc
+            balances_pp[loc]['electricity']['hyd pv electricity']    = el_from_pv_hyd
+            balances_pp[loc]['electricity']['pv surplus']            = pv_surplus
+            balances_pp[loc]['electricity']['pv autoconsumption']    = pv_autoconsumption
         
-        # saving post process results
-        if save == True:
-            with open('results/balances_pp_'+simulation_name+".pkl", 'wb') as f: pickle.dump(balances_pp, f)
-
-        if plot_cum == True:
+        if plot == True:
             k=1
             grid_cumulative_for_hyd = np.cumsum(el_from_grid_hyd)
             demand_cumulative_for_hyd = np.cumsum(tot_demand_for_hyd)
@@ -452,203 +682,14 @@ def renewables_results(studycase,simulation_name,simulation_years,loc,emission_i
             h2_ghg = round(co2_tot/produced_hyd,2)                          # [kgCO2/kgH2] GHG intensity of the produced hydrogen
             if print_ == True:
                 print(f"\nThe H2 GHG intensity calculated for the considered scenario results in {h2_ghg} kgCO2/kgH2")
-         
-        # Hourly energy balances
-        if plot == True:
-            
-            h_balances_pp = balances_pp[loc]['electricity']
-            
-            
-            if 'PV' in h_balances_pp:
-                pv = h_balances_pp['PV'][first_day*24:last_day*24+24]
-            
-            if 'wind' in h_balances_pp:
-                wind = h_balances_pp['wind'][first_day*24:last_day*24+24]
-                
-            if 'grid' in h_balances_pp:                
-                into_grid = np.zeros(24*(last_day-first_day+1))
-                from_grid = np.zeros(24*(last_day-first_day+1)) 
-                for i,e in enumerate(h_balances_pp['grid'][first_day*24:last_day*24+24]):
-                    if e > 0:
-                        from_grid[i] = e
-                    else:
-                        into_grid[i] = e 
-            
-            if 'battery' in h_balances_pp:
-                charge_battery = np.zeros(24*(last_day-first_day+1))
-                discharge_battery = np.zeros(24*(last_day-first_day+1))
-                for i,e in enumerate(h_balances_pp['battery'][first_day*24:last_day*24+24]):
-                    if e > 0:
-                        discharge_battery[i] = e
-                    else:
-                        charge_battery[i] = e 
-            
-            if 'electrolyzer' in h_balances_pp:
-                ele = h_balances_pp['electrolyzer'][first_day*24:last_day*24+24]
-            
-            if 'mechanical compressor' in h_balances_pp:
-                compressor = h_balances_pp['mechanical compressor'][first_day*24:last_day*24+24]
-            
-            if 'fuel cell' in h_balances_pp:
-                fc = h_balances_pp['fuel cell'][first_day*24:last_day*24+24]
-                
-            x = np.arange(first_day*24,(last_day+1)*24)
-            
-            fig = plt.figure(dpi=1000)
-            from mpl_toolkits.axisartist.axislines import SubplotZero
-            ax = SubplotZero(fig, 1, 1, 1)
-            fig.add_subplot(ax)
-            ax.axis["xzero"].set_visible(True)
-            ax.axis["xzero"].label.set_visible(False)
-            ax.axis["xzero"].major_ticklabels.set_visible(False)
-    
-            for n in ["bottom","top", "right"]:
-                ax.axis[n].set_visible(True)
-            ax.grid(axis='y', alpha = 0.5, zorder = -4)
-            
-            if 'demand' in h_balances_pp:
-                load = -h_balances_pp['demand'][first_day*24:last_day*24+24]+tot_demand_for_hyd[first_day*24:last_day*24+24]
-                el_demand = h_balances_pp['demand'][first_day*24:last_day*24+24]
-                ax.bar(x, el_demand, width, label='To el-devices', color='grey')
-            else:
-                load = tot_demand_for_hyd[first_day*24:last_day*24+24]  
-                el_demand = np.zeros(24*(last_day-first_day+1))
-                
-            if 'PV' in h_balances_pp and 'wind' in h_balances_pp:
-                if list(system.keys()).index('PV') < list(system.keys()).index('wind'): # PV comes before wind
-                    prioritised_res_1 = pv
-                    label_res_1 = 'PV'
-                    prioritised_res_2 = wind
-                    label_res_2 = 'Wind'
-                else:
-                    prioritised_res_1 = wind
-                    label_res_1 = 'Wind'
-                    prioritised_res_2 = pv
-                    label_res_2 = 'PV'
- 
-                ax.bar(x, np.minimum(load,prioritised_res_1), width,  label= label_res_1+' self consumption', color='yellowgreen')
-                ax.bar(x, np.maximum(prioritised_res_1-load,np.zeros(len(prioritised_res_1))), width, bottom=load, label= label_res_1+' surplus', color='cornflowerblue')
-                ax.bar(x, np.maximum(np.minimum(prioritised_res_1+prioritised_res_2,load)-prioritised_res_1,np.zeros(len(prioritised_res_1))), width, bottom= prioritised_res_1, label= label_res_2+' self consumption', color='tab:green')
-                ax.bar(x, np.maximum(prioritised_res_1-load+prioritised_res_2,np.zeros(len(prioritised_res_1)))-np.maximum(prioritised_res_1-load,np.zeros(len(prioritised_res_1))), width, bottom=load+np.maximum(prioritised_res_1-load,np.zeros(len(prioritised_res_1))),label= label_res_2+' surplus', color='tab:blue')
-                
-                if not 'battery' in h_balances_pp and not 'electrolyzer' in h_balances_pp:
-                    ax.bar(x, from_grid, width ,bottom=prioritised_res_1+prioritised_res_2, label='from grid', color='tomato')
-                    ax.bar(x, into_grid, width, bottom=el_demand, label='into grid', color='orange')
+
                     
-                if 'battery' in h_balances_pp:
-                    ax.bar(x, from_grid, width, bottom=prioritised_res_1+prioritised_res_2+discharge_battery, label='from grid', color='tomato')
-                    ax.bar(x, discharge_battery, width, bottom = prioritised_res_1+prioritised_res_2, label='discharge battery',  color='purple')
-                    ax.bar(x, into_grid, width, bottom=charge_battery+el_demand , label='into grid', color='orange')
-                    ax.bar(x, charge_battery, width,  bottom=el_demand, label='charge battery',  color='violet')
-         
-                if 'electrolyzer' in h_balances_pp and 'fuel cell' in h_balances_pp:
-                    ax.bar(x, from_grid, width ,bottom=prioritised_res_1+prioritised_res_2+fc, label='from grid', color='tomato')
-                    ax.bar(x, fc, width, bottom = prioritised_res_1+prioritised_res_2, label='from fuel cell',  color='peru')
-                    if 'mechanical compressor' in h_balances_pp:
-                       ax.bar(x, ele, width, bottom = el_demand, label='to electrolyzer',  color='chocolate')
-                       ax.bar(x, compressor, width, bottom = ele+el_demand, label='to compressor',  color='maroon')
-                       ax.bar(x, into_grid, width, bottom= ele+compressor +el_demand, label='into grid', color='orange')
-                    else:
-                        ax.bar(x, into_grid, width,bottom=ele+el_demand , label='into grid', color='orange')
-                        ax.bar(x, ele, width, bottom = el_demand,  label='to electrolyzer',  color='chocolate')
-                                        
-                if 'electrolyzer' in h_balances_pp and not 'fuel cell' in h_balances_pp:
-                    ax.bar(x, from_grid, width ,bottom=prioritised_res_1+prioritised_res_2, label='from grid', color='tomato')
-                    if 'mechanical compressor' in h_balances_pp:
-                       ax.bar(x, ele, width, bottom = el_demand, label='to electrolyzer',  color='chocolate')
-                       ax.bar(x, compressor, width, bottom = ele+el_demand, label='to compressor',  color='maroon')
-                       ax.bar(x, into_grid, width, bottom= ele+compressor+el_demand , label='into grid', color='orange')
-                    else:
-                        ax.bar(x, into_grid, width,bottom=ele+el_demand , label='into grid', color='orange')
-                        ax.bar(x, ele, width, bottom = el_demand, label='to electrolyzer',  color='chocolate')
-                        
-            elif 'PV' in h_balances_pp and not 'wind' in h_balances_pp:
-                ax.bar(x, np.minimum(load,pv), width,  label='PV self consumption', color='yellowgreen')
-                ax.bar(x, np.maximum(pv-load,np.zeros(len(pv))), width, bottom=load, label='PV surplus', color='cornflowerblue')
-                
-                if not 'battery' in h_balances_pp and not 'electrolyzer' in h_balances_pp:
-                    ax.bar(x, from_grid, width ,bottom=pv, label='from grid', color='tomato')
-                    ax.bar(x, into_grid, width, bottom=el_demand, label='into grid', color='orange')
-                    
-                if 'battery' in h_balances_pp:
-                    ax.bar(x, from_grid, width, bottom=pv+discharge_battery, label='from grid', color='tomato')
-                    ax.bar(x, discharge_battery, width, bottom = pv, label='discharge battery',  color='purple')
-                    ax.bar(x, into_grid, width, bottom=charge_battery+el_demand , label='into grid', color='orange')
-                    ax.bar(x, charge_battery, width, bottom=el_demand, label='charge battery',  color='violet')
-               
-                if 'electrolyzer' in h_balances_pp and 'fuel cell' in h_balances_pp:
-                    ax.bar(x, from_grid, width ,bottom=pv+fc, label='from grid', color='tomato')
-                    ax.bar(x, fc, width, bottom = pv, label='from fuel cell',  color='peru')
-                    if 'mechanical compressor' in h_balances_pp:
-                       ax.bar(x, ele, width, bottom = el_demand, label='to electrolyzer',  color='chocolate')
-                       ax.bar(x, compressor, width, bottom = ele+el_demand, label='to compressor',  color='maroon')
-                       ax.bar(x, into_grid, width, bottom= ele+compressor+el_demand , label='into grid', color='orange')
-                    else:
-                        ax.bar(x, into_grid, width,bottom=ele+el_demand , label='into grid', color='orange')
-                        ax.bar(x, ele, width, bottom=el_demand, label='to electrolyzer',  color='chocolate')
-                                        
-                if 'electrolyzer' in h_balances_pp and not 'fuel cell' in h_balances_pp:
-                    ax.bar(x, from_grid, width ,bottom=pv, label='from grid', color='tomato')
-                    if 'mechanical compressor' in h_balances_pp:
-                       ax.bar(x, ele, width, bottom = el_demand,  label='to electrolyzer',  color='chocolate')
-                       ax.bar(x, compressor, width, bottom = ele+el_demand, label='to compressor',  color='maroon')
-                       ax.bar(x, into_grid, width, bottom= ele+compressor+el_demand , label='into grid', color='orange')
-                    else:
-                        ax.bar(x, into_grid, width,bottom=ele+el_demand, label='into grid', color='orange')
-                        ax.bar(x, ele, width, bottom=el_demand, label='to electrolyzer',  color='chocolate')
-               
-            elif 'wind' in h_balances_pp and not 'PV' in h_balances_pp:
-                ax.bar(x, np.minimum(load,wind), width,  label='Wind self consumption', color='yellowgreen')
-                ax.bar(x, np.maximum(wind-load,np.zeros(len(wind))), width, bottom=load, label='Wind surplus', color='cornflowerblue')
-                
-                if not 'battery' in h_balances_pp and not 'electrolyzer' in h_balances_pp:
-                    ax.bar(x, from_grid, width ,bottom=wind, label='from grid', color='tomato')
-                    ax.bar(x, into_grid, width,  bottom=el_demand,label='into grid', color='orange')
-                    
-                if 'battery' in h_balances_pp:
-                    ax.bar(x, from_grid, width, bottom=wind+discharge_battery, label='from grid', color='tomato')
-                    ax.bar(x, discharge_battery, width, bottom = wind, label='discharge battery',  color='purple')
-                    ax.bar(x, into_grid, width, bottom=charge_battery+el_demand , label='into grid', color='orange')
-                    ax.bar(x, charge_battery, width, bottom=el_demand, label='charge battery',  color='violet')
-                
-                if 'electrolyzer' in h_balances_pp and 'fuel cell' in h_balances_pp:
-                    ax.bar(x, from_grid, width ,bottom=wind+fc, label='from grid', color='tomato')
-                    ax.bar(x, fc, width, bottom = wind, label='from fuel cell',  color='peru')
-                    if 'mechanical compressor' in h_balances_pp:
-                       ax.bar(x, ele, width, bottom = el_demand,  label='to electrolyzer',  color='chocolate')
-                       ax.bar(x, compressor, width, bottom = ele+el_demand, label='to compressor',  color='maroon')
-                       ax.bar(x, into_grid, width, bottom= ele+compressor+el_demand , label='into grid', color='orange')
-                    else:
-                        ax.bar(x, into_grid, width,bottom=ele+el_demand , label='into grid', color='orange')
-                        ax.bar(x, ele, width, bottom=el_demand, label='to electrolyzer',  color='chocolate')
-                                        
-                if 'electrolyzer' in h_balances_pp and not 'fuel cell' in h_balances_pp:
-                    ax.bar(x, from_grid, width ,bottom=wind, label='from grid', color='tomato')
-                    if 'mechanical compressor' in h_balances_pp:
-                       ax.bar(x, ele, width,  bottom = el_demand,  label='to electrolyzer',  color='chocolate')
-                       ax.bar(x, compressor, width, bottom = ele+el_demand, label='to compressor',  color='maroon')
-                       ax.bar(x, into_grid, width, bottom= ele+compressor+el_demand , label='into grid', color='orange')
-                    else:
-                        ax.bar(x, into_grid, width,bottom=ele+el_demand , label='into grid', color='orange')
-                        ax.bar(x, ele, width, bottom = el_demand, label='to electrolyzer',  color='chocolate')
-               
-               
-            plt.title(loc+' days '+str(first_day)+'-'+str(last_day))
-            plt.plot(x,load,'k',label='load')     
-            plt.legend(ncol=2, bbox_to_anchor = (1.01,-0.11))
-            plt.ylabel("Hourly energy [kWh/h] ")
-            plt.xlabel( "Time  [h] ")
-            if (last_day-first_day) <= 10:
-                plt.xticks(list(range(first_day*24, (last_day+1)*24+1,24)), [str(x) for x in list(range(first_day*24, (last_day+1)*24+1,24))], rotation=45)
-            # ax.xaxis.set_tick_params(bottom=True,labelbottom=True)
-            #plt.xticks([0,6,12,18,24],['0','6','12','18','24'],fontsize=10,color='g')
-            #plt.xticks([0,6,12,18,24,30,36,42,48],['0','6','12','18','24','30','36','42','48'],fontsize=10,color='g')
-            #plt.yticks([-2,-1,0,1,2],['-2','-1','0','1','2'])
-            plt.show() 
-                    
-                
+        # saving post process results
+        with open('results/balances_pp_'+simulation_name+".pkl", 'wb') as f: pickle.dump(balances_pp, f)
+
     return (balances_pp)       
                 
+
 def NPV_plot(study_case):
     ##### economic
     with open('results/economic_assessment_'+study_case+'.pkl', 'rb') as f: economic = pickle.load(f)

@@ -94,16 +94,17 @@ class location:
             if f"{carrier} demand" in self.system:
                 if carrier == 'hydrogen' or carrier == 'HP hydrogen':
                     self.hydrogen_demand = carrier  # demand can be defined as 'hydrogen demand' or 'HP hydrogen demand' depending on the required delivery pressure
+                    if self.system[carrier+' demand']['strategy'] == 'supply-led' and self.system[carrier+' demand']['serie'] != False :
+                        raise ValueError(f"Warning in {self.name} location: supply-led strategy is not consistent with providing a demand series.\n\
+                        Options to fix the problem: \n\
+                            (a) - Insert 'false' at {carrier} demand 'serie' in studycase.json\n\
+                            (b) - Change 'strategy' to 'demand-led' in studycase.json")
                 if carrier in ['hydrogen','HP hydrogen','process steam'] and self.system[carrier+' demand']['serie'] != False:
                     self.energy_balance[carrier]['demand'] = - np.tile(pd.read_csv(path+'/loads/'+system[f"{carrier} demand"]['serie'])['kg'].to_numpy(),int(self.simulation_hours/8760))   # hourly energy carrier needed for the entire simulation
                 elif carrier in ['hydrogen','HP hydrogen','process steam'] and not self.system[carrier+' demand']['serie']:
                         if self.system[carrier+' demand']['strategy'] == 'supply-led' and self.system[carrier+' demand']['serie'] == False :
                             self.energy_balance[carrier]['demand'] =  np.tile(np.zeros(8760),int(self.simulation_hours/8760))   # hourly energy carrier needed for the entire simulation
-                        if self.system[carrier+' demand']['strategy'] == 'supply-led' and self.system[carrier+' demand']['serie'] != False :
-                            raise ValueError(f"Warning in {self.name} location: supply-led strategy is not consistent with providing a demand series.\n\
-                            Options to fix the problem: \n\
-                                (a) - Insert 'false' at {carrier} demand 'serie' in studycase.json\n\
-                                (b) - Change 'strategy' to 'demand-led' in studycase.json")
+
                 else:                                                                                                                                                                                                          
                     self.energy_balance[carrier]['demand'] = - np.tile(pd.read_csv(path+'/loads/'+system[f"{carrier} demand"]['serie'])['kWh'].to_numpy(),int(self.simulation_hours/8760))  # hourly energy carrier needed for the entire simulation
 
@@ -715,11 +716,6 @@ class location:
 #%%            
         ### Global check on energy balances at the end of every timestep
         for carrier in eb:
-            if carrier == 'electricity':
-                if 'wind' in self.system and self.system['wind']['owned'] == False:  # if RES generation plant not owned, extra production is not accounted as part of balances
-                    continue
-                if 'PV' in self.system and self.system['PV']['owned'] == False:      # // //
-                    continue
             if carrier == 'heating water':
                 continue
             tol = 0.0001  # [-] tolerance on error
