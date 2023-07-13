@@ -17,7 +17,7 @@
                       								"owned":false},
                         				           				
                           "electricity grid": { "draw": true,
-                                                "feed": false,
+                                                "feed": true,
                                                 "priority":4  },
                                                 
                           "gas grid": { "draw": true,
