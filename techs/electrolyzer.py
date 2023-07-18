@@ -198,7 +198,7 @@ class electrolyzer:
             # Interpolation
            
             self.iV1 = interp1d(self.CellCurrDensity,self.Voltage,bounds_error=False)#,fill_value='extrapolate')                # Linear spline 1-D interpolation                                                                                                                                                                                                                                                
-
+           
             # Defining Electrolyzer Max Power Consumption
             
             Power_inp = []                                  # [kW] Initializing power input series
@@ -297,15 +297,29 @@ class electrolyzer:
         if self.model == 'PEM General': 
             # i-V plot
             x = np.linspace(min(self.CellCurrDensity),max(self.CellCurrDensity),self.num) 
-            plt.figure(dpi=1000)
+            plt.figure(dpi=300)
             plt.plot(self.CellCurrDensity,self.Voltage,label='data', color='b',marker='.', linestyle='None', mec='r', markersize=7, markerfacecolor='white', zorder=0)
-            plt.axvline(x=0.05,color='b',linestyle=':', label= 'Lower Functioning Boundary', zorder=3, linewidth=1.2)   # Ref. doi: 10.1016/j.ijhydene.2008.11.083
+            plt.axvline(x=self.CurrDensityMin,color='b',linestyle=':', label= 'Lower Functioning Boundary', zorder=3, linewidth=1.2)   # Ref. doi: 10.1016/j.ijhydene.2008.11.083
             plt.plot(x,self.iV1(x),label='linear', linestyle='--') 
             plt.grid()
             plt.legend(fontsize=8)
             plt.xlabel('Cell Current Density [A cm$^{-2}$]')
             plt.ylabel('Stak Voltage [V]')
             plt.title('PEMEL Polarization Curve - SplineInterp' )
+            plt.show()
+            
+            # i-V plot
+            x = np.linspace(min(self.CellCurrDensity),max(self.CellCurrDensity),self.num) 
+            plt.figure(dpi=300, figsize = (5,3.5))
+            # plt.plot(self.CellCurrDensity,self.CellVoltage,label='data', color='b',marker='.', linestyle='None', mec='r', markersize=7, markerfacecolor='white', zorder=0)
+            plt.plot(x,self.iV1(x)/self.nc, color = 'steelblue') 
+            # plt.plot(x,self.iV1(x),label='Model', color = 'steelblue') 
+            plt.axvline(x=self.CurrDensityMin,color='k',linestyle=':', label= 'CurDens$_\mathregular{min}$', zorder=3, linewidth=1.2)   # Ref. doi: 10.1016/j.ijhydene.2008.11.083
+            plt.grid(alpha = 0.5)
+            plt.legend(fontsize=8)
+            plt.xlabel('Cell Current Density [A/cm$^{2}$]')
+            plt.ylabel('Cell Voltage [V]')
+            # plt.title('PEMEL Polarization Curve - SplineInterp' )
             plt.show()
         
         else: 
@@ -701,16 +715,16 @@ if __name__ == "__main__":
     
     inp_test = {  
                   "Npower": 1000,
-                  "number of modules": 4,
+                  "number of modules": 5,
                   "stack model": 'PEM General',
                   "strategy": 'hydrogen-first',
                   "only_renewables":True
                 }
     
-    sim_hours = 36                               # [h] simulated period of time - usually it's 1 year minimum
+    sim_hours = 100                               # [h] simulated period of time - usually it's 1 year minimum
 
     el = electrolyzer(inp_test,sim_hours)        # creating electrolyzer object
-    # el.plot_polarizationpts()                    # plot example
+    el.plot_polarizationpts()                    # plot example
 
     storable_hydrogen = 100                      # [kg] Available capacity in tank for H2 storage at hour 'h'
     
@@ -783,6 +797,22 @@ if __name__ == "__main__":
     plt.xlabel('Input Power [kW]')
     plt.ylabel('$\\eta$')    
 
+    power_percentage = 0.1
+    first_component = int(power_percentage*sim_hours)
+    fig, ax = plt.subplots(dpi =300, figsize = (5,3.5))
+    ax2 = ax.twinx()
+    ax.plot(flow1[first_component:-1],el.EFF[first_component:-1],label='Efficiency', color = '#eb4034')
+    ax2.plot(flow1,hyd,label='H2$_\mathregular{prod}$', color ='#4ea3f2')
+    plt.axvline(x=power_percentage*inp_test['Npower'],color='black',linestyle='--',zorder = 3)
+    ax.set_xlabel('Power input [kW]')
+    ax.set_ylabel('$\\eta$ [-]')
+    ax.set_ylim(0,None)
+    ax2.set_ylim(0,None)    
+    ax2.set_ylabel('Produced hydrogen [kg/h]')
+    ax.grid(alpha = 0.5)
+    h1, l1 = ax.get_legend_handles_labels()
+    h2, l2 = ax2.get_legend_handles_labels()
+    ax2.legend(h1+h2, l1+l2, loc='best', fontsize = 'small')
         
     'Test 2 - Random power input'
 
