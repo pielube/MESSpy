@@ -1,5 +1,5 @@
 {
-"Industrial_Facility_1": { "gas demand": { "serie"   : "gas_demand_test.csv",
+"prosumer_1": { "gas demand": { "serie"   : "gas_demand_test.csv",
                                          "priority": 1,
                                          "strategy": "demand-led"  },
                                          

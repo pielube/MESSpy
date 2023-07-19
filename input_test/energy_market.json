@@ -6,7 +6,7 @@
 		"costitution cost": 0,
         "OeM": 0},
 		 
-"electricity": {"purchase": 0.063, 
+"electricity": {"purchase": 0.12, 
                 "sale": 0.035},
                 
 "wind electricity": {"purchase": 0.035, 

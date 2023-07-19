@@ -64,8 +64,9 @@ https://www.mdpi.com/1996-1073/14/18/5724
 - "Assessment of hydrogen-based long term electrical energy storage in residential energy systems"
 https://www.sciencedirect.com/science/article/pii/S2666955222000260
 - "A New Smart Batteries Management for Renewable Energy Communities"                                                   
-https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4268979
-- "Decentralised heat pumps management in Renewable Energy Communities"
+https://www.sciencedirect.com/science/article/pii/S2352467723000516
+- "Heat pumps and thermal energy storages centralised management in a Renewable Energy Community."
+https://doi.org/10.54337/ijsepm.7625
 
 ## Citing
 Please cite previous works if you use MESSpy in your research.

@@ -31,11 +31,13 @@ name_economic = 'From Rec0 to Rec' # str name for economic_assesment_results fil
 path = r'./input_test' # change the path with r'./input_dev' if you are working on your own run_dev
 #path = r'./input_dev'
 
-file_studycase = 'studycase'
-file_refcase = 'refcase'
-file_general = 'general'
-file_tech_cost = 'tech_cost'
-file_energy_market = 'energy_market'
+file_studycase      = 'studycase'
+file_refcase        = 'refcase'
+# file_studycase      = 'studycase_hydrogen'
+# file_refcase        = 'refcase_hydrogen'
+file_general        = 'general'
+file_tech_cost      = 'tech_cost'
+file_energy_market  = 'energy_market'
 file_emissions      = 'emissions'
 
 # Opening input files:
@@ -85,42 +87,68 @@ some post-process are alredy avaiable as examples in postprocess_test
 you should create your own postprocess_dev.py
 """
 
+# =============================================================================
+# Here you can read the main results (balances and economic):
+# =============================================================================
+
+# with open('results/economic_assessment_'+name_economic+'.pkl', 'rb') as f: economic = pickle.load(f)
+# with open('results/balances_'+name_studycase+'.pkl', 'rb') as f: balances = pickle.load(f)
+
+
+# =============================================================================
+# studycase postprocess useful functions
+# =============================================================================
+
 pp.total_balances(name_studycase,'prosumer_1','electricity')
 pp.total_balances(name_studycase,'prosumer_2','electricity')
 pp.total_balances(name_studycase,'prosumer_2','hydrogen')
 pp.total_balances(name_studycase,'consumer_1','electricity')
 
-#pp.total_balances(name_refcase,'consumer_2','electricity')
-#pp.total_balances(name_refcase,'consumer_2','heating water')
-#pp.total_balances(name_refcase,'consumer_2','gas')
-#pp.total_balances(name_studycase,'consumer_2','electricity')
-#pp.total_balances(name_studycase,'consumer_2','heating water')
+pp.total_balances(name_refcase,'consumer_2','electricity')
+pp.total_balances(name_refcase,'consumer_2','heating water')
+pp.total_balances(name_refcase,'consumer_2','gas')
+pp.total_balances(name_studycase,'consumer_2','electricity')
+pp.total_balances(name_studycase,'consumer_2','heating water')
 
 pp.REC_electricity_balance(name_studycase)
+ 
+pp.hourly_balances_electricity(name_studycase,'prosumer_1', 20, 21)
+pp.hourly_balances_electricity(name_studycase,'prosumer_2', 2, 3)
+
+pp.hourly_balances_electricity(name_studycase,'consumer_1', 2, 3)
+pp.hourly_balances_electricity(name_studycase,'consumer_2', 2, 3)
+
+pp.csc_allocation_sum(name_studycase)
+pp.storage_control(name_studycase)
+pp.ele_param(name_studycase, 2, 3)
+pp.fc_param(name_studycase, 2, 3)
+
+balances_pp = pp.renewables_results(studycase,name_studycase,general['simulation years'],'prosumer_2', emissions, '2025',235,237, print_ = True, plot = True, plot_cum = True, ghg = True,save=True)
+balances_pp = pp.renewables_results(studycase,name_studycase,general['simulation years'],'prosumer_2', emissions, '2025',120,125, print_ = False, plot = True, plot_cum = False, ghg = False,save=False)
+balances_pp = pp.renewables_results(studycase,name_studycase,general['simulation years'],'prosumer_2', emissions, '2025',220,240, print_ = False, plot = True, plot_cum = False, ghg = False,save=False)
+
+LCOH('prosumer_2',balances_pp,studycase,name_studycase,energy_market,general['simulation years'],path,name_economic, revenues = False, refund = True)
 
 pp.LOC_plot(name_studycase)
 
 pp.NPV_plot(name_economic)
 
-# pp.renewables(name_studycase,general['simulation years'],'Industrial_Facility_1',40,50,plot=True)
-# LCOH(studycase,name_studycase,energy_market,general['simulation years'],path,name_economic, revenues = ['oxygen'], refund = True) 
-# pp.ghg_emissions(name_studycase,'Industrial_Facility_1', emissions, '2025', print_ = True)
+# =============================================================================
+# studycase_hydrogen postprocess useful functions
+# =============================================================================
 
-# pp.hourly_balances_electricity(name_studycase,'Industrial_Facility_1',40,50)
-pp.hourly_balances_electricity(name_studycase,'prosumer_1', 20, 21)
-pp.hourly_balances_electricity(name_studycase,'prosumer_2', 2, 3)
+# balances_pp = pp.renewables_results(studycase,name_studycase,general['simulation years'],'prosumer_1', emissions, '2025',235,237, print_ = True, plot = True, plot_cum = True, ghg = True,save=True)
+# balances_pp = pp.renewables_results(studycase,name_studycase,general['simulation years'],'prosumer_1', emissions, '2025',120,125, print_ = False, plot = True, plot_cum = False, ghg = False,save=False)
+# balances_pp = pp.renewables_results(studycase,name_studycase,general['simulation years'],'prosumer_1', emissions, '2025',220,240, print_ = False, plot = True, plot_cum = False, ghg = False,save=False)
 
-#pp.hourly_balances_electricity(name_studycase,'consumer_1', 2, 3)
-#pp.hourly_balances_electricity(name_studycase,'consumer_2', 2, 3)
+# LCOH('prosumer_1',balances_pp,studycase,name_studycase,energy_market,general['simulation years'],path,name_economic, revenues = False, refund = True)
 
-#pp.csc_allocation_sum(name_studycase)
-#pp.storage_control(name_studycase)
-#pp.ele_param(name_studycase, 2, 3)
-#pp.fc_param(name_studycase, 2, 3)
+# pp.ele_param(name_studycase, 2, 3)
+# pp.fc_param(name_studycase, 2, 3)
 
-# here you can read the main results (balances and economic):
-#with open('results/economic_assessment_'+name_economic+'.pkl', 'rb') as f: economic = pickle.load(f)
-#with open('results/balances_'+name_studycase+'.pkl', 'rb') as f: balances = pickle.load(f)
+# pp.LOC_plot(name_studycase)
+
+# pp.NPV_plot(name_economic)
 
 
 #%% ##########################################################################
