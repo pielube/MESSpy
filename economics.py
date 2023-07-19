@@ -6,9 +6,15 @@ import json
 import matplotlib.pyplot as plt
 import matplotlib.font_manager as fm
 
-def NPV(file_studycase,name_studycase,name_refcase,economic_data,simulation_years,path,name_economic):  ### WIP da implementare l'opzione in cui non si possiede la risorsa rinnovabile e di conseguenza vanno rivisti i bilanci di immissione in rete poichè non sono flussi di cassa i cui dispongo io in quanto location
+def NPV(file_studycase,file_refcase,name_studycase,name_refcase,economic_data,simulation_years,path,name_economic):
     """
     Economic assesment 
+    
+    file_studycase: str study case name
+    file_refcase: str ref case name
+                    
+    name_studycase: str name of study case results file.pkl
+    name_refcase: str name of reference case results file.pkl
     
     economic_data: dictionary
         'REC': dictionary REC economic parameters definition
@@ -20,19 +26,14 @@ def NPV(file_studycase,name_studycase,name_refcase,economic_data,simulation_year
         'interest rate': 0-1 [rate/year]
         'inflation rate': -1-1 [rate/year] cost evolution of each carrier
         'investment year': time horizon for which to evaluate the economic analysis (must be a multiple of simulation_year in general.json)
-        
-    name_studycase: str name of study case results file.pkl
-    name_refcase: str name of reference case results file.pkl
-        
-    structure: dictionary of study case structure (see REC.py)
-    structure0: dictionary of reference case structure (see REC.py)
                         
     output: NPV of each location in 'economic_assessment.pkl'
         
     """  
     
-    # open file study_case
+    # open file study_case and ref_case
     with open(os.path.join(path,f"{file_studycase}.json"),'r') as f:        studycase = json.load(f)
+    with open(os.path.join(path,f"{file_refcase}.json"),'r') as f:        refcase = json.load(f)
     years_factor = int(economic_data['investment years'] / simulation_years) # this factor is useful to match the length of the energy simulation with the length of the economic investment
     
     # open energy balances of study and reference case
@@ -42,6 +43,7 @@ def NPV(file_studycase,name_studycase,name_refcase,economic_data,simulation_year
     # open cost of componenets of studycase and refcase
     with open('Results/tech_cost_'+name_studycase+'.pkl', 'rb') as f:        tc = pickle.load(f)        
     with open('Results/tech_cost_'+name_refcase+'.pkl', 'rb') as f:        tc0 = pickle.load(f)
+        
         
     results = {}                              # dictionary initialise economic results of each locations
     
@@ -122,12 +124,12 @@ def NPV(file_studycase,name_studycase,name_refcase,economic_data,simulation_year
                     results[location_name]['CF_refcase']['OeM'][rep_time] += - tc0[location_name][tech_name]['total cost'] * tc0[location_name][tech_name]['replacement']['rate']/100 # subtract technology replacement to location Cash Flow
                     rep_time += tc0[location_name][tech_name]['replacement']['years']
             
-            
+       
         # energy sold and purchased in study case 
-        for carrier in balances[location_name]:                           # for each carrier (electricity, hydrogen, gas, heat)
+        for carrier in balances[location_name]:                           # for each carrier (electricity, hydrogen, gas, heat)     
             if 'grid' in balances[location_name][carrier]:  
                 
-                if type(economic_data[carrier]['sale']) == str: # if there is the price serie
+                if type(economic_data[carrier]['sale']) == str: # if the price series is given
                     sale_serie = np.tile(pd.read_csv(path+'/energy_price/'+economic_data[carrier]['sale'])['0'].to_numpy(),int(simulation_years))  
                     sold = balances[location_name][carrier]['grid'] * sale_serie
                 else: # if the price is always the same 
@@ -135,10 +137,10 @@ def NPV(file_studycase,name_studycase,name_refcase,economic_data,simulation_year
                
                 sold = np.tile(sold,years_factor)
                 sold = np.reshape(sold,(-1,8760))
-                results[location_name]['CF_studycase']['Sale'][carrier] = - sold.sum(axis=1,where=sold<0)
+                results[location_name]['CF_studycase']['Sale'][carrier]   = - sold.sum(axis=1,where=sold<0)
                 results[location_name]['CF']['Sale'][carrier] = np.zeros(economic_data['investment years'])
                 
-                if type(economic_data[carrier]['purchase']) == str: # if there is the price series
+                if type(economic_data[carrier]['purchase']) == str: # if the price series is given
                     purchase_serie = np.tile(pd.read_csv(path+'/energy_price/'+economic_data[carrier]['purchase'])['0'].to_numpy(),int(simulation_years))  
                     purchase = balances[location_name][carrier]['grid'] * purchase_serie
                 else: # if the price is always the same 
@@ -146,10 +148,18 @@ def NPV(file_studycase,name_studycase,name_refcase,economic_data,simulation_year
                
                 purchase = np.tile(purchase,years_factor)
                 purchase = np.reshape(purchase,(-1,8760))
-                results[location_name]['CF_studycase']['Purchase'][carrier] = - purchase.sum(axis=1,where=purchase>0)
-                results[location_name]['CF']['Purchase'][carrier] = np.zeros(economic_data['investment years'])
+                results[location_name]['CF_studycase']['Purchase'][carrier]   = - purchase.sum(axis=1,where=purchase>0)
+                results[location_name]['CF']['Purchase'][carrier] = np.zeros(economic_data['investment years']) 
+
+            if carrier == 'electricity': # Purchased and sold electricity correction if RES plants are not owned
             
-                
+                if ('wind' in studycase[location_name] and studycase[location_name]['wind']['owned'] == False) or ('PV' in studycase[location_name] and studycase[location_name]['PV']['owned'] == False):
+                    
+                    balances_pp = RES_autoconsumption(studycase,name_studycase,simulation_years,location_name)
+                    
+                    results = CF_electricity_correction(balances_pp,results,studycase,simulation_years,location_name,economic_data,path,carrier,years_factor,'CF_studycase')
+
+    
         # energy sold and purchased in reference case 
         for carrier in balances0[location_name]: # for each carrier (electricity, hydrogen, gas, heat)
             if 'grid' in balances0[location_name][carrier]: 
@@ -173,8 +183,16 @@ def NPV(file_studycase,name_studycase,name_refcase,economic_data,simulation_year
                 purchase = np.reshape(purchase,(-1,8760))
                 results[location_name]['CF_refcase']['Purchase'][carrier] = -purchase.sum(axis=1,where=purchase>0)
                 results[location_name]['CF']['Purchase'][carrier] = np.zeros(economic_data['investment years'])
-                      
-                
+         
+            if carrier == 'electricity': # Purchased and sold electricity correction if RES plants are not owned
+            
+                if ('wind' in refcase[location_name] and refcase[location_name]['wind']['owned'] == False) or ('PV' in studycase[location_name] and studycase[location_name]['PV']['owned'] == False):
+                    
+                    balances0_pp = RES_autoconsumption(refcase,name_refcase,simulation_years,location_name)
+                    
+                    results = CF_electricity_correction(balances0_pp,results,refcase,simulation_years,location_name,economic_data,path,carrier,years_factor,'CF_refcase')
+
+         
         # REC incentives redistribution
         csc = balances[location_name]['electricity']['collective self consumption']
         inc_pro = - csc * economic_data['REC']['incentives redistribution']['producers']/100 * economic_data['REC']['collective self consumption incentives']
@@ -254,7 +272,7 @@ def NPV(file_studycase,name_studycase,name_refcase,economic_data,simulation_year
         
         results[location_name]['CF']['Tot'] = results[location_name]['CF_studycase']['Tot'] - results[location_name]['CF_refcase']['Tot']
         
-    
+        
         # calculate I0
         results[location_name]['I0']['Tot'] = 0
         for tech_name in results[location_name]['I0']:
@@ -447,7 +465,7 @@ def LCOH (
             if 'hyd wind electricity' in balances_pp[location_name]['electricity'] and structure[location_name]['wind']['owned'] == False:   
                 
                 if type(economic_data['wind electricity']['purchase']) == str: # if the price series is given
-                    purchase_serie = np.tile(pd.read_csv(path+'/energy_price/'+economic_data[carrier]['purchase'])['0'].to_numpy(),int(simulation_years))  
+                    purchase_serie = np.tile(pd.read_csv(path+'/energy_price/'+economic_data['wind electricity']['purchase'])['0'].to_numpy(),int(simulation_years))  
                     purchase = balances_pp[location_name][carrier]['hyd wind electricity'] * purchase_serie
                 else: # if the price is always the same 
                     purchase = balances_pp[location_name][carrier]['hyd wind electricity']*economic_data['wind electricity']['purchase']
@@ -460,7 +478,7 @@ def LCOH (
             if 'hyd pv electricity' in balances_pp[location_name]['electricity'] and structure[location_name]['PV']['owned'] == False:  
 
                 if type(economic_data['pv electricity']['purchase']) == str: # if the price series is given
-                    purchase_serie = np.tile(pd.read_csv(path+'/energy_price/'+economic_data[carrier]['purchase'])['0'].to_numpy(),int(simulation_years))  
+                    purchase_serie = np.tile(pd.read_csv(path+'/energy_price/'+economic_data['pv electricity']['purchase'])['0'].to_numpy(),int(simulation_years))  
                     purchase = balances_pp[location_name][carrier]['hyd pv electricity'] * purchase_serie
                 else: # if the price is always the same 
                     purchase = balances_pp[location_name][carrier]['hyd pv electricity']*economic_data['pv electricity']['purchase']
@@ -675,9 +693,230 @@ def LCOH (
     return(LCOH)                                      
 
 
-     
+def RES_autoconsumption(studycase,simulation_name,simulation_years,loc):
+    
+    """
+    RES_autoconsumption calculation
+    ----------
+    studycase : dictionary (all the inputs are optional)
+        'location_1_name': inputs required to create a location object (see Location.py)
+        'location_2_name': 
+            ...
+        'location_n_name':
+            
+    simulation_name : str
+    
+    simulation_years : str - years to be simulated
+    
+    loc : str - location_name
+                      
+    output:  balances_pp: dictionary containing total balances calculation useful for LCOH calculation, NPV calculation and post process plots
+
+    """  
+
+    with open('results/balances_'+simulation_name+'.pkl', 'rb') as f: balances = pickle.load(f)
+
+    windsc = {}
+    pvsc = {}
+    from_grid = {}
+    wind_autoconsumption = np.zeros(simulation_years*8760)
+    pv_autoconsumption = np.zeros(simulation_years*8760)
+    
+    if 'PV' in balances[loc]['electricity']:
+        pv_still_available = balances[loc]['electricity']['PV'].copy()
+    else:
+        pv_still_available = np.zeros(simulation_years*8760)
+    
+    if 'wind' in balances[loc]['electricity']:
+        wind_still_available = balances[loc]['electricity']['wind'].copy()
+    else:
+        wind_still_available = np.zeros(simulation_years*8760)
+    
+    system = dict(sorted(studycase[loc].items(), key=lambda item: item[1]['priority'])) # ordered by priority
+            
+        
+    if 'wind' in balances[loc]['electricity'] and 'PV' not in balances[loc]['electricity']:    
+        for tech_name in system: # (which is ordered py priority)
+            if tech_name == 'electricity demand':
+                tech_name = 'demand'
+            if tech_name in balances[loc]['electricity'] and all(num <= 0 for num in balances[loc]['electricity'][tech_name]) and tech_name != 'collective self consumption':
+                windsc[tech_name] = np.zeros(simulation_years*8760)  # initializing the array to store wind energy self consumption values for tech_name technology
+                from_grid[tech_name] = np.zeros(simulation_years*8760)
+                for i in range(len(balances[loc]['electricity'][tech_name])):
+                    if balances[loc]['electricity'][tech_name][i] < 0:
+                        windsc[tech_name][i] = np.minimum(wind_still_available[i],-balances[loc]['electricity'][tech_name][i])
+                        from_grid[tech_name][i] = -balances[loc]['electricity'][tech_name][i] - windsc[tech_name][i]
+                        wind_still_available[i] = wind_still_available[i] - windsc[tech_name][i]
+                        wind_autoconsumption[i] += windsc[tech_name][i]
+
+                # print('\nwindsc_'+str(tech_name)+' = '+str(round((sum(windsc[tech_name])/1e3),2))+' MWh') 
+                # print('from_grid_'+str(tech_name)+' = '+str(round((sum(from_grid[tech_name])/1e3),2))+' MWh')
+                
+        wind_surplus = wind_still_available
+        
+        # print('\nwind_autoconsumption = '+str(round((sum(wind_autoconsumption)/1e3),2))+' MWh')
+        # print('wind_surplus = '+str(round((sum(wind_surplus)/1e3),2))+' MWh')
+
+                
+    elif 'PV' in balances[loc]['electricity'] and 'wind' not in balances[loc]['electricity']:    
+        for tech_name in system: # (which is ordered py priority)
+            if tech_name == 'electricity demand':
+                tech_name = 'demand'
+            if tech_name in balances[loc]['electricity'] and all(num <= 0 for num in balances[loc]['electricity'][tech_name]) and tech_name != 'collective self consumption':
+                pvsc[tech_name] = np.zeros(simulation_years*8760)  # initializing the array to store wind energy self consumption values for tech_name technology
+                from_grid[tech_name] = np.zeros(simulation_years*8760)
+                for i in range(len(balances[loc]['electricity'][tech_name])):
+                    if balances[loc]['electricity'][tech_name][i] < 0:
+                        pvsc[tech_name][i] = np.minimum(pv_still_available[i],-balances[loc]['electricity'][tech_name][i])
+                        from_grid[tech_name][i] = -balances[loc]['electricity'][tech_name][i] - pvsc[tech_name][i]
+                        pv_still_available[i] = pv_still_available[i] - pvsc[tech_name][i]
+                        pv_autoconsumption[i] += pvsc[tech_name][i]
+
+                # print('\npvsc_'+str(tech_name)+' = '+str(round((sum(pvsc[tech_name])/1e3),2))+' MWh') 
+                # print('from_grid_'+str(tech_name)+' = '+str(round((sum(from_grid[tech_name])/1e3),2))+' MWh')
+                    
+        pv_surplus = pv_still_available
+
+        # print('\npv_autoconsumption = '+str(round((sum(pv_autoconsumption)/1e3),2))+' MWh')
+        # print('pv_surplus = '+str(round((sum(pv_surplus)/1e3),2))+' MWh')
+
+
+    elif 'PV' in balances[loc]['electricity'] and 'wind' in balances[loc]['electricity']:
+        
+        if list(system.keys()).index('PV') < list(system.keys()).index('wind'): # PV comes before wind
+            
+            for tech_name in system: # (which is ordered py priority)
+                if tech_name == 'electricity demand':
+                    tech_name = 'demand'
+                if tech_name in balances[loc]['electricity'] and all(num <= 0 for num in balances[loc]['electricity'][tech_name]) and tech_name != 'collective self consumption':
+                    pvsc[tech_name] = np.zeros(simulation_years*8760)  # initializing the array to store pv energy self consumption values for tech_name technology
+                    windsc[tech_name] = np.zeros(simulation_years*8760)  # initializing the array to store wind energy self consumption values for tech_name technology
+                    from_grid[tech_name] = np.zeros(simulation_years*8760)
+                    for i in range(len(balances[loc]['electricity'][tech_name])):
+                        if balances[loc]['electricity'][tech_name][i] < 0:
+                            pvsc[tech_name][i] = np.minimum(pv_still_available[i],-balances[loc]['electricity'][tech_name][i])
+                            windsc[tech_name][i] = np.minimum(wind_still_available[i],-balances[loc]['electricity'][tech_name][i]-pvsc[tech_name][i])
+                            from_grid[tech_name][i] = -balances[loc]['electricity'][tech_name][i] - pvsc[tech_name][i] - windsc[tech_name][i]
+                            pv_still_available[i] = pv_still_available[i] - pvsc[tech_name][i]
+                            wind_still_available[i] = wind_still_available[i] - windsc[tech_name][i]
+                            pv_autoconsumption[i] += pvsc[tech_name][i]
+                            wind_autoconsumption[i] += windsc[tech_name][i]
+
+                    # print('\npvsc_'+str(tech_name)+' = '+str(round((sum(pvsc[tech_name])/1e3),2))+' MWh')
+                    # print('windsc_'+str(tech_name)+' = '+str(round((sum(windsc[tech_name])/1e3),2))+' MWh') 
+                    # print('from_grid_'+str(tech_name)+' = '+str(round((sum(from_grid[tech_name])/1e3),2))+' MWh')
+                     
+        else:
+            
+            for tech_name in system: # (which is ordered py priority)
+                if tech_name == 'electricity demand':
+                    tech_name = 'demand'
+                if tech_name in balances[loc]['electricity'] and all(num <= 0 for num in balances[loc]['electricity'][tech_name]) and tech_name != 'collective self consumption':
+                    pvsc[tech_name] = np.zeros(simulation_years*8760)  # initializing the array to store pv energy self consumption values for tech_name technology
+                    windsc[tech_name] = np.zeros(simulation_years*8760)  # initializing the array to store wind energy self consumption values for tech_name technology
+                    from_grid[tech_name] = np.zeros(simulation_years*8760)
+                    for i in range(len(balances[loc]['electricity'][tech_name])):
+                        if balances[loc]['electricity'][tech_name][i] < 0:
+                            windsc[tech_name][i] = np.minimum(wind_still_available[i],-balances[loc]['electricity'][tech_name][i])
+                            pvsc[tech_name][i] = np.minimum(pv_still_available[i],-balances[loc]['electricity'][tech_name][i]-windsc[tech_name][i])
+                            from_grid[tech_name][i] = -balances[loc]['electricity'][tech_name][i] - windsc[tech_name][i] - pvsc[tech_name][i]
+                            pv_still_available[i] = pv_still_available[i] - pvsc[tech_name][i]
+                            wind_still_available[i] = wind_still_available[i] - windsc[tech_name][i]
+                            pv_autoconsumption[i] += pvsc[tech_name][i]
+                            wind_autoconsumption[i] += windsc[tech_name][i]
+
+                    # print('\nwindsc_'+str(tech_name)+' = '+str(round((sum(windsc[tech_name])/1e3),2))+' MWh')
+                    # print('pvsc_'+str(tech_name)+' = '+str(round((sum(pvsc[tech_name])/1e3),2))+' MWh') 
+                    # print('from_grid_'+str(tech_name)+' = '+str(round((sum(from_grid[tech_name])/1e3),2))+' MWh')
+
+        wind_surplus = wind_still_available
+        pv_surplus = pv_still_available
+
+        # print('\nwind_autoconsumption = '+str(round((sum(wind_autoconsumption)/1e3),2))+' MWh')
+        # print('pv_autoconsumption = '+str(round((sum(pv_autoconsumption)/1e3),2))+' MWh')
+        # print('wind_surplus = '+str(round((sum(wind_surplus)/1e3),2))+' MWh')
+        # print('pv_surplus = '+str(round((sum(pv_surplus)/1e3),2))+' MWh')
+
+    
+    balances_pp = balances.copy()
+
+    # balances_pp[loc]['electricity']['tech from grid'] = from_grid
+    
+    if 'wind' in balances[loc]['electricity']:
+        # balances_pp[loc]['electricity']['tech windsc']             = windsc
+        balances_pp[loc]['electricity']['wind surplus']            = wind_surplus
+        balances_pp[loc]['electricity']['wind autoconsumption']    = wind_autoconsumption
+    if 'PV' in balances[loc]['electricity']:        
+        # balances_pp[loc]['electricity']['tech pvsc']             = pvsc
+        balances_pp[loc]['electricity']['pv surplus']            = pv_surplus
+        balances_pp[loc]['electricity']['pv autoconsumption']    = pv_autoconsumption
+        
+    return (balances_pp)   
 
         
-        
+def CF_electricity_correction(balances_pp,results,studycase,simulation_years,location_name,economic_data,path,carrier,years_factor,name_CF):       
 
+    """
+    CF_electricity_correction calculation
+    ----------
+    balances_pp: dictionary containing updated energy balances
+    
+    results: dictionary containing economic results
+                      
+    name_CF: str - CF_studycase or CF_refcase
+    
+    output:  results: dictionary containing updated economic results
+
+    """ 
+    
+    if 'wind autoconsumption' in balances_pp[location_name]['electricity'] and studycase[location_name]['wind']['owned'] == False:   
         
+        # wind purchased electricity correction (to be encountered in energy purchased)
+        if type(economic_data['wind electricity']['purchase']) == str: # if the price series is given
+            purchase_serie = np.tile(pd.read_csv(path+'/energy_price/'+economic_data['wind electricity']['purchase'])['0'].to_numpy(),int(simulation_years))  
+            purchase = balances_pp[location_name][carrier]['wind autoconsumption'] * purchase_serie
+        else: # if the price is always the same 
+            purchase = balances_pp[location_name][carrier]['wind autoconsumption']*economic_data['wind electricity']['purchase']
+       
+        purchase = np.tile(purchase,years_factor)
+        purchase = np.reshape(purchase,(-1,8760))
+        results[location_name][name_CF]['Purchase'][carrier] -= purchase.sum(axis=1,where=purchase>0)
+        results[location_name]['CF']['Purchase'][carrier] = np.zeros(economic_data['investment years'])
+    
+        # wind sold electricity correction (not to be encountered in energy sold): Thus the electricity sold price must be considered, not the pv electricity sold price
+        if type(economic_data['electricity']['sale']) == str: # if the price series is given
+            sale_serie = np.tile(pd.read_csv(path+'/energy_price/'+economic_data['electricity']['sale'])['0'].to_numpy(),int(simulation_years))  
+            sold = balances_pp[location_name][carrier]['wind surplus'] * sale_serie
+        else: # if the price is always the same 
+            sold = balances_pp[location_name][carrier]['wind surplus']*economic_data['electricity']['sale'] 
+       
+        sold = np.tile(sold,years_factor)
+        sold = np.reshape(sold,(-1,8760))
+        results[location_name][name_CF]['Sale'][carrier]   -= sold.sum(axis=1,where=sold>0)                    
+        
+    if 'pv autoconsumption' in balances_pp[location_name]['electricity'] and studycase[location_name]['PV']['owned'] == False:  
+
+        # pv purchased electricity correction (to be encountered in energy purchased)
+        if type(economic_data['pv electricity']['purchase']) == str: # if the price series is given
+            purchase_serie = np.tile(pd.read_csv(path+'/energy_price/'+economic_data['pv electricity']['purchase'])['0'].to_numpy(),int(simulation_years))  
+            purchase = balances_pp[location_name][carrier]['pv autoconsumption'] * purchase_serie
+        else: # if the price is always the same 
+            purchase = balances_pp[location_name][carrier]['pv autoconsumption']*economic_data['pv electricity']['purchase']
+       
+        purchase = np.tile(purchase,years_factor)
+        purchase = np.reshape(purchase,(-1,8760))
+        results[location_name][name_CF]['Purchase'][carrier] -= purchase.sum(axis=1,where=purchase>0)
+        results[location_name]['CF']['Purchase'][carrier] = np.zeros(economic_data['investment years'])
+        
+        # pv sold electricity correction (not to be encountered in energy sold): Thus the electricity sold price must be considered, not the pv electricity sold price
+        if type(economic_data['electricity']['sale']) == str: # if the price series is given
+            sale_serie = np.tile(pd.read_csv(path+'/energy_price/'+economic_data['electricity']['sale'])['0'].to_numpy(),int(simulation_years))  
+            sold = balances_pp[location_name][carrier]['pv surplus'] * sale_serie
+        else: # if the price is always the same 
+            sold = balances_pp[location_name][carrier]['pv surplus']*economic_data['electricity']['sale'] 
+       
+        sold = np.tile(sold,years_factor)
+        sold = np.reshape(sold,(-1,8760))
+        results[location_name][name_CF]['Sale'][carrier]   -= sold.sum(axis=1,where=sold>0)
+
+    return(results)

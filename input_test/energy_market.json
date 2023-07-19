@@ -6,17 +6,15 @@
 		"costitution cost": 0,
         "OeM": 0},
 		 
-"electricity": {"purchase": 0.12, 
-                "sale": 0.035},
+"electricity": {"purchase": 0.25, 
+                "sale": 0.05},
                 
-"wind electricity": {"purchase": 0.035, 
-                        "sale": 0.08}, 
+"wind electricity": {"purchase": 0.035}, 
                         
-"pv electricity": {"purchase": 0.042, 
-                        "sale": 0.08},  
+"pv electricity": {"purchase": 0.065},  
 				 
-"hydrogen": {"purchase": 8, 
-             "sale": 0},
+"hydrogen": {"purchase": 0, 
+             "sale": 8},
              
 "oxygen": {"purchase": 0,
             "sale": 0.1},
@@ -27,11 +25,11 @@
 "gas": {"purchase": 0.15, 
         "sale": 0}, 	  
 		  
-"interest rate": 0.06,
+"interest rate": 0.05,
 
 "inflation rate": { "electricity": 0.00,
-                    "gas": 0.04,
-                    "hydrogen": -0.10},
+                    "gas": 0.00,
+                    "hydrogen": 0.00},
 					
 "decommissioning" : 0.05,
                 
