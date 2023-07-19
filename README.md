@@ -67,6 +67,8 @@ https://www.sciencedirect.com/science/article/pii/S2666955222000260
 https://www.sciencedirect.com/science/article/pii/S2352467723000516
 - "Heat pumps and thermal energy storages centralised management in a Renewable Energy Community."
 https://doi.org/10.54337/ijsepm.7625
+- "Assessment of paper industry decarbonization potential via hydrogen in a multi-energy system scenario: A case study"
+https://doi.org/10.1016/j.segy.2023.100114
 
 ## Citing
 Please cite previous works if you use MESSpy in your research.
