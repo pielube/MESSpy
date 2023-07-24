@@ -20,9 +20,10 @@ Models of different technologies are avialable and still under development to in
 - Electrolyzers
 - Fuel Cells
 - Hydrogen tanks
+- Hydrogen compressor
 - Heat pumps
 - Boilers (ng, ele or H2)
-- CHP (combained heat and power)
+- CHP (combined heat and power)
 
 ### MESS needs the hourly load profiles as input as a .csv file
 Depending on the type of meter installed, these data is in some cases made available by the electricity/gas supplier, in others it must be requested, while sometimes it cannot be obtained. In the latter case, specific programmes are required to generate such profiles in the specific .csv format needed as one of the program inputs. There are many programmes available online, the authors recommend the following:\
@@ -67,6 +68,8 @@ https://www.sciencedirect.com/science/article/pii/S2666955222000260
 https://www.sciencedirect.com/science/article/pii/S2352467723000516
 - "Heat pumps and thermal energy storages centralised management in a Renewable Energy Community."
 https://doi.org/10.54337/ijsepm.7625
+- "Assessment of paper industry decarbonization potential via hydrogen in a multi-energy system scenario: A case study"
+https://doi.org/10.1016/j.segy.2023.100114
 
 ## Citing
 Please cite previous works if you use MESSpy in your research.
