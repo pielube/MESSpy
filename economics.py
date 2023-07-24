@@ -74,12 +74,14 @@ def NPV(file_studycase,file_refcase,name_studycase,name_refcase,economic_data,si
                                           'CSC': np.zeros(economic_data['investment years']),
                                           'Tot': np.zeros(economic_data['investment years'])} 
 
+        results[location_name]['I0_refcase'] = {}  #MC initialise investment refcase
+        results[location_name]['I0_studycase'] = {}  #MC initialise investment studycase                                                                                                                                                                    
         results[location_name]['I0'] = {} # initialise initial investment           
         
         
         for tech_name in tc[location_name]:              # considering each techonlogiy in the location
         
-            results[location_name]['I0'][tech_name] = tc[location_name][tech_name]['total cost'] # I0
+            results[location_name]['I0_studycase'][tech_name] = tc[location_name][tech_name]['total cost'] #MC I0 studycase
             results[location_name]['CF_studycase']['OeM'][:] += - tc[location_name][tech_name]['OeM'] # OeM
 
             # replacements 
@@ -89,25 +91,26 @@ def NPV(file_studycase,file_refcase,name_studycase,name_refcase,economic_data,si
                     age = age[location_name][tech_name][0]
                     for a in age:
                         rep_time = int(a/8760)
-                        results[location_name]['CF_studycase']['OeM'][rep_time] += - results[location_name]['I0'][tech_name] * tc[location_name][tech_name]['replacement']['rate']/100 # subtract technology replacement to location Cash Flow
+                        results[location_name]['CF_studycase']['OeM'][rep_time] += - results[location_name]['I0_studycase'][tech_name] * tc[location_name][tech_name]['replacement']['rate']/100 # subtract technology replacement to location Cash Flow
             else: # if replacement time is given
                 rep_time = tc[location_name][tech_name]['replacement']['years']
                 while rep_time < economic_data['investment years']: # if tech_name replacement happens before the end of the simulation
-                    results[location_name]['CF_studycase']['OeM'][rep_time] += - results[location_name]['I0'][tech_name] * tc[location_name][tech_name]['replacement']['rate']/100 # subtract technology replacement to location Cash Flow
+                    results[location_name]['CF_studycase']['OeM'][rep_time] += - results[location_name]['I0_studycase'][tech_name] * tc[location_name][tech_name]['replacement']['rate']/100 # subtract technology replacement to location Cash Flow
                     rep_time += tc[location_name][tech_name]['replacement']['years']
             # NB no refund considered for replacements
                     
             # refund
             if tc[location_name][tech_name]['refund']['years'] == 0:
-                results[location_name]['I0'][tech_name] = results[location_name]['I0'][tech_name]*(100-tc[location_name][tech_name]['refund']['rate'])/100
+                results[location_name]['I0_studycase'][tech_name] = results[location_name]['I0_studycase'][tech_name]*(100-tc[location_name][tech_name]['refund']['rate'])/100
             else:
-                yearly_refund = results[location_name]['I0'][tech_name]*tc[location_name][tech_name]['refund']['rate']/100 / tc[location_name][tech_name]['refund']['years'] # yearly refund [€]
+                yearly_refund = results[location_name]['I0_studycase'][tech_name]*tc[location_name][tech_name]['refund']['rate']/100 / tc[location_name][tech_name]['refund']['years'] # yearly refund [€]
                 refunds = np.zeros(economic_data['investment years']) # array initialise
                 refunds[:min(economic_data['investment years'],tc[location_name][tech_name]['refund']['years'])] = yearly_refund # array repet yearly refond 
                 results[location_name]['CF_studycase']['Refund'] += refunds # add refund to Cash Flow
             
         for tech_name in tc0[location_name]:
             
+            results[location_name]['I0_refcase'][tech_name] = tc0[location_name][tech_name]['total cost'] #MC IO refcase                                                                                                            
             results[location_name]['CF_refcase']['OeM'][:] += - tc0[location_name][tech_name]['OeM'] # OeM
             
             # replacements 
@@ -272,8 +275,29 @@ def NPV(file_studycase,file_refcase,name_studycase,name_refcase,economic_data,si
         
         results[location_name]['CF']['Tot'] = results[location_name]['CF_studycase']['Tot'] - results[location_name]['CF_refcase']['Tot']
         
+        #MC calculate I0 refcase
+        results[location_name]['I0_refcase']['Tot'] = 0
+        for tech_name in results[location_name]['I0_refcase']:
+            if tech_name != 'Tot':
+                results[location_name]['I0_refcase']['Tot'] += results[location_name]['I0_refcase'][tech_name]
+                
+        #MC calculate I0 studycase
+        results[location_name]['I0_studycase']['Tot'] = 0
+        for tech_name in results[location_name]['I0_studycase']:
+             if tech_name != 'Tot':
+                 results[location_name]['I0_studycase']['Tot'] += results[location_name]['I0_studycase'][tech_name]
         
-        # calculate I0
+        #MC calculate IO
+        for tech_name in tc[location_name]:
+            if tech_name in tc0[location_name]:
+                if results[location_name]['I0_studycase'][tech_name] >= results[location_name]['I0_refcase'][tech_name]:
+                    results[location_name]['I0'][tech_name] = results[location_name]['I0_studycase'][tech_name] - results[location_name]['I0_refcase'][tech_name]
+                else:
+                    results[location_name]['I0'][tech_name] = results[location_name]['I0_studycase'][tech_name]
+            else:
+                results[location_name]['I0'][tech_name] = results[location_name]['I0_studycase'][tech_name]
+
+
         results[location_name]['I0']['Tot'] = 0
         for tech_name in results[location_name]['I0']:
             if tech_name != 'Tot':
@@ -402,8 +426,8 @@ def LCOH (
             else: # if replacement time is given
                 rep_time = tc[location_name][tech_name]['replacement']['years']
                 while rep_time < economic_data['investment years']: # if tech_name replacement happens before the end of the simulation
-                    results_pp[location_name]['CF']['OeM'][rep_time-1] += - np.float64(results_pp[location_name]['I0'][tech_name])*np.float(tc[location_name][tech_name]['replacement']['rate'])/np.float(100) # subtract technology replacement to location Cash Flow. -1 subtracted to index because the array is shifted of 1 position during LCOH calculation -> CF[1:]  = results_pp[location_name]['CF']['Tot'].copy()    # [€] Cash Flows
-                    lcoh[location_name]['Capex'][tech_name][rep_time] += np.float64(lcoh[location_name]['Capex'][tech_name][0])*np.float(tc[location_name][tech_name]['replacement']['rate'])/np.float64(100) # subtract technology replacement to location Cash Flow. np.float type added to avoid overflow problems 
+                    results_pp[location_name]['CF']['OeM'][rep_time-1] += - np.float64(results_pp[location_name]['I0'][tech_name])*np.float64(tc[location_name][tech_name]['replacement']['rate'])/np.float64(100) # subtract technology replacement to location Cash Flow. -1 subtracted to index because the array is shifted of 1 position during LCOH calculation -> CF[1:]  = results_pp[location_name]['CF']['Tot'].copy()    # [€] Cash Flows
+                    lcoh[location_name]['Capex'][tech_name][rep_time] += np.float64(lcoh[location_name]['Capex'][tech_name][0])*np.float64(tc[location_name][tech_name]['replacement']['rate'])/np.float64(100) # subtract technology replacement to location Cash Flow. np.float type added to avoid overflow problems 
                     rep_time += tc[location_name][tech_name]['replacement']['years']
             
             if refund: # if refund has to be included in LCOH calculation
