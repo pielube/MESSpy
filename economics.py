@@ -54,6 +54,7 @@ def NPV(file_studycase,file_refcase,name_studycase,name_refcase,economic_data,si
         # initialise cash flow:
         results[location_name]['CF_refcase'] = {  'OeM': np.zeros(economic_data['investment years']),
                                                   'Initial/Final Tank level': np.zeros(economic_data['investment years']),                                                                                                                                                
+                                                  'green_hydrogen_incentives': np.zeros(economic_data['investment years']),                                                                                                                           
                                                   'Purchase': {},
                                                   'Sale': {},
                                                   'Refund': np.zeros(economic_data['investment years']),
@@ -61,6 +62,7 @@ def NPV(file_studycase,file_refcase,name_studycase,name_refcase,economic_data,si
                                                   'Tot': np.zeros(economic_data['investment years'])}        
         results[location_name]['CF_studycase'] = {'OeM': np.zeros(economic_data['investment years']),
                                                   'Initial/Final Tank level': np.zeros(economic_data['investment years']),                                                                                                                                                
+                                                  'green_hydrogen_incentives': np.zeros(economic_data['investment years']),                                                                                                                           
                                                   'Purchase': {},
                                                   'Sale': {},
                                                   'Refund': np.zeros(economic_data['investment years']),
@@ -68,6 +70,7 @@ def NPV(file_studycase,file_refcase,name_studycase,name_refcase,economic_data,si
                                                   'Tot': np.zeros(economic_data['investment years'])}       
         results[location_name]['CF'] = {  'OeM': np.zeros(economic_data['investment years']),
                                           'Initial/Final Tank level': np.zeros(economic_data['investment years']),                                                                                                                                                
+                                          'green_hydrogen_incentives': np.zeros(economic_data['investment years']),                                                                                                                   
                                           'Purchase': {},
                                           'Sale': {},
                                           'Refund': np.zeros(economic_data['investment years']),
@@ -290,8 +293,34 @@ def NPV(file_studycase,file_refcase,name_studycase,name_refcase,economic_data,si
             results[location_name]['CF_refcase']['Initial/Final Tank level'] = np.where(diff_values <= 0, diff_values * purchase_values, diff_values * sale_values)
             results[location_name]['CF_refcase']['Tot'] += results[location_name]['CF_refcase']['Initial/Final Tank level']
  
-                 
+
+        if 'electrolyzer' in tc[location_name] and economic_data['green_hydrogen_incentives']['application'] == True: # If hydrogen incentives have to be considered
+            incentive_value = economic_data['green_hydrogen_incentives']['value']
+            n_years_incentives = int(economic_data['green_hydrogen_incentives']['n_years'])
+            if n_years_incentives >= int(simulation_years):
+                mult_factor = int(n_years_incentives/int(simulation_years))
+                h2_produced = np.tile(balances[location_name]['hydrogen']['electrolyzer'],mult_factor)
+            else:
+                h2_produced = balances[location_name]['hydrogen']['electrolyzer'][0:(8760*n_years_incentives)]
+            
+            h2_produced = np.reshape(h2_produced,(-1,8760))
+            results[location_name]['CF_studycase']['green_hydrogen_incentives'][0:n_years_incentives] = np.sum(h2_produced, axis=1)*incentive_value
+            results[location_name]['CF_studycase']['Tot'] += results[location_name]['CF_studycase']['green_hydrogen_incentives']
+                
+        if 'electrolyzer' in tc0[location_name] and economic_data['green_hydrogen_incentives']['application'] == True: # If hydrogen incentives have to be considered
+            incentive_value = economic_data['green_hydrogen_incentives']['value']
+            n_years_incentives = int(economic_data['green_hydrogen_incentives']['n_years'])
+            if n_years_incentives >= int(simulation_years):
+                mult_factor = int(n_years_incentives/int(simulation_years))
+                h2_produced = np.tile(balances[location_name]['hydrogen']['electrolyzer'],mult_factor)
+            else:
+                h2_produced = balances[location_name]['hydrogen']['electrolyzer'][0:(8760*n_years_incentives)]
+              
+            h2_produced = np.reshape(h2_produced,(-1,8760))
+            results[location_name]['CF_refcase']['green_hydrogen_incentives'][0:n_years_incentives] = np.sum(h2_produced, axis=1)*incentive_value
+            results[location_name]['CF_refcase']['Tot'] += results[location_name]['CF_refcase']['green_hydrogen_incentives']
         # Calculate CF comparing CF_studycase and CF_refcase and total cash flow calculation
+        results[location_name]['CF']['green_hydrogen_incentives'] += results[location_name]['CF_studycase']['green_hydrogen_incentives'] - results[location_name]['CF_refcase']['green_hydrogen_incentives']                                                                                                                                                                                                            
         results[location_name]['CF']['Initial/Final Tank level'] += results[location_name]['CF_studycase']['Initial/Final Tank level'] - results[location_name]['CF_refcase']['Initial/Final Tank level']
         results[location_name]['CF']['OeM'] += results[location_name]['CF_studycase']['OeM'] -results[location_name]['CF_refcase']['OeM'] 
         results[location_name]['CF']['Refund'] += results[location_name]['CF_studycase']['Refund'] -results[location_name]['CF_refcase']['Refund']

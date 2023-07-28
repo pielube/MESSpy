@@ -24,6 +24,10 @@
             
 "gas": {"purchase": 0.15, 
         "sale": 0}, 	  
+
+"green_hydrogen_incentives": {"application":true,
+                                "value": 5,
+                                "n_years": 10},
 		  
 "interest rate": 0.05,
 
