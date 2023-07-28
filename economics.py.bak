@@ -233,66 +233,23 @@ def NPV(file_studycase,file_refcase,name_studycase,name_refcase,economic_data,si
                 for y in range(economic_data['investment years']):
                     results[location_name]['CF_refcase']['Sale'][carrier][y] = results[location_name]['CF_refcase']['Sale'][carrier][y]*(1+f)**y
             
-        if 'H tank' in tc[location_name]: # If final tank level is higher than initial one, the difference can be sold; purchased in the opposite case. The same process repetaed for each year
+        if 'H tank' in studycase[location_name]:
             with open('results/LOC_'+name_studycase+'.pkl', 'rb') as f:
                     loc = pickle.load(f)
-            loc = loc[location_name]['H tank'][:-1] # I want a number multiple of 8760 so the lasy component is deleted
-            loc = np.tile(loc,years_factor)
-            loc = np.reshape(loc,(-1,8760))
-            diff_values = loc[:, -1] - loc[:, 0] # If final tank level is higher than initial one, the difference can be sold; purchased in the opposite case. The same process repetaed for each year
-            
-            if type(economic_data['hydrogen']['sale']) == str:
-                sale_serie = pd.read_csv(path+'/energy_price/'+economic_data['hydrogen']['sale'])['0'].to_numpy()
-                if len(sale_serie) < 8762: #It means that the serie must be repeated for the simulation_years selected
-                    sale_serie = np.tile(sale_serie,economic_data['investment years'])
-                sale_serie = np.reshape(sale_serie,(-1,8760))
-                sale_values = np.mean(sale_serie, axis=1)  #€/kg
+            final_tank_level = loc[location_name]['H tank'][-1]
+            initial_tank_level = loc[location_name]['H tank'][0]
+            tank_difference_level = initial_tank_level-final_tank_level
+            if final_tank_level >= initial_tank_level:
+                H2_cost = economic_data['hydrogen']['sale'] #€/kg
             else:
-                sale_values = np.tile(economic_data['hydrogen']['sale'],economic_data['investment years'])  #€/kg
-
-            if type(economic_data['hydrogen']['purchase']) == str:
-                purchase_serie = pd.read_csv(path+'/energy_price/'+economic_data['hydrogen']['purchase'])['0'].to_numpy()
-                if len(purchase_serie) < 8762: #It means that the serie must be repeated for the simulation_years selected
-                    purchase_serie = np.tile(purchase_serie,economic_data['investment years'])
-                purchase_serie = np.reshape(purchase_serie,(-1,8760))
-                purchase_values = np.mean(purchase_serie, axis=1)  #€/kg
-            else:
-                purchase_values = np.tile(economic_data['hydrogen']['purchase'],economic_data['investment years'])  #€/kg
-
-            results[location_name]['CF_studycase']['Initial/Final Tank level'] = np.where(diff_values <= 0, diff_values * purchase_values, diff_values * sale_values)
-            results[location_name]['CF_studycase']['Tot'] += results[location_name]['CF_studycase']['Initial/Final Tank level']
-            
-        if 'H tank' in tc0[location_name]:
-            with open('results/LOC_'+name_refcase+'.pkl', 'rb') as f:
-                    loc = pickle.load(f)
-            loc = np.tile(loc,years_factor)
-            loc = np.reshape(loc,(-1,8760))
-            diff_values = loc[:, -1] - loc[:, 0] # If final tank level is higher than initial one, the difference can be sold; purchased in the opposite case. The same process repetaed for each year
-            
-            if type(economic_data['hydrogen']['sale']) == str:
-                sale_serie = pd.read_csv(path+'/energy_price/'+economic_data['hydrogen']['sale'])['0'].to_numpy()
-                if len(sale_serie) < 8762: #It means that the serie must be repeated for the simulation_years selected
-                    sale_serie = np.tile(sale_serie,economic_data['investment years'])
-                sale_serie = np.reshape(sale_serie,(-1,8760))
-                sale_values = np.mean(sale_serie, axis=1)  #€/kg
-            else:
-                sale_values = np.tile(economic_data['hydrogen']['sale'],economic_data['investment years'])  #€/kg
-
-            if type(economic_data['hydrogen']['purchase']) == str:
-                purchase_serie = pd.read_csv(path+'/energy_price/'+economic_data['hydrogen']['purchase'])['0'].to_numpy()
-                if len(purchase_serie) < 8762: #It means that the serie must be repeated for the simulation_years selected
-                    purchase_serie = np.tile(purchase_serie,economic_data['investment years'])
-                purchase_serie = np.reshape(purchase_serie,(-1,8760))
-                purchase_values = np.mean(purchase_serie, axis=1)  #€/kg
-            else:
-                purchase_values = np.tile(economic_data['hydrogen']['purchase'],economic_data['investment years'])  #€/kg
-
-            results[location_name]['CF_refcase']['Initial/Final Tank level'] = np.where(diff_values <= 0, diff_values * purchase_values, diff_values * sale_values)
+                H2_cost = economic_data['hydrogen']['purchase'] #€/kg
+                
+            results[location_name]['CF_studycase']['Initial/Final Tank level'][:] = -tank_difference_level*H2_cost    
+            results[location_name]['CF_studycase']['Tot'] += results[location_name]['CF_studycase']['Initial/Final Tank level']  
             results[location_name]['CF_refcase']['Tot'] += results[location_name]['CF_refcase']['Initial/Final Tank level']
- 
+            results[location_name]['CF']['Initial/Final Tank level'] += results[location_name]['CF_studycase']['Initial/Final Tank level'] -results[location_name]['CF_refcase']['Initial/Final Tank level'] 
                  
         # Calculate CF comparing CF_studycase and CF_refcase and total cash flow calculation
-        results[location_name]['CF']['Initial/Final Tank level'] += results[location_name]['CF_studycase']['Initial/Final Tank level'] - results[location_name]['CF_refcase']['Initial/Final Tank level']
         results[location_name]['CF']['OeM'] += results[location_name]['CF_studycase']['OeM'] -results[location_name]['CF_refcase']['OeM'] 
         results[location_name]['CF']['Refund'] += results[location_name]['CF_studycase']['Refund'] -results[location_name]['CF_refcase']['Refund']
         results[location_name]['CF']['CSC'] += results[location_name]['CF_studycase']['CSC'] -results[location_name]['CF_refcase']['CSC']
