@@ -133,7 +133,9 @@ def NPV(file_studycase,file_refcase,name_studycase,name_refcase,economic_data,si
             if 'grid' in balances[location_name][carrier]:  
                 
                 if type(economic_data[carrier]['sale']) == str: # if the price series is given
-                    sale_serie = np.tile(pd.read_csv(path+'/energy_price/'+economic_data[carrier]['sale'])['0'].to_numpy(),int(simulation_years))  
+                    sale_serie = pd.read_csv(path+'/energy_price/'+economic_data[carrier]['sale'])['0'].to_numpy()
+                    if len(sale_serie) < 8762: #It means that the serie must be repeated for the simulation_years selected
+                        sale_serie = np.tile(sale_serie,int(simulation_years))                         
                     sold = balances[location_name][carrier]['grid'] * sale_serie
                 else: # if the price is always the same 
                     sold = balances[location_name][carrier]['grid']*economic_data[carrier]['sale'] 
@@ -144,7 +146,9 @@ def NPV(file_studycase,file_refcase,name_studycase,name_refcase,economic_data,si
                 results[location_name]['CF']['Sale'][carrier] = np.zeros(economic_data['investment years'])
                 
                 if type(economic_data[carrier]['purchase']) == str: # if the price series is given
-                    purchase_serie = np.tile(pd.read_csv(path+'/energy_price/'+economic_data[carrier]['purchase'])['0'].to_numpy(),int(simulation_years))  
+                    purchase_serie = pd.read_csv(path+'/energy_price/'+economic_data[carrier]['purchase'])['0'].to_numpy()
+                    if len(purchase_serie) < 8762: #It means that the serie must be repeated for the simulation_years selected
+                        purchase_serie = np.tile(purchase_serie,int(simulation_years))                                     
                     purchase = balances[location_name][carrier]['grid'] * purchase_serie
                 else: # if the price is always the same 
                     purchase = balances[location_name][carrier]['grid']*economic_data[carrier]['purchase']
@@ -452,7 +456,9 @@ def LCOH (
         if 'grid' in balances_pp[location_name][carrier]:  
             
             if type(economic_data[carrier]['sale']) == str: # if the price series is given
-                sale_serie = np.tile(pd.read_csv(path+'/energy_price/'+economic_data[carrier]['sale'])['0'].to_numpy(),int(simulation_years))  
+                sale_serie = pd.read_csv(path+'/energy_price/'+economic_data[carrier]['sale'])['0'].to_numpy()
+                if len(sale_serie) < 8762: #It means that the serie must be repeated for the simulation_years selected
+                    sale_serie = np.tile(sale_serie,int(simulation_years))                   
                 sold = balances_pp[location_name][carrier]['grid'] * sale_serie
             else: # if the price is always the same 
                 sold = balances_pp[location_name][carrier]['grid']*economic_data[carrier]['sale'] 
@@ -464,7 +470,9 @@ def LCOH (
             
             if carrier != 'electricity':
                 if type(economic_data[carrier]['purchase']) == str: # if the price series is given
-                    purchase_serie = np.tile(pd.read_csv(path+'/energy_price/'+economic_data[carrier]['purchase'])['0'].to_numpy(),int(simulation_years))  
+                    purchase_serie = pd.read_csv(path+'/energy_price/'+economic_data[carrier]['purchase'])['0'].to_numpy()
+                    if len(purchase_serie) < 8762: #It means that the serie must be repeated for the simulation_years selected
+                        purchase_serie = np.tile(purchase_serie,int(simulation_years))                         
                     purchase = balances_pp[location_name][carrier]['grid'] * purchase_serie
                 else: # if the price is always the same 
                     purchase = balances_pp[location_name][carrier]['grid']*economic_data[carrier]['purchase']
@@ -475,7 +483,9 @@ def LCOH (
                 lcoh[location_name]['Opex'][carrier +' purchased']  =   purchase.sum(axis=1,where=purchase>0) 
             else:
                 if type(economic_data[carrier]['purchase']) == str: # if the price series is given
-                    purchase_serie = np.tile(pd.read_csv(path+'/energy_price/'+economic_data[carrier]['purchase'])['0'].to_numpy(),int(simulation_years))  
+                    purchase_serie = pd.read_csv(path+'/energy_price/'+economic_data[carrier]['purchase'])['0'].to_numpy()
+                    if len(purchase_serie) < 8762:
+                        purchase_serie = np.tile(purchase_serie,int(simulation_years))                                             
                     el_purchased_hyd = balances_pp[location_name][carrier]['hyd grid electricity'] * purchase_serie
                 else: # if the price is always the same 
                     el_purchased_hyd = balances_pp[location_name][carrier]['hyd grid electricity']*economic_data[carrier]['purchase']
@@ -489,7 +499,9 @@ def LCOH (
             if 'hyd wind electricity' in balances_pp[location_name]['electricity'] and structure[location_name]['wind']['owned'] == False:   
                 
                 if type(economic_data['wind electricity']['purchase']) == str: # if the price series is given
-                    purchase_serie = np.tile(pd.read_csv(path+'/energy_price/'+economic_data['wind electricity']['purchase'])['0'].to_numpy(),int(simulation_years))  
+                    purchase_serie = pd.read_csv(path+'/energy_price/'+economic_data['wind electricity']['purchase'])['0'].to_numpy()
+                    if len(purchase_serie) < 8762:
+                        purchase_serie = np.tile(purchase_serie,int(simulation_years))                              
                     purchase = balances_pp[location_name][carrier]['hyd wind electricity'] * purchase_serie
                 else: # if the price is always the same 
                     purchase = balances_pp[location_name][carrier]['hyd wind electricity']*economic_data['wind electricity']['purchase']
@@ -502,7 +514,9 @@ def LCOH (
             if 'hyd pv electricity' in balances_pp[location_name]['electricity'] and structure[location_name]['PV']['owned'] == False:  
 
                 if type(economic_data['pv electricity']['purchase']) == str: # if the price series is given
-                    purchase_serie = np.tile(pd.read_csv(path+'/energy_price/'+economic_data['pv electricity']['purchase'])['0'].to_numpy(),int(simulation_years))  
+                    purchase_serie = pd.read_csv(path+'/energy_price/'+economic_data['pv electricity']['purchase'])['0'].to_numpy()
+                    if len(purchase_serie) < 8762:
+                        purchase_serie = np.tile(purchase_serie,int(simulation_years))                             
                     purchase = balances_pp[location_name][carrier]['hyd pv electricity'] * purchase_serie
                 else: # if the price is always the same 
                     purchase = balances_pp[location_name][carrier]['hyd pv electricity']*economic_data['pv electricity']['purchase']
@@ -569,7 +583,7 @@ def LCOH (
     # LCOH calculation
     
     # Hydrogen produced each year via electrolysis
-    produced_hydrogen = [0] + [sum(balances_pp[location_name]['hydrogen']['electrolyzer'])]*economic_data['investment years']  # [kg/y] - No H2 produced in period 0
+    produced_hydrogen = [0] + [(sum(balances_pp[location_name]['hydrogen']['electrolyzer']))/simulation_years]*economic_data['investment years']  # [kg/y] - No H2 produced in period 0
     r       = economic_data['interest rate']                # [%] interest rate 
     I0      = results_pp[location_name]['I0']['Tot']           # [€] Initial investment at time = 0
     CF      = np.zeros(economic_data['investment years'] +1)                     # Creating an empty array of year_factor + 1 dimension for Cash Flows in order to insert only I0 as first element
@@ -589,6 +603,7 @@ def LCOH (
         den.append(produced_hydrogen[i]*(1/(1+r)**i))
     
     LCOH = round(sum(num)/sum(den),3)
+    # LCOH = sum(num)/sum(den)                          
     
     results_pp[location_name]['LCOH'] = {'Value [€/kgH2]'          : LCOH,
                                       'Discounted Expenditures' : num,
@@ -897,7 +912,9 @@ def CF_electricity_correction(balances_pp,results,studycase,simulation_years,loc
         
         # wind purchased electricity correction (to be encountered in energy purchased)
         if type(economic_data['wind electricity']['purchase']) == str: # if the price series is given
-            purchase_serie = np.tile(pd.read_csv(path+'/energy_price/'+economic_data['wind electricity']['purchase'])['0'].to_numpy(),int(simulation_years))  
+            purchase_serie = pd.read_csv(path+'/energy_price/'+economic_data['wind electricity']['purchase'])['0'].to_numpy()
+            if len(purchase_serie) < 8762:
+                purchase_serie = np.tile(purchase_serie,int(simulation_years))                                 
             purchase = balances_pp[location_name][carrier]['wind autoconsumption'] * purchase_serie
         else: # if the price is always the same 
             purchase = balances_pp[location_name][carrier]['wind autoconsumption']*economic_data['wind electricity']['purchase']
@@ -909,7 +926,9 @@ def CF_electricity_correction(balances_pp,results,studycase,simulation_years,loc
     
         # wind sold electricity correction (not to be encountered in energy sold): Thus the electricity sold price must be considered, not the pv electricity sold price
         if type(economic_data['electricity']['sale']) == str: # if the price series is given
-            sale_serie = np.tile(pd.read_csv(path+'/energy_price/'+economic_data['electricity']['sale'])['0'].to_numpy(),int(simulation_years))  
+            sale_serie = pd.read_csv(path+'/energy_price/'+economic_data['electricity']['sale'])['0'].to_numpy()
+            if len(sale_serie) < 8762: #It means that the serie must be repeated for the simulation_years selected
+                sale_serie = np.tile(sale_serie,int(simulation_years))                            
             sold = balances_pp[location_name][carrier]['wind surplus'] * sale_serie
         else: # if the price is always the same 
             sold = balances_pp[location_name][carrier]['wind surplus']*economic_data['electricity']['sale'] 
@@ -922,7 +941,9 @@ def CF_electricity_correction(balances_pp,results,studycase,simulation_years,loc
 
         # pv purchased electricity correction (to be encountered in energy purchased)
         if type(economic_data['pv electricity']['purchase']) == str: # if the price series is given
-            purchase_serie = np.tile(pd.read_csv(path+'/energy_price/'+economic_data['pv electricity']['purchase'])['0'].to_numpy(),int(simulation_years))  
+            purchase_serie = pd.read_csv(path+'/energy_price/'+economic_data['pv electricity']['purchase'])['0'].to_numpy()
+            if len(purchase_serie) < 8762:
+                purchase_serie = np.tile(purchase_serie,int(simulation_years))                               
             purchase = balances_pp[location_name][carrier]['pv autoconsumption'] * purchase_serie
         else: # if the price is always the same 
             purchase = balances_pp[location_name][carrier]['pv autoconsumption']*economic_data['pv electricity']['purchase']
@@ -934,7 +955,9 @@ def CF_electricity_correction(balances_pp,results,studycase,simulation_years,loc
         
         # pv sold electricity correction (not to be encountered in energy sold): Thus the electricity sold price must be considered, not the pv electricity sold price
         if type(economic_data['electricity']['sale']) == str: # if the price series is given
-            sale_serie = np.tile(pd.read_csv(path+'/energy_price/'+economic_data['electricity']['sale'])['0'].to_numpy(),int(simulation_years))  
+            sale_serie = pd.read_csv(path+'/energy_price/'+economic_data['electricity']['sale'])['0'].to_numpy()
+            if len(sale_serie) < 8762: #It means that the serie must be repeated for the simulation_years selected
+                sale_serie = np.tile(sale_serie,int(simulation_years))                      
             sold = balances_pp[location_name][carrier]['pv surplus'] * sale_serie
         else: # if the price is always the same 
             sold = balances_pp[location_name][carrier]['pv surplus']*economic_data['electricity']['sale'] 
