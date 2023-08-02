@@ -410,7 +410,7 @@ def plot_post_process(balances_pp,studycase,loc,first_day,last_day):
     plt.show() 
     
         
-def energy_balance_results(studycase,simulation_name,simulation_years,loc,emission_intensity,ref_year,print_=False,plot=False,ghg=False):
+def energy_balance_results(studycase,simulation_name,simulation_years,loc,print_=False,plot=False):
     
     """
     Total balances figures and ghg emissions (green index) calculation
@@ -670,26 +670,42 @@ def energy_balance_results(studycase,simulation_name,simulation_years,loc,emissi
             ax.set_ylabel('Energy [kWh]')
             ax.set_xlabel('Time [h]')            
             plt.show()
-            
-            
-        # Greenhouse gas emissions
-        if ghg == True:
-            el_from_grid_hyd_tot = sum(el_from_grid_hyd)
-            emission_factor= emission_intensity['reference year'][ref_year]                   # [gCO2/kWh] grid intensity
-            co2_tot = el_from_grid_hyd_tot*emission_factor/1000                          # [kgCO2] total amount of carbon dioxide due to grid electricity utilization
-            produced_hyd = sum(balances_pp[loc]['hydrogen']['electrolyzer'])   # [kgH2] total amount of produced hydrogen via in situ electorlysis
-            
-            h2_ghg = round(co2_tot/produced_hyd,2)                          # [kgCO2/kgH2] GHG intensity of the produced hydrogen
-            if print_ == True:
-                print(f"\nThe H2 GHG intensity calculated for the considered scenario results in {h2_ghg} kgCO2/kgH2")
-
                     
         # saving post process results
         with open('results/balances_pp_'+simulation_name+".pkl", 'wb') as f: pickle.dump(balances_pp, f)
 
-    return (balances_pp)       
-                
+    return balances_pp
 
+def ghg_emissions(simulation_name,loc,emission_intensity,ref_year, print_= False):
+    """
+    GHG emissions profile (green index) calculation for hydrogen production.
+    Dependent on energy_balance_results function output.
+    ----------
+            
+    simulation_name : str - name of energy_balances file .pkl where balances_pp results are stored
+        
+    loc : str - location_name
+
+    emission_intensity : dict
+    
+    ref_year: str -> necessary to specify the reference year for grid intensity
+                        
+    output: float - ghg emission value [kgCO2/kgH2]
+    """      
+
+    with open('results/balances_pp_'+simulation_name+".pkl",'rb') as f: balances_pp = pickle.load(f) 
+
+    el_from_grid_hyd_tot = sum(balances_pp[loc]['electricity']['hyd grid electricity'])
+    emission_factor= emission_intensity['reference year'][ref_year]                   # [gCO2/kWh] grid intensity
+    co2_tot = el_from_grid_hyd_tot*emission_factor/1000                          # [kgCO2] total amount of carbon dioxide due to grid electricity utilization
+    produced_hyd = sum(balances_pp[loc]['hydrogen']['electrolyzer'])   # [kgH2] total amount of produced hydrogen via in situ electorlysis
+    
+    h2_ghg = round(co2_tot/produced_hyd,2)                          # [kgCO2/kgH2] GHG intensity of the produced hydrogen
+    if print_ == True:
+        print(f"\nThe H2 GHG intensity calculated for the considered scenario results in {h2_ghg} kgCO2/kgH2")
+    
+    return h2_ghg
+    
 def NPV_plot(study_case):
     ##### economic
     with open('results/economic_assessment_'+study_case+'.pkl', 'rb') as f: economic = pickle.load(f)
