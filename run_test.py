@@ -122,10 +122,11 @@ if file_studycase == 'studycase' and file_refcase == 'refcase':
     pp.fc_param(name_studycase, 2, 3)
     
     # Optional for each location involving hydrogen: Useful to calculate  RES autoconsumption, RES surplus, electricity consumed for hydrogen chain and Green Index
-    balances_pp = pp.energy_balance_results(studycase,name_studycase,general['simulation years'],'prosumer_2', emissions, '2025', print_ = True, plot = True, ghg = True)
+    balances_pp = pp.energy_balance_results(studycase,name_studycase,general['simulation years'],'prosumer_2', print_ = True, plot = True)
     pp.plot_post_process(balances_pp,studycase,'prosumer_2',235,237)
     pp.plot_post_process(balances_pp,studycase,'prosumer_2',120,125)
     pp.plot_post_process(balances_pp,studycase,'prosumer_2',220,240)
+    pp.ghg_emissions(name_studycase,'prosumer_2',emissions, '2025')
 
     LCOH('prosumer_2',balances_pp,studycase,name_studycase,energy_market,general['simulation years'],path,name_economic, revenues = False, refund = True)
     
@@ -140,11 +141,12 @@ elif file_studycase == 'studycase_hydrogen' and file_refcase == 'refcase_hydroge
 # studycase_hydrogen postprocess useful functions
 # =============================================================================
     
-    balances_pp = pp.energy_balance_results(studycase,name_studycase,general['simulation years'],'prosumer_1', emissions, '2025', print_ = True, plot = True, ghg = True)
+    balances_pp = pp.energy_balance_results(studycase,name_studycase,general['simulation years'],'prosumer_1', print_ = True, plot = True)
     
     # pp.plot_post_process(balances_pp,studycase,'prosumer_1',235,237)
     # pp.plot_post_process(balances_pp,studycase,'prosumer_1',120,125)
     # pp.plot_post_process(balances_pp,studycase,'prosumer_1',220,240)
+    pp.ghg_emissions(name_studycase,'prosumer_1',emissions, '2025', print_ = True)
     
     LCOH('prosumer_1',balances_pp,studycase,name_studycase,energy_market,general['simulation years'],path,name_economic, revenues = False, refund = True)
     
