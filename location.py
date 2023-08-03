@@ -361,7 +361,7 @@ class location:
                             if producible_hyd < self.technologies['H tank'].max_capacity*0.00001: # to avoid unnecessary iteration
                                 producible_hyd = 0
                         elif 'H tank' in self.system and 'HPH tank' not in self.system and self.system[self.hydrogen_demand+' demand']['strategy'] == 'demand-led':   # hydrogen can only be stored into an H tank 
-                            producible_hyd  = self.technologies['H tank'].max_capacity-self.technologies['H tank'].LOC[h]   # the tank can't be full
+                            producible_hyd  = self.technologies['H tank'].max_capacity-self.technologies['H tank'].LOC[h] + (-eb['hydrogen']) # the tank can't be full
                             if producible_hyd < self.technologies['H tank'].max_capacity*0.00001:                           # to avoid unnecessary iteration
                                 producible_hyd = 0
                         elif 'H tank' in self.system and 'HPH tank' not in self.system and self.system[self.hydrogen_demand+' demand']['strategy'] == 'supply-led':   # hydrogen can only be stored into an H tank 
@@ -383,11 +383,11 @@ class location:
                             eb['water']         += self.energy_balance['water']['electrolyzer'][h]
                             
                 elif self.technologies['electrolyzer'].strategy == 'hydrogen-first' and self.technologies['electrolyzer'].only_renewables == False: # electrolyzer working both with energy from renewables and from grid, but giving precedence to electricity from renewables
-
+                    
                     if 'hydrogen grid' in self.system and self.system["hydrogen grid"]["feed"] and 'H tank' not in self.system: # hydrogen can be fed into an hydrogen grid
                         producible_hyd = 9999999999999999999
-                    elif 'H tank' in self.system and 'HPH tank' not in self.system and self.system[self.hydrogen_demand+' demand']['strategy'] != 'supply-led':   # hydrogen can only be stored into an H tank 
-                        producible_hyd  = self.technologies['H tank'].max_capacity-self.technologies['H tank'].LOC[h] # the tank can't be full
+                    elif 'H tank' in self.system and 'HPH tank' not in self.system and self.system[self.hydrogen_demand+' demand']['strategy'] == 'demand-led':   # hydrogen can only be stored into an H tank 
+                        producible_hyd  = self.technologies['H tank'].max_capacity-self.technologies['H tank'].LOC[h] + (-eb['hydrogen']) # the tank can't be full
                         if producible_hyd < self.technologies['H tank'].max_capacity*0.00001: # to avoid unnecessary iteration
                             producible_hyd = 0
                     elif 'H tank' in self.system and 'HPH tank' not in self.system and self.system[self.hydrogen_demand+' demand']['strategy'] == 'supply-led':   # hydrogen can only be stored into an H tank 
@@ -455,18 +455,28 @@ class location:
                 if 'HPH tank' not in self.system:
                     if 'O2 tank' not in self.system:
                         if "electricity grid" in self.system and self.system["electricity grid"]["draw"]:
+                            if 'hydrogen demand' in self.system:
+                                massflow = max(0,self.energy_balance['hydrogen']['electrolyzer'][h] + self.energy_balance['hydrogen']['demand'][h])
+                            else:
+                                massflow = max(0,self.energy_balance['hydrogen']['electrolyzer'][h])
                             self.energy_balance['hydrogen']['mechanical compressor'][h], \
-                            self.energy_balance['electricity']['mechanical compressor'][h] = self.technologies['mechanical compressor'].use(h,massflowrate= self.energy_balance['hydrogen']['electrolyzer'][h])[:2] # hydrogen compressed by the compressor (+) and electricity consumption (-) 
+                            self.energy_balance['electricity']['mechanical compressor'][h] = self.technologies['mechanical compressor'].use(h,massflowrate= massflow)[:2] # hydrogen compressed by the compressor (+) and electricity consumption (-) 
                             
                             eb['electricity']   += self.energy_balance['electricity']['mechanical compressor'][h]
                     
                         elif "electricity grid" not in self.system or self.system["electricity grid"]["draw"] == False:   # if the system is configurated as fully off-grid, relying only on RES production
                             if self.energy_balance['hydrogen']['electrolyzer'][h] > 0 :  # if hydrogen has been produced by the electrolyzer and electricity is available in the system
-                                a = self.technologies['mechanical compressor'].use(h,massflowrate= self.energy_balance['hydrogen']['electrolyzer'][h])[1] # [kWh] compressor energy consumption for a certain h2 mass flow rate
+                                if 'hydrogen demand' in self.system:
+                                    demand = self.energy_balance['hydrogen']['demand'][h] # hydrogen demand at timestep h
+                                    massflow = max(0,self.energy_balance['hydrogen']['electrolyzer'][h] + demand )  # hydrogen mass flow rate to be compressed and stored in hydrogen tank
+                                else:           # no hydrogen demand
+                                    demand = 0  # hydrogen demand at timestep h
+                                    massflow = self.energy_balance['hydrogen']['electrolyzer'][h]  # in case no hydrogen demand is present all produced hydrogen is compressed and flows through the hydrogne tank
+                                a = self.technologies['mechanical compressor'].use(h,massflowrate= massflow)[1] # [kWh] compressor energy consumption for a certain h2 mass flow rate
                                 if abs(a) <= eb['electricity']:     # there is enough renewable electricity to power the compressor 
                                     self.energy_balance['hydrogen']['mechanical compressor'][h],    \
                                     self.energy_balance['electricity']['mechanical compressor'][h], \
-                                    self.energy_balance['cooling water']['mechanical compressor'][h]= self.technologies['mechanical compressor'].use(h,massflowrate= self.energy_balance['hydrogen']['electrolyzer'][h]) # hydrogen compressed by the compressor (+) and electricity consumption (-) 
+                                    self.energy_balance['cooling water']['mechanical compressor'][h]= self.technologies['mechanical compressor'].use(h,massflowrate= massflow) # hydrogen compressed by the compressor (+) and electricity consumption (-) 
                                     
                                     eb['electricity']   += self.energy_balance['electricity']['mechanical compressor'][h]
                                     
@@ -487,7 +497,8 @@ class location:
                                     while a1 >= 0:       # while loop necessary to iterate in the redistribution of renewable electricity to satisfy both electrolyzer and compressor demand
                                         hydrogen_ele,  \
                                         electricity_ele = self.technologies['electrolyzer'].use(h,storable_hydrogen=producible_hyd,e=a1*en)[:2]  # [kg] of produced H2 and [kWh] of consumed electricity for the given energy input  
-                                        a = -self.technologies['mechanical compressor'].use(h,massflowrate= hydrogen_ele)[1] # [kWh] compressor energy consumption for a certain h2 mass flow rate
+                                        massflow = max(0, hydrogen_ele + demand)
+                                        a = -self.technologies['mechanical compressor'].use(h,massflowrate= massflow)[1] # [kWh] compressor energy consumption for a certain h2 mass flow rate
                                         b1 = a/en
                                         a11 = 1-b1
                                         i += 1      # updating iteration count
@@ -511,11 +522,10 @@ class location:
                                     # Compressor balances update and overwriting
                                     self.energy_balance['hydrogen']['mechanical compressor'][h],    \
                                     self.energy_balance['electricity']['mechanical compressor'][h], \
-                                    self.energy_balance['cooling water']['mechanical compressor'][h]   = self.technologies['mechanical compressor'].use(h,massflowrate= self.energy_balance['hydrogen']['electrolyzer'][h]) # hydrogen compressed by the compressor (+) and electricity consumption (-) 
+                                    self.energy_balance['cooling water']['mechanical compressor'][h]   = self.technologies['mechanical compressor'].use(h,massflowrate= massflow) # hydrogen compressed by the compressor (+) and electricity consumption (-) 
     
                                     eb['electricity']   += self.energy_balance['electricity']['mechanical compressor'][h]
     
-                                
                                 else:  # if no hydrogen has been produced at time h
                                     self.energy_balance['hydrogen']['mechanical compressor'][h]     = 0
                                     self.energy_balance['electricity']['mechanical compressor'][h]  = 0
