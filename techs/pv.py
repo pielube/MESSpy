@@ -147,19 +147,13 @@ class PV:
             
             
         else:
-            # read production serie if "TMY" not have to be used
-            if parameters['peakP'] != 0:
-                self.peakP = parameters['peakP']
-                pv = pd.read_csv(path+'/production/'+parameters['serie'])['P'].to_numpy()
-                pv = pv * (1-parameters['losses'])          # add losses
-                pv = pv*self.peakP                          # kWh
-                self.production = np.tile(pv,int(simulation_hours/8760))
-                
-            else:
-                pv = pd.read_csv(path+'/production/'+parameters['serie'])['P'].to_numpy()
-                pv = pv * (1-parameters['losses'])          # add losses
-                pv = pv/1000                                # Wh -> kWh
-                self.production = np.tile(pv,int(simulation_hours/8760))
+            # read a specific production serie expressed as kW/kWpeak
+            self.peakP = parameters['peakP']
+            pv = pd.read_csv(path+'/production/'+parameters['serie'])['P'].to_numpy()
+            pv = pv * (1-parameters['losses']/100)      # add losses if to be added
+            pv = pv*self.peakP                          # kWh
+            self.production = np.tile(pv,int(simulation_hours/8760))
+
                             
         if 'Max field width' and 'Max field length' in parameters:   
             # Covered Surface calculation
