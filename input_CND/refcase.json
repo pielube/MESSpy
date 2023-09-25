@@ -1,0 +1,9 @@
+{
+										
+"GEC": {"electricity demand": { "serie": "GEC_electricload.csv",
+                        				"priority": 1},
+                        				
+                "electricity grid": {   "draw": true,
+                                        "feed": true,
+                                        "priority": 10}}                     
+}
