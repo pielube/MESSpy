@@ -8,8 +8,8 @@
                                 "losses": 0,
                                 "Max field width": 15,
                                 "Max field length": 15,
-                                "peakP": 8,
-                                "serie": {"Total production series":"GEC_refcase_pv.csv"},
+                                "peakP": 20,
+                                "serie": "GEC_studycase.csv",
                                 "priority": 2,
                                 "owned": true},
                         				
