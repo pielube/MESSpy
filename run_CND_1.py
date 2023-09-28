@@ -11,7 +11,7 @@ import pandas as pd
 
 # Selecting input files:
 path = r'./input_CND' # change the path with r'./input_dev' if you are working on your own run_dev
-file_studycase = 'refcase'
+file_studycase = 'studycase'
 file_refcase = 'refcase'
 file_general = 'general'
 file_tech_cost = 'tech_cost'

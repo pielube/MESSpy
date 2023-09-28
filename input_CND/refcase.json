@@ -5,7 +5,7 @@
          
                         "PV": {	"tilt": 30,
                                 "azimuth": 10,
-                                "losses": 10,
+                                "losses": 0,
                                 "Max field width": 10,
                                 "Max field length": 10,
                                 "peakP": 8,

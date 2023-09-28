@@ -153,7 +153,7 @@ class PV:
                 pv = pv * (1-parameters['losses']/100)      # add losses if to be added
                 pv = pv*self.peakP                          # kWh
                 self.production = np.tile(pv,int(simulation_hours/8760))
-            else: # a list with two str elements is given
+            else: # a dictionary with two str elements is given {'key':'name_of_the_series.csv'}
                 pv = pd.read_csv(path+'/production/'+parameters['serie']["Total production series"])['P'].to_numpy()
                 self.production = np.tile(pv,int(simulation_hours/8760))
                             
