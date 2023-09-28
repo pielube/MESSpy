@@ -1,8 +1,0 @@
-"cost per unit": float [€/kw] (pv,inverter,electrolyzer,fc,hp,boiler) [€/kWh] (battery) [€/kg] (Htank) 
-"OeM": operations and maintenance costs [%I0/y]       
-"refund": 
-	 "rate": rate of initial investemt that will be refunded [%]
-	 "years": refunding time [years]
-"replacement":
-		"rate": rate of initial investemt that will be payed to replace teh technology [%]
- 		"years": replacement time [years]
