@@ -2,8 +2,18 @@
 										
 "GEC": {"electricity demand": { "serie": "GEC_electricload.csv",
                         				"priority": 1},
+         
+                        "PV": {	"tilt": 30,
+                                "azimuth": 10,
+                                "losses": 10,
+                                "Max field width": 10,
+                                "Max field length": 10,
+                                "peakP": 8,
+                                "serie": {"Total production series":"GEC_refcase_pv.csv"},
+                                "priority": 2,
+                                "owned": true},
                         				
-                "electricity grid": {   "draw": true,
-                                        "feed": true,
-                                        "priority": 10}}                     
+            "electricity grid": {   "draw": true,
+                                    "feed": true,
+                                    "priority": 10}}                     
 }

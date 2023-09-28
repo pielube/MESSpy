@@ -145,15 +145,17 @@ class PV:
             self.production = np.tile(pv,int(simulation_hours/8760))
             # electricity produced every hour for the entire simulation [kWh]
             
-            
         else:
             # read a specific production serie expressed as kW/kWpeak
             self.peakP = parameters['peakP']
-            pv = pd.read_csv(path+'/production/'+parameters['serie'])['P'].to_numpy()
-            pv = pv * (1-parameters['losses']/100)      # add losses if to be added
-            pv = pv*self.peakP                          # kWh
-            self.production = np.tile(pv,int(simulation_hours/8760))
-
+            if isinstance(parameters['serie'], str):
+                pv = pd.read_csv(path+'/production/'+parameters['serie'])['P'].to_numpy()
+                pv = pv * (1-parameters['losses']/100)      # add losses if to be added
+                pv = pv*self.peakP                          # kWh
+                self.production = np.tile(pv,int(simulation_hours/8760))
+            else: # a list with two str elements is given
+                pv = pd.read_csv(path+'/production/'+parameters['serie']["Total production series"])['P'].to_numpy()
+                self.production = np.tile(pv,int(simulation_hours/8760))
                             
         if 'Max field width' and 'Max field length' in parameters:   
             # Covered Surface calculation
