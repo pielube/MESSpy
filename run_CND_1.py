@@ -93,7 +93,7 @@ for pv in [25,30,35]:
     scenari.append(name_studycase)
     with open(os.path.join(path,f"{file_studycase}.json"),'r') as f: studycase = json.load(f)
     
-    studycase = pre.add_PV(studycase, 'GEC', pv, 10 , 0)
+    studycase = pre.change_peakP(studycase, 'GEC', pv)
     
     rec = REC(studycase,general,file_studycase,file_general,path) # create REC object
     rec.REC_energy_simulation() # simulate REC enegy balances
@@ -109,8 +109,8 @@ for pv in [25,30,35]:
 
 name_studycase = scenari[0] 
 ppdev.typedays(name_studycase,[19,164,197,287],['17 gennaio','17 aprile','15 luglio','15 ottobre'],30)  
-df = ppdev.bilanci_scenari(scenari)
 ppdev.NPV_scenarios(scenari, ['GEC'], 'Valore attuale netto')
+df = ppdev.bilanci_scenari([name_refcase]+scenari)
 print(df)
 #df.to_excel("bilanci energetici.xlsx")
 df2 = ppdev.flussi_di_cassa_scenari(scenari)
@@ -118,8 +118,15 @@ print(df2)
 #df2.to_excel("flussi di cassa.xlsx")
        
 #a = pp.REC_electricity_balance(name_studycase)
-for name_studycase in scenari:
-    ppdev.hist_12_balances_pc(name_studycase,6000)   
+for name_studycase in [name_refcase]+scenari:
+    ppdev.hist_12_balances_pc(name_studycase,7000)   
     
 with open('results/economic_assessment_'+name_economic+'.pkl', 'rb') as f: economic = pickle.load(f)
 with open('results/balances_'+name_studycase+'.pkl', 'rb') as f: balances = pickle.load(f)
+
+
+#%% self consumption series (to match with EV series) 
+demand = -balances['GEC']['electricity']['demand']
+from_grid = balances['GEC']['electricity']['grid']
+from_grid[from_grid<0] = 0
+self_consumption = demand-from_grid
