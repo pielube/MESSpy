@@ -19,7 +19,6 @@ name_economic = 'From Refcase to Studycase' # str name for economic_assesment_re
 
 # Selecting input files:
 path = r'./input_CND' # change the path with r'./input_dev' if you are working on your own run_dev
-
 file_studycase = 'studycase'
 file_refcase = 'refcase'
 file_general = 'general'
