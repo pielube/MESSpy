@@ -1,6 +1,0 @@
-{			
-"PV": { "cost per unit": 1000, 
-        "OeM": 1, 
-        "refund": { "rate": 0, "years": 0},
-        "replacement": {"rate": 80, "years": 25}}         
-}

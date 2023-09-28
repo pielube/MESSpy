@@ -1,1 +1,0 @@
-In this folder you have to add load profiles to be used for the simulation. You have to recall them in structure.json (see location.py)
