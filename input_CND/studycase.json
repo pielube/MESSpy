@@ -9,7 +9,7 @@
                                 "Max field width": 15,
                                 "Max field length": 15,
                                 "peakP": 20,
-                                "serie": "GEC_studycase.csv",
+                                "serie": "GEC_studycase_pv.csv",
                                 "priority": 2,
                                 "owned": true},
                         				
