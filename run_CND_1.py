@@ -13,6 +13,9 @@ import os
 import json
 import pickle
 import pandas as pd
+import matplotlib.dates as mdates  
+from matplotlib.dates import MonthLocator, DateFormatter
+import matplotlib.pyplot as plt
 
 # Selecting simulation names
 name_studycase = 'Studicase_GEC_20kW_pv' # str name for energy_balances_results file.pkl
@@ -126,7 +129,36 @@ with open('results/balances_'+name_studycase+'.pkl', 'rb') as f: balances = pick
 
 
 #%% self consumption series (to match with EV series) 
+
+# e-mobility staff load data reading 
+path = r'./input_CND/loads'
+ev_staff_load = r'e_mobility_load_staff'
+csv_file_path = os.path.join(path, f"{ev_staff_load}.csv")
+df = pd.read_csv(csv_file_path)
+df.set_index('Time stamp', inplace=True)
+df.rename(columns={'ee897394-71fd-4179-8056-4787a0b0c225':'Bay 8','8733ec0a-c87b-4e98-8202-5a2ce395332c':'Bay 13'}, inplace= True)
+df['Total staff']= df.sum(axis=1)
+
+# location self-consumption
 demand = -balances['GEC']['electricity']['demand']
 from_grid = balances['GEC']['electricity']['grid']
 from_grid[from_grid<0] = 0
 self_consumption = demand-from_grid
+
+  
+fig, ax = plt.subplots(figsize=(8, 6), dpi=600)
+ax.plot(df.index,df['Total staff'], linewidth=0.6)
+ax.plot(df.index,self_consumption, linewidth=0.6)
+# ax.set_title('Power [kW]')
+ax.set_xlabel('Time [h]')
+ax.set_ylabel('Production [kW]')
+ax.xaxis.set_major_locator(MonthLocator())
+ax.xaxis.set_major_formatter(DateFormatter('%b'))
+# plt.xticks(rotation=45) 
+ax.set_xlim(min(df.index), max(df.index))
+ax.set_ylim(0, None)
+plt.grid(alpha=0.3)
+plt.show()
+
+
+
