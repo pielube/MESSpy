@@ -51,14 +51,14 @@ def total_balances(simulation_name,loc,var=None):
     print('\n')
    
     
-def NPV_scenarios(scenari,locations,title,devided=1):
+def NPV_scenariosos(scenarios,locations,title,devided=1):
     
-    # scenari: list of simulation names
+    # scenarios: list of simulation names
     # locations# list of locations
     
     plt.figure(dpi=1000)
     
-    for simulation_name in scenari:
+    for simulation_name in scenarios:
         with open('Results/economic_assessment_'+simulation_name+'.pkl', 'rb') as f:
             economic = pickle.load(f)
         
@@ -90,7 +90,7 @@ def REC_electricity_balance(simulation_name, noprint=False, mounth=False):
         balances = pickle.load(f)
         
     df = pd.DataFrame(0.00,columns=["Value [kWh]","Value / production [%]","Value / demand [%]"],
-                      index=["SC","CSC","Into MV grid","From MV grid","Production","Demand"])
+                      index=["SC","CSC","Into grid","From grid","Losses","Production","Demand"])
     
     csc = balances['REC']['electricity']['collective self consumption']
     into_grid = balances['REC']['electricity']['into grid']
@@ -103,9 +103,9 @@ def REC_electricity_balance(simulation_name, noprint=False, mounth=False):
         from_grid = from_grid [ dmc[mounth-1]*24 : dmc[mounth]*24]
         
     df.loc['CSC']['Value [kWh]'] = sum(csc)
-    df.loc['Into MV grid']['Value [kWh]'] = -sum(into_grid)  -df.loc['CSC']['Value [kWh]']
-    df.loc['From MV grid']['Value [kWh]'] = sum(from_grid) -df.loc['CSC']['Value [kWh]']
-    
+    df.loc['Into grid']['Value [kWh]'] = -sum(into_grid) 
+    df.loc['From grid']['Value [kWh]'] = sum(from_grid) 
+ 
     for loc in balances:
         if loc != 'REC':   
             balance = balances[loc]['electricity']
@@ -120,7 +120,8 @@ def REC_electricity_balance(simulation_name, noprint=False, mounth=False):
                     pv = pv [ dmc[mounth-1]*24 : dmc[mounth]*24]
                 df.loc['Production']['Value [kWh]'] += sum(pv)
                 
-    df.loc['SC']['Value [kWh]'] = df.loc['Demand']['Value [kWh]'] - df.loc['From MV grid']['Value [kWh]'] - df.loc['CSC']['Value [kWh]']
+    df.loc['SC']['Value [kWh]'] = df.loc['Demand']['Value [kWh]'] - df.loc['From grid']['Value [kWh]'] - df.loc['CSC']['Value [kWh]']
+    df.loc['Losses']['Value [kWh]'] = df.loc['Production']['Value [kWh]'] - df.loc['SC']['Value [kWh]'] - df.loc['Into grid']['Value [kWh]']
     
     for b in df.index:
         df.loc[b]['Value / production [%]'] = df.loc[b]['Value [kWh]'] / df.loc['Production']['Value [kWh]'] *100
@@ -137,14 +138,16 @@ def hist_12_balances_pc(simulation_name,ymax):
     
     sc = []
     csc = []
-    into_mv_grid = []
-    from_mv_grid = []
+    into_grid = []
+    from_grid = []
+    losses = []
     for m in np.arange(12):
         balances = REC_electricity_balance(simulation_name, noprint=True, mounth=m+1)
         sc.append(balances['Value [kWh]']['SC'])
         csc.append(balances['Value [kWh]']['CSC'])
-        into_mv_grid.append(balances['Value [kWh]']['Into MV grid'])
-        from_mv_grid.append(balances['Value [kWh]']['From MV grid'])
+        into_grid.append(balances['Value [kWh]']['Into grid'])
+        from_grid.append(balances['Value [kWh]']['From grid'])
+        losses.append(balances['Value [kWh]']['Losses'])
     sc = np.array(sc)
     csc = np.array(csc)
     x = np.arange(12)  # the label locations
@@ -160,32 +163,41 @@ def hist_12_balances_pc(simulation_name,ymax):
     # Plot the data for the first subplot
     ax1.bar(x, sc, width, label='SC', color='yellowgreen')
     ax1.bar(x, csc, width, bottom=sc, label='CSC', color='gold')
-    ax1.bar(x, into_mv_grid, width, bottom=sc + csc, label='Into grid', color='tab:blue')
-    ax1.set_ylabel('Energia prodotta [kWh/mese]')
+    ax1.bar(x, into_grid, width, bottom=sc, label='Into grid', color='tab:blue')
+    ax1.bar(x, losses, width, bottom=sc + into_grid, label='Losses', color='tab:purple')
+    
+    ax1.set_ylabel('Energy produced [kWh/month]')
     ax1.set_xticks(np.arange(12))
-    ax1.set_xticklabels(['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic'])
-    colors = ["tab:blue", "yellowgreen"]
-    labels = ["Immissione", "Autoconsumo"]
+    ax1.set_xticklabels(['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'])
+    
+    
+    if losses[0] > 0:
+        colors = ["tab:blue", "yellowgreen","tab:purple"]
+        labels = ["Feed", "Self-Consumption","Battery losses"]
+    else:
+        colors = ["tab:blue", "yellowgreen"]
+        labels = ["Feed", "Self-Consumption"]
+        
     leg = [Patch(facecolor=c) for c in colors]
     ax1.legend(leg, labels, ncol=1)  # Create the legend within the first subplot
     ax1.set_ylim(0, ymax)
-    ax1.set_title('Produzione '+simulation_name)
-    ax1.grid(axis='y')
+    ax1.set_title('Production '+simulation_name)
+    ax1.grid(axis='y',zorder=-10)
     
     # Plot the data for the second subplot
     ax2.bar(x, sc, width, label='SC', color='yellowgreen')
     ax2.bar(x, csc, width, bottom=sc, label='CSC', color='gold')
-    ax2.bar(x, from_mv_grid, width, bottom=sc + csc, label='From grid', color='tomato')
-    ax2.set_ylabel('Energia consumata [kWh/mese]')
+    ax2.bar(x, from_grid, width, bottom=sc, label='From grid', color='tomato')
+    ax2.set_ylabel('Energy consumed [kWh/month]')
     ax2.set_xticks(np.arange(12))
-    ax2.set_xticklabels(['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic'])
+    ax2.set_xticklabels(['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'])
     colors = ["tomato", "yellowgreen"]
-    labels = ["Prelievo", "Autosufficienza"]
+    labels = ["Withdrawal", "Autosufficienza"]
     leg = [Patch(facecolor=c) for c in colors]
     ax2.legend(leg, labels, ncol=1)  # Create the legend within the second subplot
     ax2.set_ylim(0, ymax)
-    ax2.set_title('Consumi '+simulation_name)
-    ax2.grid(axis='y')
+    ax2.set_title('Demand '+simulation_name)
+    ax2.grid(axis='y',zorder=-10)
     
     # Adjust the layout to prevent overlapping of titles and labels
     plt.tight_layout()
@@ -234,7 +246,7 @@ def hist12(simulation_name):
     
     plt.legend()
     
-    ax.set_ylabel('Energia elettrica [kWh/mese]')
+    ax.set_ylabel('Energia elettrica [kWh/month]')
     
     #plt.xticks([0,1,2,3,4,5,6,7,8,9,10,11],['jan','feb','mar','apr','mar','jun','jul','ago','sep','opt','nov','dic'])
     plt.xticks([0,1,2,3,4,5,6,7,8,9,10,11],['gen','feb','mar','apr','mag','giu','lug','ago','set','ott','nov','dic'])
@@ -249,6 +261,9 @@ def typedays(name_studycase,days,titles,ymax):
     production = np.zeros(8760)
     csc = np.zeros(8760)
     sc = np.zeros(8760)
+    battery = np.zeros(8760)
+    
+    b=0
     for loc in balances:
         if loc != 'REC':
             if 'demand' in balances[loc]['electricity']:
@@ -260,6 +275,9 @@ def typedays(name_studycase,days,titles,ymax):
                 if 'demand' in balances[loc]['electricity']: 
                     from_grid = np.clip(balances[loc]['electricity']['grid'],0,None)
                     sc +=  - balances[loc]['electricity']['demand'] - from_grid
+            if 'battery' in balances[loc]['electricity']:
+                b=1
+                battery = np.clip(-balances[loc]['electricity']['battery'],0,None)
 
     fig, axes = plt.subplots(2, 2, dpi=1000, figsize=(12, 8))
     x = np.arange(25)
@@ -277,48 +295,56 @@ def typedays(name_studycase,days,titles,ymax):
         production_d = production[days[d]*24:days[d]*24+25]
         csc_d = csc[days[d]*24:days[d]*24+25]
         sc_d = sc[days[d]*24:days[d]*24+25]
+        battery_d = battery[days[d]*24:days[d]*24+25]
         
-        ax_dict[d].bar(x, production_d, width,  label='Immessa', color='tab:blue')
-        ax_dict[d].bar(x, sc_d, width,  label='Autoconsumo', color='yellowgreen')
-        #ax_dict[d].bar(x, csc_d, width, bottom=scd,  label='Autoconsumo collettivo', color='gold')
-        ax_dict[d].plot(x,load_d,'k',label='Consumo') 
-        ax_dict[d].plot(x,production_d,'tab:blue',label='Produzione') 
+        
+        ax_dict[d].bar(x, production_d, width,  label='Feed', color='tab:blue')
+        ax_dict[d].bar(x, sc_d, width,  label='Self-Consumption', color='yellowgreen')
+        #ax_dict[d].bar(x, csc_d, width, bottom=scd,  label='Self-Consumption collettivo', color='gold')
+        if b ==1:
+            ax_dict[d].bar(x, battery_d, width, bottom=sc_d , color='tab:purple',label='Battery charging')
+        ax_dict[d].plot(x,load_d,'k',label='Demand') 
+        ax_dict[d].plot(x,production_d,'tab:blue',label='Production') 
         
         ax_dict[d].grid(axis='y', alpha = 0.5)
         ax_dict[d].set_xlim(0,23)
         ax_dict[d].set_ylim(0,ymax)
-       # ax_dict[d].set_xticks([0,6,12,18,24],['0','6','12','18','24'])
+
+        ax_dict[d].set_xticks([0, 6, 12, 18, 24])
+        ax_dict[d].set_xticklabels(['0', '6', '12', '18', '24'])    
+        
         ax_dict[d].legend()
-        ax_dict[d].set_xlabel('ora')
-        ax_dict[d].set_ylabel('kWh')
+        ax_dict[d].set_xlabel('Hour')
+        ax_dict[d].set_ylabel('[kWh]')
         ax_dict[d].set_title(titles[d])
 
+    plt.suptitle(name_studycase)
     plt.tight_layout()
     plt.show()
     
     
-def bilanci_scenari(scenari):
-    df = pd.DataFrame(index=['Consumo','Produzione','Prelievo','Immissione','Autoconsumo','Indice di autocosnumo','Indice di autosufficienza'],columns=scenari)
-    for name_studycase in scenari:
+def bilanci_scenarios(scenarios):
+    df = pd.DataFrame(index=['Demand','Production','Withdrawal','Feed','Self-Consumption','Self-Consumption index','Self-Sufficiency index'],columns=scenarios)
+    for name_studycase in scenarios:
         a = REC_electricity_balance(name_studycase,noprint=True)
-        df.loc['Consumo',name_studycase] = a.loc['Demand','Value [kWh]']
-        df.loc['Produzione',name_studycase] = a.loc['Production','Value [kWh]']
-        df.loc['Immissione',name_studycase] = a.loc['Into MV grid','Value [kWh]']
-        df.loc['Prelievo',name_studycase] = a.loc['From MV grid','Value [kWh]']
-        df.loc['Autoconsumo',name_studycase] = a.loc['SC','Value [kWh]']
-        df.loc['Indice di autocosnumo',name_studycase] = a.loc['SC','Value / production [%]']
-        df.loc['Indice di autosufficienza',name_studycase] = a.loc['SC','Value / demand [%]']   
+        df.loc['Demand',name_studycase] = a.loc['Demand','Value [kWh]']
+        df.loc['Production',name_studycase] = a.loc['Production','Value [kWh]']
+        df.loc['Feed',name_studycase] = a.loc['Into grid','Value [kWh]']
+        df.loc['Withdrawal',name_studycase] = a.loc['From grid','Value [kWh]']
+        df.loc['Self-Consumption',name_studycase] = a.loc['SC','Value [kWh]']
+        df.loc['Self-Consumption index',name_studycase] = a.loc['SC','Value / production [%]']
+        df.loc['Self-Sufficiency index',name_studycase] = a.loc['SC','Value / demand [%]']   
     return(df)
 
-def flussi_di_cassa_scenari(scenari):
-    scenari0 = ['Adesso'] + scenari
-    df = pd.DataFrame(index=['Bolletta elettrica','Vendita energia','Totale','Risparmio vs adesso'],columns=scenari0)
-    with open('results/economic_assessment_'+scenari[0]+'.pkl', 'rb') as f: economic = pickle.load(f)
+def flussi_di_cassa_scenarios(scenarios):
+    scenarios0 = ['Adesso'] + scenarios
+    df = pd.DataFrame(index=['Bolletta elettrica','Vendita energia','Totale','Risparmio vs adesso'],columns=scenarios0)
+    with open('results/economic_assessment_'+scenarios[0]+'.pkl', 'rb') as f: economic = pickle.load(f)
     df.loc['Bolletta elettrica','Adesso'] = economic['GEC']['CF_refcase']['Purchase']['electricity'][0]
     df.loc['Vendita energia','Adesso'] = economic['GEC']['CF_refcase']['Sale']['electricity'][0]
     df.loc['Totale','Adesso'] = df.loc['Bolletta elettrica','Adesso'] + df.loc['Vendita energia','Adesso']
     df.loc['Risparmio vs adesso','Adesso'] = 0
-    for name_economic in scenari:
+    for name_economic in scenarios:
         with open('results/economic_assessment_'+name_economic+'.pkl', 'rb') as f: economic = pickle.load(f)
         df.loc['Bolletta elettrica',name_economic] = economic['GEC']['CF_studycase']['Purchase']['electricity'][0]
         df.loc['Vendita energia',name_economic] = economic['GEC']['CF_studycase']['Sale']['electricity'][0]
@@ -327,16 +353,16 @@ def flussi_di_cassa_scenari(scenari):
     df.astype(int)
     return(df)
 
-def flussi_di_cassa_scenari_con_gas(scenari):
-    scenari0 = ['Adesso'] + scenari
-    df = pd.DataFrame(index=['Bolletta elettrica','Bolletta GPL','Vendita energia','Totale','Risparmio vs adesso'],columns=scenari0)
-    with open('results/economic_assessment_'+scenari[0]+'.pkl', 'rb') as f: economic = pickle.load(f)
+def flussi_di_cassa_scenarios_con_gas(scenarios):
+    scenarios0 = ['Adesso'] + scenarios
+    df = pd.DataFrame(index=['Bolletta elettrica','Bolletta GPL','Vendita energia','Totale','Risparmio vs adesso'],columns=scenarios0)
+    with open('results/economic_assessment_'+scenarios[0]+'.pkl', 'rb') as f: economic = pickle.load(f)
     df.loc['Bolletta elettrica','Adesso'] = economic['GEC']['CF_refcase']['Purchase']['electricity'][0]
     df.loc['Bolletta GPL','Adesso'] = economic['GEC']['CF_refcase']['Purchase']['gas'][0]
     df.loc['Vendita energia','Adesso'] = economic['GEC']['CF_refcase']['Sale']['electricity'][0]
     df.loc['Totale','Adesso'] = df.loc['Bolletta elettrica','Adesso'] + df.loc['Vendita energia','Adesso'] + df.loc['Bolletta GPL','Adesso']
     df.loc['Risparmio vs adesso','Adesso'] = 0
-    for name_economic in scenari:
+    for name_economic in scenarios:
         with open('results/economic_assessment_'+name_economic+'.pkl', 'rb') as f: economic = pickle.load(f)
         df.loc['Bolletta elettrica',name_economic] = economic['GEC']['CF_studycase']['Purchase']['electricity'][0]
         df.loc['Bolletta GPL',name_economic] = economic['GEC']['CF_studycase']['Purchase']['gas'][0]

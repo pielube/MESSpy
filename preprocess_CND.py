@@ -69,7 +69,7 @@ def add_PV(structure,location_name,peakP,tilt,azimuth):
     return(structure)
                 
 def add_battery(structure,location_name,kWh):    
-    structure[location_name]['battery'] = {"nominal capacity": kWh,"max E-rate":0.5, "efficiency":0.9, "ageing":False, "life cycles":10000, "end life capacity":0.8, "collective":False, 'priority':6}
+    structure[location_name]['battery'] = {"nominal capacity": kWh,"max E-rate":0.5, "efficiency":0.9, "ageing":False, "life cycles":10000, "end life capacity":0.8, "collective":False, 'priority':4}
     return(structure)
 
 def add_HP(structure,location_name,kW):
@@ -82,6 +82,8 @@ def add_HP(structure,location_name,kW):
 
 def change_peakP(structure,location_name,peakP):
     structure[location_name]['PV']['peakP'] = peakP
+    structure[location_name]['PV']['serie'] = "GEC_studycase_pv.csv"
+    
     return(structure)
 
 def change_peakW(structure,location_name,peakW):
