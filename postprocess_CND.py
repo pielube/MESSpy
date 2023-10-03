@@ -192,7 +192,7 @@ def hist_12_balances_pc(simulation_name,ymax):
     ax2.set_xticks(np.arange(12))
     ax2.set_xticklabels(['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'])
     colors = ["tomato", "yellowgreen"]
-    labels = ["Withdrawal", "Autosufficienza"]
+    labels = ["Withdrawal", "Self-sufficiency"]
     leg = [Patch(facecolor=c) for c in colors]
     ax2.legend(leg, labels, ncol=1)  # Create the legend within the second subplot
     ax2.set_ylim(0, ymax)
