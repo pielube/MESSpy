@@ -33,11 +33,15 @@ with open(os.path.join(path,f"{file_tech_cost}.json"),'r') as f: tech_cost = jso
 with open(os.path.join(path,f"{file_energy_market}.json"),'r') as f: energy_market = json.load(f)
 
 #%% ##########################################################################
-"Sensitivity analysis"
+"RUN Sensitivity analysis"
 
 scenarios = []
-for pv in [8,20,30]:
-    for bess in [0,30]:
+pv_sizes = [8,20,30]
+#pv_sizes = np.arange(8,31,2)
+bess_sizes = [0,30]
+
+for pv in pv_sizes:
+    for bess in bess_sizes:
 
         with open(os.path.join(path,f"{file_studycase}.json"),'r') as f: studycase = json.load(f)
         
@@ -45,7 +49,7 @@ for pv in [8,20,30]:
             studycase = pre.change_peakP(studycase, 'GEC', pv)
         name_studycase = f"{pv} kWp"
         
-        if bess >0 and pv >8: # if there is a BESS, add it to the studycase (no sense in 8kW scenarious)
+        if bess >0: # if there is a BESS, add it to the studycase 
            studycase = pre.add_battery(studycase,'GEC',bess)
            name_studycase += f" {bess} kWh"
             
@@ -55,9 +59,10 @@ for pv in [8,20,30]:
         rec.REC_energy_simulation() # simulate REC enegy balances
         rec.tech_cost(tech_cost) # calculate the cost of all technologies 
         rec.save(name_studycase) # save results in 'name_studycase.pkl'
-                 
-# graphs and post-processing
-scenarios = scenarios[1:]
+              
+        
+#%% graphs and post-processing
+
 df = pp.bilanci_scenarios(scenarios)
 print(df)
 #df.to_excel("bilanci energetici.xlsx")
@@ -68,21 +73,36 @@ for name_studycase in scenarios:
     pp.typedays(name_studycase,[19,164,197,287],['17 January','17 April','15 July','15 October'],32) 
 
 
-#%% ss e sc vs pv  (x ora a mano poi lo automatizzo...)
+#%% Self-Sufficiency and Self-Consumption vs PV peakP. With and without battery.
 
-ss = [10,36,40]
-sc = [100,67,50]
-ssb = [10,45,54]
-scb = [100,85,67]
-pv = [8,20,30]
+# preparing data for plot: calculate ss e sc of each scenarios and divide scenarios with and withous battery
+SS = {}
+SC = {}
+for s in scenarios:
+    res = pp.REC_electricity_balance(s,noprint=True)
+    SS[s] = res['Value / demand [%]']['SC']
+    SC[s] = res['Value / production [%]']['SC']
 
+ss = []
+sc = []
+ssb = []
+scb = []
+for s in scenarios:
+    if 'kWh' in s:
+        ssb.append(SS[s])
+        scb.append(SC[s])
+    else:
+        ss.append(SS[s])
+        sc.append(SC[s])
+        
 plt.figure(dpi=1000)
-plt.plot(pv,sc,label='SC')
-plt.plot(pv,scb,label='SC with battery')
-plt.plot(pv,ss,label='SS')
-plt.plot(pv,ssb,label='SS with battery')
+plt.plot(pv_sizes,sc,label='SC')
+plt.plot(pv_sizes,scb,label='SC with battery')
+plt.plot(pv_sizes,ss,label='SS')
+plt.plot(pv_sizes,ssb,label='SS with battery')
 plt.ylim(0,100)
 plt.xlim(8,30)
+plt.xticks([8,12,16,20,24,28],['8', '12', '16', '20', '24', '28'])
 plt.grid()
 plt.xlabel("PV peak power [kWp]")
 plt.ylabel('SC e SS [%]')
@@ -90,7 +110,8 @@ plt.legend()
 plt.title("Self-Consumption and Self-Sufficiency")
 plt.show()
 
-#%% self consumption series (to match with EV series) 
+
+#%% Assessing EV self-sufficiency
 
 # e-mobility staff load data reading 
 path = r'./input_CND/loads'
@@ -103,6 +124,8 @@ df['Total staff']= df.sum(axis=1)
 ev = np.array(df['Total staff'])
 
 # location self-consumption
+ss = []
+ssb = []
 for s in scenarios:
     name_studycase = s
     with open('results/balances_'+name_studycase+'.pkl', 'rb') as f: balances = pickle.load(f)
@@ -112,48 +135,22 @@ for s in scenarios:
     self_consumption = demand-from_grid
     ev_ss = np.minimum(ev,self_consumption)
     ev_ss_index = round(ev_ss.sum()/ev.sum() *100,2)
-    print(f"{s} {ev_ss_index} %")
+    if 'kWh' in s:
+        ssb.append(ev_ss_index)
+    else:
+        ss.append(ev_ss_index)
 
-ss = [12.99,35.6,39.92]
-ssb = [12.99,39.75,43.31]
-pv = [8,20,30]
 plt.figure(dpi=1000)
-plt.plot(pv,ss,label='SC')
-plt.plot(pv,ssb,label='SC with battery')
+plt.plot(pv_sizes,ss,label='SS')
+plt.plot(pv_sizes,ssb,label='SS with battery')
 plt.ylim(0,100)
 plt.xlim(8,30)
 plt.grid()
 plt.xlabel("PV peak power [kWp]")
-plt.ylabel('SC [%]')
+plt.ylabel('SS [%]')
+plt.xticks([8,12,16,20,24,28],['8', '12', '16', '20', '24', '28'])
 plt.legend()
 plt.title("EV Self-Sufficiency")
 plt.show()    
   
 
-
-# economic analysi
-# =============================================================================
-# 
-# #%% ###########################################################################
-# """
-# SOLVER - refcase simulation (useful only for economic analysis)
-# ================================
-# """
-# rec0 = REC(refcase,general,file_refcase,file_general,path) # create REC object
-# rec0.REC_energy_simulation() # simulate REC 
-# rec0.tech_cost(tech_cost) # calculate the cost of all technologies 
-# rec0.save(name_refcase) # save results in 'name_refcase.pkl'
-# 
-# """
-# Investment assessment
-# ================================
-# """
-# # Net present value calculation to asses the investment comparing refcase and studycase
-# NPV(file_studycase,file_refcase,name_studycase,name_refcase,energy_market,general['simulation years'],path,name_economic)
-# #pp.NPV_scenariosos(scenarios, ['GEC'], 'Valore attuale netto')
-# # df2 = pp.flussi_di_cassa_scenarios(scenarios)
-# # print(df2) 
-# # =============================================================================
-# #df2.to_excel("flussi di cassa.xlsx")
-# #with open('results/economic_assessment_'+name_economic+'.pkl', 'rb') as f: economic = pickle.load(f)
-# =============================================================================
