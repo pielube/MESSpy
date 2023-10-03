@@ -171,7 +171,7 @@ def hist_12_balances_pc(simulation_name,ymax):
     ax1.set_xticklabels(['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'])
     
     
-    if losses[0] > 0:
+    if losses[5] > 0:
         colors = ["tab:blue", "yellowgreen","tab:purple"]
         labels = ["Feed", "Self-Consumption","Battery losses"]
     else:
