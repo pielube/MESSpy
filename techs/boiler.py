@@ -31,22 +31,21 @@ class boiler_el:
         self.cost = False # will be updated with tec_cost()
 
         
-    def use(self,demand,timestep):
+    def use(self,demand):
         """
         Compute consumption and heat produced
         
         inputs :
-            demand float energy demand in timestep [kWh]
-            timestep float timestep in hours [h]
+            demand float energy demand in timestep [kW]
             
         outputs : 
-            consumption float energy consumption [kWh]
-            heatprod float heat produced [kWh] 
+            consumption float energy consumption [kW]
+            heatprod float heat produced [kW] 
         """
         
-        if -demand/self.efficiency > self.Ppeak*timestep:
+        if -demand/self.efficiency > self.Ppeak:
             print('Warning: the boiler nominal power is too low to cover heat demand')
-        heatprod = min(-demand,self.Ppeak*timestep*self.efficiency)
+        heatprod = min(-demand,self.Ppeak*self.efficiency)
         consumption = - heatprod/self.efficiency #
         
         return(consumption,heatprod)
@@ -85,7 +84,7 @@ class boiler_el:
         if tech_cost['cost per unit'] == 'default price correlation':
             C0 = 160 # €/kW
             scale_factor = 0.8 # 0:1
-            C = size * C0 **  scale_factor
+            C = C0 * size ** scale_factor
         else:
             C = size * tech_cost['cost per unit']
 
@@ -117,23 +116,22 @@ class boiler_ng:
         self.efficiency = parameters['efficiency']
         
         
-    def use(self,demand,timestep):
+    def use(self,demand):
         """
         Compute consumption and heat produced
         
         inputs :
-            demand float energy demand in timestep [kWh] (-)
-            timestep float timestep in hours [h] 
+            demand float energy demand in timestep [kW] (-)
             
         outputs : 
-            consumption float energy consumption [kWh]
-            heatprod float heat produced [kWh] 
+            consumption float energy consumption [kW]
+            heatprod float heat produced [kW] 
         """
         
         if demand < 0: # heat required
-            if -demand/self.efficiency > self.Ppeak*timestep:
+            if -demand/self.efficiency > self.Ppeak:
                 print('Warning: the boiler nominal power is too low to cover heat demand')
-            heatprod = min(-demand,self.Ppeak*timestep*self.efficiency)
+            heatprod = min(-demand,self.Ppeak*self.efficiency)
             consumption = - heatprod/self.efficiency 
             
             return(consumption,heatprod)
@@ -175,7 +173,7 @@ class boiler_ng:
         if tech_cost['cost per unit'] == 'default price correlation':
             C0 = 160 # €/kW
             scale_factor = 0.8 # 0:1
-            C = size * C0 **  scale_factor
+            C = C0 * size **  scale_factor
         else:
             C = size * tech_cost['cost per unit']
 
@@ -207,34 +205,33 @@ class boiler_h2:
         self.cost = False # will be updated with tec_cost()
 
         
-    def use(self,demand,available_hyd,timestep):
+    def use(self,demand,available_hy):
         """
         Compute consumption and heat produced
         
         inputs :
-            demand float energy demand in timestep [kWh] (-)
-            timestep float timestep in hours [h] 
+            demand float energy demand in timestep [kW] (-)
             
         outputs : 
-            consumption float energy consumption [kWh]
-            heatprod float heat produced [kWh] 
+            consumption float energy consumption [kW]
+            heatprod float heat produced [kW] 
         """
         
         if demand < 0: # heat required
             if -demand/self.efficiency > self.Ppeak*timestep:
                 print('Warning: the boiler nominal power is too low to cover heat demand')
-            heatprod = min(-demand,self.Ppeak*timestep*self.efficiency)
+            heatprod = min(-demand,self.Ppeak*self.efficiency)
             consumption_kWh = - heatprod/self.efficiency
             consumption_kg = consumption_kWh/c.LHV_H2     #[kg] 
         
             if -consumption_kg > available_hyd:           # if not enough hydrogen is available to meet demand (H tank is nearly empty)
                
                 consumption_kg = 0
-                consumption_kWh= 0
+                consumption_kW= 0
                 heatprod = 0
                 # turn off the boiler_hp
             
-            return(consumption_kWh,consumption_kg,heatprod)
+            return(consumption_kW,consumption_kg,heatprod)
         
         else:
             return(0,0,0)               
@@ -273,7 +270,7 @@ class boiler_h2:
         if tech_cost['cost per unit'] == 'default price correlation':
             C0 = 480 # €/kW
             scale_factor = 0.8 # 0:1
-            C = size * C0 **  scale_factor
+            C = C0 * size **  scale_factor
         else:
             C = size * tech_cost['cost per unit']
 

@@ -10,7 +10,7 @@ import constants as c
 
 class electrolyzer:
     
-    def __init__(self,parameters,simulation_hours):
+    def __init__(self,parameters,timestep_number):
         """
         Create an electrolyzer object
     
@@ -39,7 +39,7 @@ class electrolyzer:
         self.rhoStdh2o  = c.H2OSDENSITY                     # [kg/m3]   H2O density @ T = 15°C p = 101325 Pa
         self.lhv_nvol   = c.LHV_H2NVOL                      # [kWh/Nm3] Hydrogen volumetric LHV under normal conditions
         self.watercons  = 0.015                             # [Sm3/kgH2] Standard cubic meters of water consumed per kg of produced H2. Fixed value of 15 l of H2O per kg of H2. https://doi.org/10.1016/j.rset.2021.100005
-        # self.CF         = np.zeros(simulation_hours)      # [%] electrolyer stack Capacity Factor
+        # self.CF         = np.zeros(timestep_number)      # [%] electrolyer stack Capacity Factor
         self.cost = False # will be updated with tec_cost()
 
         "2H2O --> 2H2 + O2"                             # Electorlysis chemical reaction
@@ -57,9 +57,9 @@ class electrolyzer:
                                                                                                              
             self.MaxPowerStack = self.Npower*self.n_modules     # [kW] electrolyzer stack total power
             self.eff = self.lhv_nvol/self.spec_cons             # [-] LHV efficiency 
-            self.n_modules_used=np.zeros(simulation_hours)      # array containing modules used at each timestep
-            self.EFF = np.zeros(simulation_hours)               # keeping track of the elecrolyzer efficiency over the simulation
-            self.EFF_last_module = np.zeros(simulation_hours)       # last module efficiency array initialization
+            self.n_modules_used=np.zeros(timestep_number)      # array containing modules used at each timestep
+            self.EFF = np.zeros(timestep_number)               # keeping track of the elecrolyzer efficiency over the simulation
+            self.EFF_last_module = np.zeros(timestep_number)       # last module efficiency array initialization
         
         if parameters['stack model'] == 'McLyzer 800':   # https://mcphy.com/it/apparecchiature-e-servizi/elettrolizzatori/large/
             stack_operative_power_consumption = 4000     # [kW] Single module nominal power
@@ -71,9 +71,9 @@ class electrolyzer:
                                                                                                              # for the single unit nominal power
             self.MaxPowerStack = self.Npower*self.n_modules     # [kW] electrolyzer stack total power            self.eff = self.lhv_nvol/self.spec_cons             # [-] LHV efficiency 
             self.eff = self.lhv_nvol/self.spec_cons             # [-] LHV efficiency
-            self.n_modules_used=np.zeros(simulation_hours)      # array containing modules used at each timestep
-            self.EFF = np.zeros(simulation_hours)               # keeping track of the elecrolyzer efficiency over the simulation
-            self.EFF_last_module = np.zeros(simulation_hours)       # last module efficiency array initialization
+            self.n_modules_used=np.zeros(timestep_number)      # array containing modules used at each timestep
+            self.EFF = np.zeros(timestep_number)               # keeping track of the elecrolyzer efficiency over the simulation
+            self.EFF_last_module = np.zeros(timestep_number)       # last module efficiency array initialization
         
         if parameters['stack model'] == 'Hylizer 1000':  # https://www.ie-net.be/sites/default/files/Presentatie%205_Baudouin%20de%20Lannoy.pdf
             stack_operative_power_consumption = 5000     # [kW] Single module nominal power
@@ -85,18 +85,18 @@ class electrolyzer:
                                                                                                              # for the single unit nominal powe
             self.MaxPowerStack = self.Npower*self.n_modules     # [kW] electrolyzer stack total power                                                                             
             self.eff = self.lhv_nvol/self.spec_cons             # [-] LHV efficiency 
-            self.n_modules_used=np.zeros(simulation_hours)      # array containing modules used at each timestep
-            self.EFF = np.zeros(simulation_hours)               # keeping track of the elecrolyzer efficiency over the simulation
-            self.EFF_last_module = np.zeros(simulation_hours)       # last module efficiency array initialization
+            self.n_modules_used=np.zeros(timestep_number)      # array containing modules used at each timestep
+            self.EFF = np.zeros(timestep_number)               # keeping track of the elecrolyzer efficiency over the simulation
+            self.EFF_last_module = np.zeros(timestep_number)       # last module efficiency array initialization
         
         if parameters['stack model'] == 'PEM General':
             
-            self.EFF = np.zeros(simulation_hours)                   # keeping track of the elecrolyzer efficiency over the simulation
-            self.wat_cons = np.zeros(simulation_hours)              # water consumption array initialization
-            self.EFF_last_module = np.zeros(simulation_hours)       # last module efficiency array initialization
-            self.wat_cons_last_module = np.zeros(simulation_hours)  # last module water consumption initialization
-            self.n_modules_used=np.zeros(simulation_hours)          # array containing modules used at each timestep
-            self.cell_currdens = np.zeros(simulation_hours)         # cell current density at every hour
+            self.EFF = np.zeros(timestep_number)                   # keeping track of the elecrolyzer efficiency over the simulation
+            self.wat_cons = np.zeros(timestep_number)              # water consumption array initialization
+            self.EFF_last_module = np.zeros(timestep_number)       # last module efficiency array initialization
+            self.wat_cons_last_module = np.zeros(timestep_number)  # last module water consumption initialization
+            self.n_modules_used=np.zeros(timestep_number)          # array containing modules used at each timestep
+            self.cell_currdens = np.zeros(timestep_number)         # cell current density at every hour
             Runiv             = c.R_UNIVERSAL    # [J/(mol*K)] Molar ideal gas constant
             self.FaradayConst = c.FARADAY        # [C/mol]     Faraday constant
             self.LHVh2        = c.LHVH2          # [MJ/kg]     H2 LHV
@@ -108,7 +108,7 @@ class electrolyzer:
             self.AmbTemp      = c.AMBTEMP        # [K]         Standard ambient temperature - 15 °C
            
             # At current development stage it is taken for granted we are working with hourly balances 
-            self.timestep = 1              # [h]
+            self.timestep = 1              # [step]
 
             "2H2O --> 2H2 + O2"
             # https://doi.org/10.1016/j.ijhydene.2008.11.083    # Electrolyzer Parameters - depending on the different types of electrolyzers chosen - model to be specified also in class - name
@@ -362,11 +362,11 @@ class electrolyzer:
  
     
     # Computing Electrolyzers performances via Spline Interpolation  
-    def use(self,h,storable_hydrogen=False,e=False,hydrog=False):
+    def use(self,step,timestep,storable_hydrogen=False,e=False,hydrog=False):
         """
         Electorlyzers stack and single modules operational parameters
     
-        h : timestep float timestep in hours [h]
+        h : timestep float timestep in hours [step]
         e : float > 0 electricity provided to the electrolyzer in one hour [kWh]
         storable_hydrogen : float storable hydrogen H tank max_capacity - SOC[h-1] [kg] or maximum absorbable production if there is no tank
 
@@ -386,19 +386,19 @@ class electrolyzer:
                 oxygen = hyd*self.oxy                                          # [kg/h] Oxygen produced as electorlysis by-product
                 # watCons = hyd*self.h2oMolMass/self.H2MolMass/self.eff/self.rhoStdh2o # [Sm3/h] Water consumption for electrolysis process
                 watCons   = hyd*self.watercons                                # [m^3] water used by the electrolyzer - volume calculated @ 15°C & Pamb
-                self.EFF[h] = self.eff
-                self.EFF_last_module[h] = self.eff
+                self.EFF[step] = self.eff
+                self.EFF_last_module[step] = self.eff
                 if e_absorbed == 0:
-                    self.n_modules_used[h] = 0
+                    self.n_modules_used[step] = 0
                 else:
-                    self.n_modules_used[h] = round(self.MaxPowerStack/e_absorbed)
+                    self.n_modules_used[step] = round(self.MaxPowerStack/e_absorbed)
                 
                 if hyd > storable_hydrogen:     # if the is not enough space in the H tank to store the hydrogen (H tank is nearly full)
                     hyd         = 0
                     e_absorbed  = 0
                     oxygen      = 0
                     watCons     = 0
-                    self.n_modules_used[h] = 0
+                    self.n_modules_used[step] = 0
                     # turn off the electrolyzer
                     
                 return(hyd,-e_absorbed,oxygen,-watCons) # return hydrogen supplied, electricity absorbed, oxygen produced, water consumed
@@ -415,12 +415,12 @@ class electrolyzer:
                     hyd,e_absorbed,etaElectr,watCons,CellCurrden,hydrogen = electrolyzer.use1(self,e,storable_hydrogen)
                     oxygen = hyd*self.oxy                 # [kg/h] Oxygen produced as electorlysis by-product 
                     if hyd > 0:
-                        self.n_modules_used[h] = 1
+                        self.n_modules_used[step] = 1
                     else:
-                        self.n_modules_used[h] = 0
-                    self.EFF[h]           = etaElectr     # [-] single module efficiency
-                    self.cell_currdens[h] = CellCurrden
-                    self.wat_cons[h]      = watCons
+                        self.n_modules_used[step] = 0
+                    self.EFF[step]           = etaElectr     # [-] single module efficiency
+                    self.cell_currdens[step] = CellCurrden
+                    self.wat_cons[step]      = watCons
                     
                     
                 if e > self.Npower:      # if available power is higher than nominal one, i.e., more modules can be used
@@ -438,28 +438,28 @@ class electrolyzer:
                                 hyd_1 = hyd_11[n_modules_used]                 # Hydrogen produced using i-1 modules
                                 e_absorbed_1 = e_absorbed*(n_modules_used)     # Total power absorbed using i-1 modules 
                                 watCons_1 = watCons*(n_modules_used) 
-                                self.EFF[h] = etaElectr                        # work efficiency of modules working at nominal power 
-                                self.cell_currdens[h] = CellCurrden
+                                self.EFF[step] = etaElectr                        # work efficiency of modules working at nominal power 
+                                self.cell_currdens[step] = CellCurrden
                                 
                                 hyd_remained = storable_hydrogen-hyd_1
                                 hyd,e_absorbed,etaElectr,watCons,CellCurrDensity1,etaFaraday = electrolyzer.h2power(self,hyd_remained)
                                 if hyd > 0:
                                     n_modules_used = n_modules_used+1       # considering the module working at partial load
-                                    self.EFF_last_module[h] = etaElectr     # work efficiency of the last module working with the remaining power
-                                    self.wat_cons_last_module[h] = watCons  # water consumption // // // // //
+                                    self.EFF_last_module[step] = etaElectr     # work efficiency of the last module working with the remaining power
+                                    self.wat_cons_last_module[step] = watCons  # water consumption // // // // //
                                 hyd = hyd+hyd_1
                                 oxygen = hyd*self.oxy                       # [kg/h] Oxygen produced as electorlysis by-product 
                                 e_absorbed = e_absorbed_1+ e_absorbed       # abs value
                                 watCons = watCons_1+watCons
-                                self.wat_cons[h] = watCons
-                                self.n_modules_used[h] = n_modules_used
+                                self.wat_cons[step] = watCons
+                                self.n_modules_used[step] = n_modules_used
         
                         if hyd_11[-1] <= storable_hydrogen:                  # if, using n_modules, the total amount of producible hydrogen is lower than storable one  
                             hyd_1 = hyd*n_modules_used                       # total amount of H2 produced by modules working at full load
                             e_absorbed_1 = e_absorbed*n_modules_used         # total power absorbed    // // // // // 
                             watCons_1 = watCons*n_modules_used                 # total water consumption // // // // // 
-                            self.EFF[h] = etaElectr                          # work efficiency of modules working at nominal power 
-                            self.cell_currdens[h] = CellCurrden
+                            self.EFF[step] = etaElectr                          # work efficiency of modules working at nominal power 
+                            self.cell_currdens[step] = CellCurrden
     
                             if e <= self.MaxPowerStack:                      # if available energy is lower than total installed power
                                 e_remained = e-self.Npower*n_modules_used    # remaining power after considering modules at full load
@@ -467,11 +467,11 @@ class electrolyzer:
                                 hyd,e_absorbed,etaElectr,watCons,CellCurrden,hydrogen = electrolyzer.use1(self,e_remained,remained_storable_hydrogen)
                                 if e_absorbed > 0:                           # if remaining power is higher than 10% of Npower, last module working at partial load is activated
                                     n_modules_used = n_modules_used+1        # considering the module working at partial load
-                                    self.EFF_last_module[h] = etaElectr      # work efficiency of the last module working with the remaining power
-                                    self.wat_cons_last_module[h] = watCons   # water consumption // // // // // 
-                                self.n_modules_used[h] = n_modules_used
+                                    self.EFF_last_module[step] = etaElectr      # work efficiency of the last module working with the remaining power
+                                    self.wat_cons_last_module[step] = watCons   # water consumption // // // // // 
+                                self.n_modules_used[step] = n_modules_used
                                 watCons = watCons_1+watCons
-                                self.wat_cons[h] = watCons
+                                self.wat_cons[step] = watCons
                                 hyd = hyd+hyd_1
                                 oxygen = hyd*self.oxy                       # [kg/h] Oxygen produced as electorlysis by-product 
                                 e_absorbed = e_absorbed_1+e_absorbed
@@ -481,17 +481,17 @@ class electrolyzer:
                                 hyd = hyd_1
                                 watCons = watCons_1
                                 oxygen = hyd*self.oxy                       # [kg/h] Oxygen produced as electorlysis by-product 
-                                self.wat_cons[h] = watCons
-                                self.n_modules_used[h] = self.n_modules
+                                self.wat_cons[step] = watCons
+                                self.n_modules_used[step] = self.n_modules
                  
                     else:                                       # Equal or less than one modules used
                         if hyd > 0:
-                            self.n_modules_used[h] = 1
+                            self.n_modules_used[step] = 1
                         else:
-                            self.n_modules_used[h] = 0
-                        self.EFF[h] = etaElectr
-                        self.cell_currdens[h] = CellCurrden
-                        self.wat_cons[h]      = watCons
+                            self.n_modules_used[step] = 0
+                        self.EFF[step] = etaElectr
+                        self.cell_currdens[step] = CellCurrden
+                        self.wat_cons[step]      = watCons
         
         
         elif self.strategy == 'hydrogen-first' and e == False:                   # if defined strategy is to work with electricity from renewables and from grid
@@ -503,12 +503,12 @@ class electrolyzer:
                     hyd,e_absorbed,etaElectr,watCons,CellCurrden,etaFaraday = electrolyzer.h2power(self,hydrog)
                     oxygen = hyd*self.oxy                 # [kg/h] Oxygen produced as electorlysis by-product 
                     if hyd > 0:
-                        self.n_modules_used[h] = 1
+                        self.n_modules_used[step] = 1
                     else:
-                        self.n_modules_used[h] = 0
-                    self.EFF[h]           = etaElectr     # [-] single module efficiency
-                    self.cell_currdens[h] = CellCurrden
-                    self.wat_cons[h]      = watCons
+                        self.n_modules_used[step] = 0
+                    self.EFF[step]           = etaElectr     # [-] single module efficiency
+                    self.cell_currdens[step] = CellCurrden
+                    self.wat_cons[step]      = watCons
                                         
                 elif self.maxh2prod < hydrog <= self.maxh2prod*self.n_modules :      # if requested hydrogen is higher than the maximum one generable by a single module, i.e., more modules can be used      
                     hyd,e_absorbed,etaElectr,watCons,CellCurrden,etaFaraday = electrolyzer.h2power(self,self.maxh2prod) # hydrogen to be produced by the single module  
@@ -520,21 +520,21 @@ class electrolyzer:
                             hyd_1 = hyd_11[n_modules_used]                 # Hydrogen produced using i-1 modules
                             e_absorbed_1 = e_absorbed*(n_modules_used)     # Total power absorbed using i-1 modules 
                             watCons_1 = watCons*(n_modules_used) 
-                            self.EFF[h] = etaElectr                        # work efficiency of modules working at nominal power 
-                            self.cell_currdens[h] = CellCurrden
+                            self.EFF[step] = etaElectr                        # work efficiency of modules working at nominal power 
+                            self.cell_currdens[step] = CellCurrden
                             
                             hyd_remained = hydrog-hyd_1
                             hyd,e_absorbed,etaElectr,watCons,CellCurrden,etaFaraday = electrolyzer.h2power(self,hyd_remained) # hydrogen left to be produced by the last module
                             if hyd > 0:
                                 n_modules_used = n_modules_used+1       # considering the module working at partial load
-                                self.EFF_last_module[h] = etaElectr     # work efficiency of the last module working with the remaining power
-                                self.wat_cons_last_module[h] = watCons  # water consumption // // // // //
+                                self.EFF_last_module[step] = etaElectr     # work efficiency of the last module working with the remaining power
+                                self.wat_cons_last_module[step] = watCons  # water consumption // // // // //
                             hyd = hyd+hyd_1
                             oxygen = hyd*self.oxy                       # [kg/h] Oxygen produced as electorlysis by-product 
                             e_absorbed = e_absorbed_1+ e_absorbed       # abs value
                             watCons = watCons_1+watCons
-                            self.wat_cons[h] = watCons
-                            self.n_modules_used[h] = n_modules_used
+                            self.wat_cons[step] = watCons
+                            self.n_modules_used[step] = n_modules_used
                             break
                         
                 elif hydrog >= self.maxh2prod*self.n_modules:         # if, using n_modules, the total amount of producible hydrogen is lower than the target one  
@@ -543,10 +543,10 @@ class electrolyzer:
                     e_absorbed = e_absorbed1*self.n_modules        # total power absorbed    // // // // // 
                     watCons = watCons1*self.n_modules                # total water consumption // // // // // 
                     oxygen = hyd*self.oxy                           # [kg/h] Oxygen produced as electorlysis by-product   
-                    self.n_modules_used[h] = self.n_modules
-                    self.EFF[h] = etaElectr                         # work efficiency of modules working at nominal power 
-                    self.cell_currdens[h] = CellCurrden1
-                    self.wat_cons[h] = watCons
+                    self.n_modules_used[step] = self.n_modules
+                    self.EFF[step] = etaElectr                         # work efficiency of modules working at nominal power 
+                    self.cell_currdens[step] = CellCurrden1
+                    self.wat_cons[step] = watCons
                    
                     
         elif self.strategy == 'full-time':   # if electrolyzers are supposed to work full-time for their operation
@@ -556,9 +556,9 @@ class electrolyzer:
                 oxygen = hyd*self.oxy                                    # [kg/h] Oxygen produced as electorlysis by-product 
                 # watCons   = hyd*self.h2oMolMass/self.H2MolMass/etaElectr/self.rhoStdh2o   # [m^3] water used by the electrolyzer - volume calculated @ 15°C & Pamb  
                 watCons   = hyd*self.watercons                           # [m^3/h] water used by the electrolyzer - volume calculated @ 15°C & Pamb                                        
-                self.n_modules_used[h] = self.n_modules
-                self.EFF[h] = self.eff
-                self.EFF_last_module[h] = self.eff
+                self.n_modules_used[step] = self.n_modules
+                self.EFF[step] = self.eff
+                self.EFF_last_module[step] = self.eff
             
             elif self.model == 'PEM General':
                 e_absorbed = self.Npower
@@ -567,10 +567,10 @@ class electrolyzer:
                 hyd = hyd*self.n_modules
                 watCons = watCons*self.n_modules
                 oxygen = hyd*self.oxy                                    # [kg/h] Oxygen produced as electorlysis by-product                                                        
-                self.n_modules_used[h] = self.n_modules
-                self.EFF[h]           = etaElectr     # [-] single module efficiency
-                self.cell_currdens[h] = CellCurrden
-                self.wat_cons[h]      = watCons
+                self.n_modules_used[step] = self.n_modules
+                self.EFF[step]           = etaElectr     # [-] single module efficiency
+                self.cell_currdens[step] = CellCurrden
+                self.wat_cons[step]      = watCons
                 
      
         return (hyd,-e_absorbed,oxygen,-watCons)
@@ -721,7 +721,7 @@ if __name__ == "__main__":
                   "only_renewables":True
                 }
     
-    sim_hours = 100                               # [h] simulated period of time - usually it's 1 year minimum
+    sim_hours = 100                               # [step] simulated period of time - usually it's 1 year minimum
 
     el = electrolyzer(inp_test,sim_hours)        # creating electrolyzer object
     el.plot_polarizationpts()                    # plot example
@@ -836,7 +836,7 @@ if __name__ == "__main__":
     h1, l1 = ax.get_legend_handles_labels()
     h2, l2 = ax2.get_legend_handles_labels()
     ax.legend(h1+h2, l1+l2, loc='lower center',bbox_to_anchor=(0.5, 1.08), ncol =3, fontsize ='small')
-    ax.set_xlabel('Time [h]')
+    ax.set_xlabel('Time [step]')
     ax.set_ylabel('Efficiency [-]')
     ax2.set_ylabel('Power Input [kW]')
     ax.grid()

@@ -23,6 +23,8 @@ NEPERO      =  2.71828182845904523536      # [-]         Euler's number
 AMBTEMP     =  288                         # [K]         Standard ambient temperature - 15 °C
 GIBBS       = -237.17                      # [kJ/mol]    Gibbs free energy @ T = 25°C p = 101325 Pa
 R_H2        =  4124.2                      # [J/(kgK)]   H2 characteristic constant
+kWh2kJ      =  3600                        # [kJ/kWh]    Conversion factor from kWh to kJ
+
 
 #%%
 

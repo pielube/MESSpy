@@ -98,21 +98,21 @@ def inverse_bilinear_interp(_map, y, t_amb):
 
 class Chp:
     
-    def __init__(self, parameters, simulation_hours):
+    def __init__(self, parameters, timestep_number):
         self.fuel           = parameters["Fuel"]            # type of fuel fed to the chp
         self.strategy       = parameters["Strategy"]        # parameter on which the operation of the system is based
         self.coproduct      = parameters["Co-product"]      # co-product energy stream
         self.th_out         = parameters["Thermal Output"]  # type of stream into which heat from cobustion is converted/transferred. Steam or hot water
         self.control_param  = parameters["Control Param"]   # control parameters to define operational boundaries of the system
-        self.load           = np.zeros(simulation_hours)    # [-] working load of the system 
-        self.q_th           = np.zeros(simulation_hours)    # [kWh] thermal output of the chp
-        self.w_el           = np.zeros(simulation_hours)    # [kWh] electricity output of the system
-        self.m_fuel         = np.zeros(simulation_hours)    # [kg/h] fuel consumption
-        self.l_bound        = np.zeros(simulation_hours)    # [-] minimum load producible given working conditions
-        self.u_bound        = np.zeros(simulation_hours)    # [-] maximum load producible given working conditions
-        self.steam          = np.zeros(simulation_hours)    # [kg/s] steam produced by CHP system
-        self.hot_w          = np.zeros(simulation_hours)    # [kWh] hot water produced by CHP system
-        self.shutdown       = np.zeros(simulation_hours)    # [0/1] array to keep track of numbers of system shutdowns
+        self.load           = np.zeros(timestep_number)    # [-] working load of the system 
+        self.q_th           = np.zeros(timestep_number)    # [kWh] thermal output of the chp
+        self.w_el           = np.zeros(timestep_number)    # [kWh] electricity output of the system
+        self.m_fuel         = np.zeros(timestep_number)    # [kg/h] fuel consumption
+        self.l_bound        = np.zeros(timestep_number)    # [-] minimum load producible given working conditions
+        self.u_bound        = np.zeros(timestep_number)    # [-] maximum load producible given working conditions
+        self.steam          = np.zeros(timestep_number)    # [kg/s] steam produced by CHP system
+        self.hot_w          = np.zeros(timestep_number)    # [kWh] hot water produced by CHP system
+        self.shutdown       = np.zeros(timestep_number)    # [0/1] array to keep track of numbers of system shutdowns
         self.performances   = {                                                 # performance parameters dictionary. Self-consumption % of the considered energy streams
                                 self.strategy   : np.zeros(simulation_hours),
                                 self.coproduct  : np.zeros(simulation_hours),
@@ -173,21 +173,21 @@ class Chp:
             return inverse_bilinear_interp(self.maps[method], lim, t_amb)
         
     
-    def use(self, h, t_amb, demand, demand2, available_fuel = None):    # None
+    def use(self, step, t_amb, demand, demand2, available_fuel = None):    # None
         """
         The chp system consumes fuel and produces multiple output energy streams as defined by the specific technology
         
         inputs
-            h:          int hour to be simulated
+            step:       int step to be simulated
             t_air:      float air temperature for the considered timestep [°C]
-            demand:     float energy carrier request driving the demand [kWh] (electricity,heat or steam [kg/h])
-            demand2:    float energy carrier request as a main CHP co-product  [kWh] (electricity,heat or steam [kg/h])
+            demand:     float energy carrier request driving the demand [kW] (electricity,heat or steam [kg/s])
+            demand2:    float energy carrier request as a main CHP co-product  [kW] (electricity,heat or steam [kg/s])
       
         output 
-            carrier1:    produced energy stream driving the system functioning [kWh] 
-            carrier2:    2nd energy stream produced as co-product [kWh]
+            carrier1:    produced energy stream driving the system functioning [kW] 
+            carrier2:    2nd energy stream produced as co-product [kW]
             ...
-            nth-carrier: nth energy stream produced as co-product [kWh]
+            nth-carrier: nth energy stream produced as co-product [kW]
                 
         """
         demand = abs(demand)     # demand has to be a positive value     
@@ -207,42 +207,42 @@ class Chp:
                                       self.control_param['Upper'][ub]['Limit'],
                                       t_amb))
         
-        self.l_bound[h]  = max(lb_list)   # saving minimum functioning boundary - expressed as load %
-        self.u_bound[h]  = min(ub_list)   # saving maximum functioning boundary - expressed as load %
+        self.l_bound[step]  = max(lb_list)   # saving minimum functioning boundary - expressed as load %
+        self.u_bound[step]  = min(ub_list)   # saving maximum functioning boundary - expressed as load %
         
         # WIP long term: se non c'è idrogeno sviluppare logica di funzionamento ad altro combustibile (switch)
             
         if available_fuel is not None:  # if available_fuel is a parameter to be considered in the analysis (hydrogen case)
         
             if available_fuel <= 0:       # if there is no fuel available, chp system is turned off
-                self.load[h]        = 0
-                self.m_fuel[h]      = 0
-                self.q_th[h]        = 0
-                self.w_el[h]        = 0
-                self.steam[h]       = 0
-                self.hot_w[h]       = 0
-                self.shutdown[h]    = 1     # saving system working history,    1 = 'System has been switched off at this timestep' \
+                self.load[step]        = 0
+                self.m_fuel[step]      = 0
+                self.q_th[step]        = 0
+                self.w_el[step]        = 0
+                self.steam[step]       = 0
+                self.hot_w[step]       = 0
+                self.shutdown[step]    = 1     # saving system working history,    1 = 'System has been switched off at this timestep' \
                                             #                                   0 = 'System has been running at this timestep'
                 for energy_stream in self.performances:     # no beneficial effect from CHP
-                    self.performances[energy_stream][h] = 0
+                    self.performances[energy_stream][step] = 0
                                                 
-                return (self.steam[h], self.w_el[h], -self.m_fuel[h], self.q_th[h], self.hot_w[h])  # stop function execution and return values
+                return (self.steam[step], self.w_el[step], -self.m_fuel[step], self.q_th[step], self.hot_w[step])  # stop function execution and return values
             
             else:       # computing system performances accounting for fuel availability
         
-                minfuel = bilinear_interp(self.maps['fuel'],self.l_bound[h],t_amb)    # control needed when working with hydrogen \
+                minfuel = bilinear_interp(self.maps['fuel'],self.l_bound[step],t_amb)    # control needed when working with hydrogen \
                                                                                       # and no external source of fuel available (i.e. no grid connection)  
                 if available_fuel < minfuel:   # if available_fuel is lower than minimum fuel required at the minimum load, system is turned off
-                    self.load[h]        = 0
-                    self.m_fuel[h]      = 0
-                    self.q_th[h]        = 0
-                    self.w_el[h]        = 0
-                    self.steam[h]       = 0
-                    self.hot_w[h]       = 0
-                    self.shutdown[h]    = 1
+                    self.load[step]        = 0
+                    self.m_fuel[step]      = 0
+                    self.q_th[step]        = 0
+                    self.w_el[step]        = 0
+                    self.steam[step]       = 0
+                    self.hot_w[step]       = 0
+                    self.shutdown[step]    = 1
                     for energy_stream in self.performances:     # no beneficial effect from CHP
-                        self.performances[energy_stream][h] = 0
-                    return (self.steam[h], self.w_el[h], -self.m_fuel[h], self.q_th[h], self.hot_w[h])  # stop function execution and return values
+                        self.performances[energy_stream][step] = 0
+                    return (self.steam[step], self.w_el[step], -self.m_fuel[step], self.q_th[step], self.hot_w[step])  # stop function execution and return values
                 
                 else:
                     load  = inverse_bilinear_interp(self.maps[self.strategy], demand, t_amb)    # operating load corresponding to demand at considered timestep    
@@ -257,24 +257,24 @@ class Chp:
             load = inverse_bilinear_interp(self.maps[self.strategy], demand, t_amb) 
             
             
-        if load in pd.Interval(self.l_bound[h],self.u_bound[h],closed='both'):   # if load is within the producible range of chp technology
+        if load in pd.Interval(self.l_bound[step],self.u_bound[step],closed='both'):   # if load is within the producible range of chp technology
             pass
         
-        elif load > self.u_bound[h]:    # if load value is higher of the producible range of chp technology
-            load = self.u_bound[h]
+        elif load > self.u_bound[step]:    # if load value is higher of the producible range of chp technology
+            load = self.u_bound[step]
         
-        elif load < self.l_bound[h]:    # if load value is lower of the producible range of chp technology
-            load = self.l_bound[h]
+        elif load < self.l_bound[step]:    # if load value is lower of the producible range of chp technology
+            load = self.l_bound[step]
     
-        self.load[h]                    = load 
-        self.m_fuel[h]                  = bilinear_interp(self.maps['fuel'],load,t_amb)    
-        self.q_th[h]                    = bilinear_interp(self.maps['process heat'],load,t_amb)
-        self.w_el[h]                    = bilinear_interp(self.maps['electricity'],load,t_amb)
-        self.steam[h]                   = bilinear_interp(self.maps['process steam'],load,t_amb)      # [kg/h] steam produced by CHP system
-        self.hot_w[h]                   = 0
+        self.load[step]                    = load 
+        self.m_fuel[step]                  = bilinear_interp(self.maps['fuel'],load,t_amb)    
+        self.q_th[step]                    = bilinear_interp(self.maps['process heat'],load,t_amb)
+        self.w_el[step]                    = bilinear_interp(self.maps['electricity'],load,t_amb)
+        self.steam[step]                   = bilinear_interp(self.maps['process steam'],load,t_amb)      # [kg/h] steam produced by CHP system
+        self.hot_w[step]                   = 0
         # self.parameters[self.strategy]  =                                                   # [kWh] hot water produced by CHP system - active for specific application
         
-        return (self.steam[h], self.w_el[h], -self.m_fuel[h], self.q_th[h], self.hot_w[h])
+        return (self.steam[step], self.w_el[step], -self.m_fuel[step], self.q_th[step], self.hot_w[step])
     
     
     def tech_cost(self,tech_cost):
@@ -372,9 +372,9 @@ class Absorber:
    
     def use(self, h, q_in):
         e_absorbed = min(self.Npower,q_in)                          
-        self.q_used[h] = e_absorbed
-        self.q_cool[h] = e_absorbed*self.COP        # [kWh] when timestep is kept at 1 h kWh = kW   
-        return (self.q_cool[h],e_absorbed)                     # [kWh] cold energy produced by the absorber
+        self.q_used[step] = e_absorbed
+        self.q_cool[step] = e_absorbed*self.COP        # [kWh] when timestep is kept at 1 h kWh = kW   
+        return (self.q_cool[step],e_absorbed)                     # [kWh] cold energy produced by the absorber
     
     
     def tech_cost(self,tech_cost):
@@ -410,7 +410,7 @@ class Absorber:
         if tech_cost['cost per unit'] == 'default price correlation':
             C0 = 1500 # €/kW
             scale_factor = 0.8 # 0:1
-            C = size * C0 **  scale_factor
+            C = C0 * size **  scale_factor
         else:
             C = size * tech_cost['cost per unit']
 
@@ -523,12 +523,12 @@ if __name__ == "__main__":
     for k in daily_temperature:
         available_fuel = [5000]   # [kg] initial value for available fuel
         
-        for h in range(24):
-            # Chp.use(h, daily_temperature[k][h], steam_demand[h], electricity_demand[h])                     # not considering available fuel
-            # absorber.use(h,Chp.use(h, daily_temperature[k][h], steam_demand[h], electricity_demand[h])[0])  # not considering available fuel 
-            Chp.use(h, daily_temperature[k][h], steam_demand[h], electricity_demand[h], available_fuel[h])                     # considering available fuel
-            absorber.use(h,Chp.use(h, daily_temperature[k][h], steam_demand[h], electricity_demand[h], available_fuel[h])[0])  # considering available fuel
-            consumption = available_fuel[h] - Chp.m_fuel[h]
+        for step in range(24):
+            # Chp.use(h, daily_temperature[k][step], steam_demand[step], electricity_demand[step])                     # not considering available fuel
+            # absorber.use(h,Chp.use(h, daily_temperature[k][step], steam_demand[step], electricity_demand[step])[0])  # not considering available fuel 
+            Chp.use(step, daily_temperature[k][step], steam_demand[step], electricity_demand[step], available_fuel[step])                     # considering available fuel
+            absorber.use(step,Chp.use(step, daily_temperature[k][step], steam_demand[step], electricity_demand[step], available_fuel[step])[0])  # considering available fuel
+            consumption = available_fuel[step] - Chp.m_fuel[step]
             available_fuel.append(consumption)
         
         fig, ax = plt.subplots(dpi=600)
@@ -538,7 +538,7 @@ if __name__ == "__main__":
         ax.scatter(x,Chp.steam[:simulation_hours], label = 'm$_\mathregular{stprod}$', alpha =0.8, c='b',s=22,zorder=10,edgecolors='k', linewidths=0.6)
         ax.grid(zorder=0, alpha= 0.4)
         ax.set_ylabel('m$_{st}$ [kg/h]')
-        ax.set_xlabel('Time [h]')
+        ax.set_xlabel('Time [step]')
         if max(steam_demand) > max(Chp.u_bound[:simulation_hours]*6*3600):
             ax.fill_between(x,Chp.u_bound[:simulation_hours]*6*3600,max(steam_demand), facecolor = 'orangered',zorder=0, alpha=0.3,label = 'Not satisfed') 
         ax.fill_between(x,Chp.l_bound[:simulation_hours]*6*3600,Chp.u_bound[:simulation_hours]*6*3600, facecolor = 'lightblue',zorder=0, alpha=0.3,label = 'Chp')

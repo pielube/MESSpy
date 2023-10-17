@@ -11,7 +11,7 @@ import constants as c
 
 class PV:    
     
-    def __init__(self,parameters,general,simulation_hours,location_name,path,check,file_structure,file_general):
+    def __init__(self,parameters,general,timestep_number,timestep,location_name,path,check,file_structure,file_general):
         """
         Create a PV object based on PV production taken from PVGIS data 
     
@@ -141,54 +141,24 @@ class PV:
             self.peakP = parameters['peakP']
             pv = pv * self.peakP/1000
             
-            # electricity produced every hour in the reference_year [kWh]
-            self.production = np.tile(pv,int(simulation_hours/8760))
-            # electricity produced every hour for the entire simulation [kWh]
-            
-            
+            # electricity produced every hour in the reference_year [kWh] [kW]
+            self.production = np.tile(pv,int(timestep_number*timestep/60/8760)) # from 1 year to simlation length years
+        
+            # from hourly to timestep
+            if timestep < 60:
+                self.production =  np.repeat(self.production, 60/timestep) # [kW] creating a production series alligned with selected timestep 
         else:
             # read a specific production serie expressed as kW/kWpeak
             self.peakP = parameters['peakP']
             pv = pd.read_csv(path+'/production/'+parameters['serie'])['P'].to_numpy()
             pv = pv * (1-parameters['losses']/100)      # add losses if to be added
             pv = pv*self.peakP                          # kWh
-            self.production = np.tile(pv,int(simulation_hours/8760))
+            self.production = np.tile(pv,timestep_number*timestep/60/8760)
+            if len(self.production != timestep_number):
+                raise ValueError(f"Warning! Checks the length and timestep of the PV production you input for {location_name}.")
 
-                            
-        if 'Max field width' and 'Max field length' in parameters:   
-            # Covered Surface calculation
-            # Considering modules having size 1m x 1,5m and power 250W it means that, for each kWp, four modules are needed, thus covering 6 m2 of surface (4m width and 1,5m high)
-            # Knowing the maximum field width by input, the number of panel rows can be found as follows
-            module_width = 1 #m
-            module_height = 1.5 #m
-            field_ideal_width = self.peakP*4*module_width #m                                                  # each kWp is 4m width
-            max_field_width = parameters ['Max field width'] #m
-            self.n_rows = field_ideal_width/max_field_width
-            latitude = general['latitude'] #°
-            sun_angle_winter_solstice_rad = (90-(latitude+23.5))*m.pi/180 #rad                           # https://it.science19.com/how-to-calculate-winter-solstice-sun-angle-1948
-            tilt_rad = (parameters['tilt']*m.pi)/180 #rad
-            rows_distance =  module_height*(m.sin(tilt_rad)/m.tan(sun_angle_winter_solstice_rad))  #m    # d = [sen(β)]/[tg(δ)]·L  https://www.ediltecnico.it/85611/come-calcolare-la-distanza-minima-di-installazione-di-file-di-pannelli-fotovoltaici/
-            row_length = module_height*m.cos(tilt_rad)+rows_distance #m
-            
-            if self.n_rows >= 1:
-                self.surfac_cov = max_field_width*row_length*(int(self.n_rows)-1)+max_field_width*module_height*m.cos(tilt_rad)+(self.n_rows-int(self.n_rows))*max_field_width*row_length #m2
-                if self.n_rows-int(self.n_rows) != 0:
-                    field_length = row_length*int(self.n_rows)+module_height*m.cos(tilt_rad) #m
-                else:
-                    field_length = row_length*(int(self.n_rows)-1)+module_height*m.cos(tilt_rad) #m
-                self.surface_cov_rectangular = field_length*max_field_width #m2
-                
-            if 0 < self.n_rows < 1:
-                self.surface = self.n_rows*max_field_width*module_height*m.cos(tilt_rad)
-                field_length = module_height*m.cos(tilt_rad)
-                self.surface_cov_rectangular = self.surface
-                
-            max_field_length = parameters ['Max field length'] #m
-            if field_length > max_field_length:
-                print('Warning!! The surface covered by the '+location_name+' PV field is higher than the maximum available one')
-            
-        
-    def use(self,h):
+
+    def use(self,step):
         """
         Produce electricity
         
@@ -197,7 +167,7 @@ class PV:
         output : float electricity produced that hour [kWh]    
         """
         
-        return(self.production[h])
+        return(self.production[step])
 
     def tech_cost(self,tech_cost):
         """
@@ -233,7 +203,7 @@ class PV:
         if tech_cost['cost per unit'] == 'default price correlation':
             C0 = 1200 # €/kW
             scale_factor = 0.9 # 0:1
-            C = size * C0 **  scale_factor
+            C = C0 * size ** scale_factor
         else:
             C = size * tech_cost['cost per unit']
 

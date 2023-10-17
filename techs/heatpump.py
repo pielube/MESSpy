@@ -4,7 +4,7 @@ from scipy.interpolate import interp1d
 
 class heatpump:
     
-        def __init__(self,parameters,simulation_hours):
+        def __init__(self,parameters,timestep_number):
             
             """
             Create heat-pump object
@@ -61,11 +61,11 @@ class heatpump:
             self.i_TES_t = self.t_rad_h # initial temperature C°
             
             ### stories #######################################################
-            self.i_TES_story = np.zeros(simulation_hours) # T_inertial_TES
-            self.satisfaction_story = np.zeros(simulation_hours) # 0 no demand, 1 demand satisfied by iTES, 2 demand satisfied, 3 demand satisfied and iTES_T raised, 4 damand satisfied and iTES_T reaches maximum, -1 unsatisfied demand, -2 unsatisfied demand and iTES under minimum -3 t_amb too cold
+            self.i_TES_story = np.zeros(timestep_number) # T_inertial_TES
+            self.satisfaction_story = np.zeros(timestep_number) # 0 no demand, 1 demand satisfied by iTES, 2 demand satisfied, 3 demand satisfied and iTES_T raised, 4 damand satisfied and iTES_T reaches maximum, -1 unsatisfied demand, -2 unsatisfied demand and iTES under minimum -3 t_amb too cold
             
-            self.cop_story = np.zeros(simulation_hours) # coefficient of performance
-            self.surplus_story = np.zeros(simulation_hours) # 0 no surplus is used by HP. 1 HP use PV surplus to charge iTES.
+            self.cop_story = np.zeros(timestep_number) # coefficient of performance
+            self.surplus_story = np.zeros(timestep_number) # 0 no surplus is used by HP. 1 HP use PV surplus to charge iTES.
             
             #### HP MODEL GU' #################################################
             # danfoss coolselector software available at https://www.danfoss.com/it-it/service-and-support/downloads/dcs/coolselector-2/
@@ -154,17 +154,17 @@ class heatpump:
             
             return cop,Pth,Pele,t_w_eff
              
-        def use(self,t_amb,e_th,e_ele,h):
+        def use(self,t_amb,p_th,p_ele,step,timestep):
             """
             heat (e_th<0) or cool (e_th>0) required by radiation system to heatpump system
 
             Parameters
             ----------
             t_amb : float [C°]
-            e_th : float [kWh]
+            p_th : float [kW]
                 <0 heat
                 >0 cool
-            e_ele: float [kWh]
+            p_ele: float [kW]
                 if e_ele > 0 and PV_surplus or REC_surplus == True the HP can use the suprlus of electicity to heats the inertial_TES
 
             Returns
@@ -174,172 +174,176 @@ class heatpump:
             """
             
             # check mode
-            if e_th < 0:
+            if p_th < 0:
                 self.mode = 1 # heat
                 
-            if e_th > 0:
+            if p_th > 0:
                 self.mode = 2 # cool  
                 
-            if e_th == 0 and self.mode != 0:
-                if np.count_nonzero(self.satisfaction_story[h-48:h]== 0) == 48: 
-                    self.mode = 0 # off after 24 hours of inactivity
+            if p_th == 0 and self.mode != 0:
+                if np.count_nonzero(self.satisfaction_story[int(step-48*60/timestep):step]== 0) == int(48*60/timestep): 
+                    self.mode = 0 # off after 48 hours of inactivity
                 
             # initialise
-            e_th_i_TES = 0
-            e_ele_hp = 0
-            e_th_hp = 0
+            p_th_i_TES = 0
+            p_ele_hp = 0
+            p_th_hp = 0
         
-            # inertial_TES dispersion (one hour)
-            self.i_TES_story[h] = self.i_TES_t
-            self.i_TES_t += self.i_TES_dispersion * self.i_TES_surface * (20-self.i_TES_t) * 3600 / (self.i_TES_mass*self.cp)
+            # inertial_TES dispersion (one timestep)
+            self.i_TES_story[step] = self.i_TES_t
+            self.i_TES_t += self.i_TES_dispersion * self.i_TES_surface * (20-self.i_TES_t) * 60 * timestep / (self.i_TES_mass*self.cp)
                 
-            e_overcharging_tot = 0 # parameter used in PV_surplus working
-            e_charging = 0 # parameter that have to be initialise = 0 to be used in PV_surplus working
+            p_overcharging_tot = 0 # parameter used in PV_surplus working
+            p_charging = 0 # parameter that have to be initialise = 0 to be used in PV_surplus working
             ### normal working: heatpump follows thermal demand
             
-            if e_th < 0:
+            if p_th < 0:
                 
                 # inertial_TES heats radiation system
+                
                 if self.i_TES_t > self.t_rad_h:
-                    e_th_i_TES = min(-e_th, self.i_TES_mass*self.cp_kWh*(self.i_TES_t-self.t_rad_h))
-                    self.i_TES_t += - e_th_i_TES/(self.i_TES_mass*self.cp_kWh)
-                    e_th += e_th_i_TES  
-                    self.satisfaction_story[h] = 1
+                    p_th_i_TES = min(-p_th, (self.i_TES_mass*self.cp_kWh*(self.i_TES_t-self.t_rad_h))*60/timestep) # kW
+                    self.i_TES_t += - (p_th_i_TES/(self.i_TES_mass*self.cp_kWh)) *timestep/60
+                    p_th += p_th_i_TES  
+                    self.satisfaction_story[step] = 1
                     
                     
-                if e_th < 0: # energy inside i_TES is not enough
+                if p_th < 0: # energy inside i_TES is not enough
        
                     ### HP switch-on     
                     
                     ### heat to recharge the i_TES
-                    e_charging = self.i_TES_mass*self.cp_kWh*(self.t_rad_h-self.i_TES_t)      
-                    cop,Pth,Pele,t_w_eff = self.HP_follows_thermal(t_amb, self.t_rad_h, e_charging)
+                    p_charging = self.i_TES_mass*self.cp_kWh*(self.t_rad_h-self.i_TES_t)*(60/timestep) # kW
+                    cop,Pth,Pele,t_w_eff = self.HP_follows_thermal(t_amb, self.t_rad_h, p_charging)
                     
                     if t_w_eff < self.t_rad_h: # the air temperature is too low to generate water at the required temperature
-                        self.satisfaction_story[h] = -3
+                        self.satisfaction_story[step] = -3
                         return(0, 0, 0)
                                      
-                    if Pth < e_charging: # i_TES can't be charged less than one hour
-                        self.satisfaction_story[h] = -2 
-                        self.i_TES_t += Pth/(self.i_TES_mass*self.cp_kWh)
-                        e_th_i_TES += - Pth
-                        e_th_hp = Pth
-                        e_ele_hp = Pele
+                    if Pth < p_charging: # i_TES can't be charged less than one step
+                        self.satisfaction_story[step] = -2 
+                        self.i_TES_t += Pth/(self.i_TES_mass*self.cp_kWh) *timestep/60
+                        p_th_i_TES += - Pth
+                        p_th_hp = Pth
+                        p_ele_hp = Pele
                         
                     
                     else: # i_TES is charge, HP can heats the radiation system
                     
                         self.i_TES_t = self.t_rad_h
-                        e_th_i_TES += -e_charging
-                        e_th += - e_charging
+                        p_th_i_TES += -p_charging
+                        p_th += - p_charging
                     
-                        cop,Pth,Pele,t_w_eff = self.HP_follows_thermal(t_amb, self.i_TES_t, -e_th)
+                        cop,Pth,Pele,t_w_eff = self.HP_follows_thermal(t_amb, self.i_TES_t, -p_th)
                         
-                        if Pth < -e_th:
-                            self.satisfaction_story[h] = -1
-                            e_th_hp = Pth
-                            e_ele_hp = Pele
+                        if Pth < -p_th:
+                            self.satisfaction_story[step] = -1
+                            p_th_hp = Pth
+                            p_ele_hp = Pele
                             
-                        if Pth == -e_th:
-                            self.satisfaction_story[h] = 2
-                            e_th_hp = Pth
-                            e_ele_hp = Pele
+                        if Pth == -p_th:
+                            self.satisfaction_story[step] = 2
+                            p_th_hp = Pth
+                            p_ele_hp = Pele
                             
-                        if Pth > -e_th:
+                        if Pth > -p_th:
                             
                             # HP heats i_TES   
-                            self.satisfaction_story[h] = 3
+                            self.satisfaction_story[step] = 3
                             j = 0 # used to calculate number of switch on number
-                            e_th_r = e_th # demand ramained to satisfied, used for the while cycle
+ 
+                            e_th_r = p_th * timestep/60 # demand ramained to satisfied, used for the while cycle [kWh]
                             while e_th_r < -0.00000001:
                                 
-                                cop,Pth,Pele,t_w_eff = self.HP_follows_thermal(t_amb, self.i_TES_t, -e_th)
+                                cop,Pth,Pele,t_w_eff = self.HP_follows_thermal(t_amb, self.i_TES_t, -p_th)
                                 
                                 if t_w_eff == self.i_TES_t: # maximum temperature not still reached 
-                                    e_th_hp += Pth/60
-                                    e_ele_hp += Pele/60
-                                    e_overcharging = (Pth+e_th)/60
-                                    e_th_r += -e_th/60
+                                    p_th_hp += Pth/60
+                                    p_ele_hp += Pele/60
+                                    p_overcharging = (Pth+p_th)/60
+                                    e_th_r += -p_th/60
                                 
-                                    if e_overcharging > 0: # charge iTES if there is energy to do it
-                                        e_th_i_TES += -e_overcharging
-                                        e_overcharging_tot += e_overcharging # used in PV_surplus working
-                                        self.i_TES_t += e_overcharging/(self.i_TES_mass*self.cp_kWh)
+                                    if p_overcharging > 0: # charge iTES if there is energy to do it
+                                        p_th_i_TES += -p_overcharging
+                                        p_overcharging_tot += p_overcharging # used in PV_surplus working
+                                        self.i_TES_t += p_overcharging/(self.i_TES_mass*self.cp_kWh)
                                         
-                                else: # maximum temperaeture reached: used energy inside iTES to satisfied demand
-                                    self.satisfaction_story[h] = 4+j 
+                                else: # maximum temperature reached: used energy inside iTES to satisfied demand
+                                    self.satisfaction_story[step] = 4+j 
                                     j += 1
-                                    e_th_available = min(-e_th_r, self.i_TES_mass*self.cp_kWh*(self.i_TES_t-self.t_rad_h))
-                                    e_th_i_TES += e_th_available
-                                    self.i_TES_t += - e_th_available/(self.i_TES_mass*self.cp_kWh) 
+   
+                                    e_th_available = min(-p_th, (self.i_TES_mass*self.cp_kWh*(self.i_TES_t-self.t_rad_h))*60/timestep) # kW
+                                    p_th_i_TES += e_th_available
+                                    self.i_TES_t += - (p_th_i_TES/(self.i_TES_mass*self.cp_kWh)) *timestep/60
                                     e_th_r += e_th_available
                                     if e_th_r < 0:
-                                        self.satisfaction_story[h] = 4+j
-                                        e_th = e_th_r
+                                        self.satisfaction_story[step] = 4+j
+                                        p_th = e_th_r
                         
             ### PV_surplus working: heatpump follows available electricity insted of thermal demand
-            if self.PV_surplus and e_ele > e_ele_hp and self.satisfaction_story[h] in [0,1,2,3] and self.mode != 0:
+            if self.PV_surplus and p_ele > p_ele_hp and self.satisfaction_story[step] in [0,1,2,3] and self.mode != 0:
                 
-                self.surplus_story[h] = 1
+                self.surplus_story[step] = 1
                 
                 # reinitialise balances                
-                e_ele_hp = 0
-                e_th_hp = 0
-                e_th_i_TES += e_overcharging_tot
-                self.i_TES_t += - e_overcharging_tot/(self.i_TES_mass*self.cp_kWh)
+                p_ele_hp = 0
+                p_th_hp = 0
+                p_th_i_TES += p_overcharging_tot
+                self.i_TES_t += - (p_overcharging_tot/(self.i_TES_mass*self.cp_kWh))*timestep/60
                 
                 # HP heats i_TES more than the noral working
                 
-                if e_th < 0: # demand
+                if p_th < 0: # demand
                     j = 0 # used to calculate number of switch on number
-                    e_th_r = e_th # demand ramained to satisfied, used for the while cycle
+                    
+                    p_th_r = p_th # demand ramained to satisfied, used for the while cycle
                     while e_th_r < -0.00000001:
                         
-                        cop,Pth,Pele,t_w_eff = self.HP_follows_electricity(t_amb, self.i_TES_t, e_ele)
+                        cop,Pth,Pele,t_w_eff = self.HP_follows_electricity(t_amb, self.i_TES_t, p_ele)
                         
                         if t_w_eff == self.i_TES_t: # maximum temperature not still reached 
                             
-                            e_th_hp += Pth/60
-                            e_ele_hp += Pele/60
-                            e_overcharging = (Pth+e_th)/60
-                            e_th_r += -e_th/60
+                            p_th_hp += Pth/60
+                            p_ele_hp += Pele/60
+                            p_overcharging = (Pth+p_th)/60
+                            p_th_r += -p_th/60
                         
-                            if e_overcharging > 0: # charge iTES if there is energy to do it
-                                e_th_i_TES += -e_overcharging
-                                self.i_TES_t += e_overcharging/(self.i_TES_mass*self.cp_kWh)
+                            if p_overcharging > 0: # charge iTES if there is energy to do it
+                                p_th_i_TES += -p_overcharging
+                                self.i_TES_t += p_overcharging/(self.i_TES_mass*self.cp_kWh)
                                                
                         else: # maximum temperaeture reached: used energy inside iTES to satisfied demand
-                            self.satisfaction_story[h] = 4+j 
+                            self.satisfaction_story[step] = 4+j 
                             j += 1
-                            e_th_available = min(-e_th_r, self.i_TES_mass*self.cp_kWh*(self.i_TES_t-self.t_rad_h))
-                            e_th_i_TES += e_th_available
-                            self.i_TES_t += - e_th_available/(self.i_TES_mass*self.cp_kWh) 
+                            e_th_available = min(-p_th, (self.i_TES_mass*self.cp_kWh*(self.i_TES_t-self.t_rad_h))*60/timestep) # kW
+                            p_th_i_TES += e_th_available
+                            self.i_TES_t += - (p_th_i_TES/(self.i_TES_mass*self.cp_kWh)) *timestep/60
                             e_th_r += e_th_available
                             if e_th_r < 0:
-                                self.satisfaction_story[h] = 4+j
-                                e_th = e_th_r
+                                self.satisfaction_story[step] = 4+j
+                                p_th = e_th_r
                                 
-                elif e_th == 0:
+                elif p_th == 0:
                     for m in np.arange(60):
-                        cop,Pth,Pele,t_w_eff = self.HP_follows_electricity(t_amb, self.i_TES_t, e_ele)
+                        cop,Pth,Pele,t_w_eff = self.HP_follows_electricity(t_amb, self.i_TES_t, p_ele)
                         
                         if t_w_eff == self.i_TES_t: # maximum temperature not still reached 
                             
-                            e_th_hp += Pth/60
-                            e_ele_hp += Pele/60
-                            e_overcharging = (Pth+e_th)/60
+                            p_th_hp += Pth/60
+                            p_ele_hp += Pele/60
+                            p_overcharging = (Pth+p_th)/60
                         
-                            if e_overcharging > 0: # charge iTES if there is energy to do it
-                                e_th_i_TES += -e_overcharging
-                                self.i_TES_t += e_overcharging/(self.i_TES_mass*self.cp_kWh)
+                            if p_overcharging > 0: # charge iTES if there is energy to do it
+                                p_th_i_TES += -p_overcharging
+                                self.i_TES_t += p_overcharging/(self.i_TES_mass*self.cp_kWh)
                                                
                         else: # maximum temperaeture reached: used energy inside iTES to satisfied demand
                             break
                              
-            if e_th_hp > 0:
-                self.cop_story[h] = e_th_hp/e_ele_hp
+            if p_th_hp > 0:
+                self.cop_story[step] = p_th_hp/p_ele_hp
                             
-            return(-e_ele_hp, e_th_hp, e_th_i_TES)
+            return(-p_ele_hp, p_th_hp, p_th_i_TES)
                                         
         def tech_cost(self,tech_cost):
             """
@@ -374,7 +378,7 @@ class heatpump:
             if tech_cost['cost per unit'] == 'default price correlation':
                 C0 = 1400 # €/kW
                 scale_factor = 0.8 # 0:1
-                C = size * C0 **  scale_factor
+                C = C0 * size **  scale_factor
             else:
                 C = size * tech_cost['cost per unit']
     

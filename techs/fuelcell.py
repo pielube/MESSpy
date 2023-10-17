@@ -14,7 +14,7 @@ import scipy.optimize
 
 class fuel_cell:
     
-    def __init__(self,parameters,simulation_hours):
+    def __init__(self,parameters,timestep_number,timestep):
         """
         Create a Fuel Cell object
     
@@ -28,7 +28,7 @@ class fuel_cell:
         self.model               = parameters['stack model']  # [-]  Fuel cell model
         self.Npower              = parameters['Npower']       # [kW] Single module nominal power   
         self.ageing              = parameters['ageing']       # bool - calucate ageing   
-        self.timestep = 1                                     # [h]  simulation timestep
+        self.timestep = timestep                                     # [min]  simulation timestep
         self.ageing_day = 7     # [days] How often ageing has to bee calculated? 
         self.check_ageing=0     # ageing calculation check. If already computed or not. 
         self.pol_curves = []    # list initialization for corrected curves. Aging effects affecting pol curve behaviour
@@ -71,11 +71,11 @@ class fuel_cell:
             'Model: NEDSTACK FCS 13-XXL'      # https://nedstack.com/sites/default/files/2022-07/nedstack-fcs-13-xxl-gen-2.9-datasheet-rev01.pdf
             'Rated nominal power:  13.6 kW'
             
-            self.EFF       = np.zeros(simulation_hours)              # [-]  Keeping track of fuel cell efficiency
-            self.VOLT      = np.zeros(simulation_hours)              # [V]  Keeping track of single cell working voltage - necessary for ageing calculations
-            self.CURR_DENS = np.zeros(simulation_hours)              # [A]  Keeping track of single cell working current - necessary for ageing calculations
-            self.EFF_last_module     = np.zeros(simulation_hours)    # [-]  Keeping track of the elecrolyzer last module efficiency over the simulation
-            self.n_modules_used      = np.zeros(simulation_hours)    # [-]  Number of modules active at each timestep 
+            self.EFF       = np.zeros(timestep_number)              # [-]  Keeping track of fuel cell efficiency
+            self.VOLT      = np.zeros(timestep_number)              # [V]  Keeping track of single cell working voltage - necessary for ageing calculations
+            self.CURR_DENS = np.zeros(timestep_number)              # [A]  Keeping track of single cell working current - necessary for ageing calculations
+            self.EFF_last_module     = np.zeros(timestep_number)    # [-]  Keeping track of the elecrolyzer last module efficiency over the simulation
+            self.n_modules_used      = np.zeros(timestep_number)    # [-]  Number of modules active at each timestep 
 
             
             self.rhoStdh2        = c.H2SDENSITY           # [kg/Sm3]    PropsSI('D', 'T', 288.15, 'P', 101325, 'H2') H2  density @ T = 15°C p = 101325 Pa
@@ -227,7 +227,7 @@ class fuel_cell:
             
             for i in range(len(FC_power)):
                
-                p_required = FC_power[i]                                   # [kWh] --> equivalent to kW for the considered timestep
+                p_required = FC_power[i]                                   # [kW] --> equivalent to kW for the considered timestep
                 
                 FC_CellCurrDensity = self.PI(p_required)/self.FC_CellArea  # [A/cm^2] current density value at which the fuel cell is working 
         
@@ -254,17 +254,17 @@ class fuel_cell:
              
                 FC_HydroCons = Current*self.nc*3600/(95719.25*1000)/self.rhoStdh2*self.timestep   # [Sm3] (Chavan 2017)
                 hyd = FC_HydroCons*self.rhoStdh2/self.timestep                                    # [kg/h]
-                FC_deltaHydrogen = - FC_HydroCons*self.rhoStdh2*self.HHVh2*1000/3600              # [kWh]
+                FC_deltaHydrogen = - FC_HydroCons*self.rhoStdh2*self.HHVh2*1000/3600              # [kW]
              
              
                 'Process heat, that can be recovered'
               
-                FC_Heat = ((1.481*self.nc)/FC_Vstack-1)*p_required*self.timestep     # [kWh] --> equivalent to kW for the considered timestep of 1h
+                FC_Heat = ((1.481*self.nc)/FC_Vstack-1)*p_required*self.timestep     # [kW] --> equivalent to kW for the considered timestep of 1h
                     
                 hydrogen.append(hyd)                       # [kg]  produced hydrogen
-                electricity_produced.append(p_required)    # [kWh] output power
+                electricity_produced.append(p_required)    # [kW] output power
                 eta_FuelCell.append(etaFC)                 # [-]   fc efficiency
-                FC_Heat_produced.append(FC_Heat)           # [kWh] co-product heat
+                FC_Heat_produced.append(FC_Heat)           # [kW] co-product heat
                 
             self.maxh2used = max(hydrogen)                 # [kg] maximum amount of exploitable hydrogen for the considered module
           
@@ -275,10 +275,10 @@ class fuel_cell:
         ####################################   
         if self.model == 'SOFC':
             
-            self.EFF=np.zeros(simulation_hours)                    # [-]      keeping track of fuel cell efficiency
+            self.EFF=np.zeros(timestep_number)                    # [-]      keeping track of fuel cell efficiency
             
-            self.EFF_last_module     = np.zeros(simulation_hours)  # [-]      keeping track of the elecrolyzer last active module efficiency over the simulation
-            self.n_modules_used      = np.zeros(simulation_hours)  # [-]      Number of modules active at each timestep 
+            self.EFF_last_module     = np.zeros(timestep_number)  # [-]      keeping track of the elecrolyzer last active module efficiency over the simulation
+            self.n_modules_used      = np.zeros(timestep_number)  # [-]      Number of modules active at each timestep 
             
             self.e                            = c.NEPERO           # [-]      Euler's number
 
@@ -413,7 +413,7 @@ class fuel_cell:
             
             for i in range(len(FC_power)):
                 
-                p_required = FC_power[i]                                   # [kWh] --> equivalent to kW for the considered timestep                
+                p_required = FC_power[i]                                   # [kW] --> equivalent to kW for the considered timestep                
                 FC_CellCurrDensity = self.PI(p_required)/self.FC_CellArea  # [A/cm^2] current density value at which the fuel cell is working 
                 
                 Current = FC_CellCurrDensity*self.FC_CellArea     # [A] FuelCell Stack operating current
@@ -442,7 +442,7 @@ class fuel_cell:
                 
                 FC_HydroCons = ((Current*self.nc*3600)/(c.FARADAY*1000))/(self.rhoStdh2*self.timestep)     # [Sm^3]
                 hyd=FC_HydroCons*self.rhoStdh2/self.timestep                                               # [kg/h]
-                FC_deltaHydrogen = - FC_HydroCons*self.rhoStdh2*self.HHVh2*1000/3600                       # [kWh]
+                FC_deltaHydrogen = - FC_HydroCons*self.rhoStdh2*self.HHVh2*1000/3600                       # [kW]
                 
                 'Air demand'     
                 
@@ -469,7 +469,7 @@ class fuel_cell:
                 
                 DeltaS = -((H20MolStdEntropy-(O2MolStdEntropy/2)-H2MolStdEntropy)+(c.R_UNIVERSAL/2)*ln((pH2**2)*pO2/(pH2O**2))) # [J/mol*K]
                 
-                FC_Heat_elec = ((((z*self.FC_OperatingTemp*DeltaS + Current*TotalLoss)*self.timestep)*self.nc)/1000)  # [kWh] --> equivalent to kW for the considered timestep of 1h
+                FC_Heat_elec = ((((z*self.FC_OperatingTemp*DeltaS + Current*TotalLoss)*self.timestep)*self.nc)/1000)  # [kW] --> equivalent to kW for the considered timestep of 1h
                 
                 'Heat contained in anodic and cathodic flow'
                 
@@ -480,9 +480,9 @@ class fuel_cell:
                 FC_Heat    = FC_HeatH20+FC_HeatAir                                 #[kW] net heat available for cogeneration
 
                 hydrogen.append(hyd)                       # [kg]  produced hydrogen
-                electricity_produced.append(p_required)    # [kWh] output power
+                electricity_produced.append(p_required)    # [kW] output power
                 eta_FuelCell.append(etaFC)                 # [-]   fc efficiency
-                FC_Heat_produced.append(FC_Heat)           # [kWh] co-product heat
+                FC_Heat_produced.append(FC_Heat)           # [kW] co-product heat
                 
             self.maxh2used = max(hydrogen)                                                          # [kg] maximum amount of exploitable hydrogen for the considered module
           
@@ -502,8 +502,8 @@ class fuel_cell:
         Returns
         -------
         hyd: float exploited hydrogen in the timestep [kg] (same as input 'h2')
-        p_required : float electricity produced in the timestep [kWh]
-        FC_Heat : Heat produced by Fuel cell operation in the time step [kWh]
+        p_required : float electricity produced in the timestep [kW]
+        FC_Heat : Heat produced by Fuel cell operation in the time step [kW]
         etaFC : module efficiency [-]
 
         """
@@ -520,14 +520,14 @@ class fuel_cell:
                 etaFC         = 0       # [-]      fuel cell efficiency
                 hyd           = 0       # [kg]     hydrogen used in the considered timestep
                 Current       = 0       # [A]      Operational Current
-                p_required    = 0       # [kWh]    required energy - when timestep is kept at 1 h kWh = kW
-                FC_Heat       = 0       # [kWh]    thermal energy used
+                p_required    = 0       # [kW]    required energy - when timestep is kept at 1 h kW = kW
+                FC_Heat       = 0       # [kW]    thermal energy used
                 FC_CellCurrDensity = 0  # [A/cm^2] current density
             
             else: 
             
                 etaFC      = self.etaFuelCell(hyd)  # [-]   FC efficiency
-                FC_Heat    = self.FC_Heat(hyd)      # [kWh] FC produced heat
+                FC_Heat    = self.FC_Heat(hyd)      # [kW] FC produced heat
             
             return(hyd,p_required,FC_Heat,etaFC)
 
@@ -782,8 +782,8 @@ class fuel_cell:
         """
         The Fuel cell can absorb hydrogen and produce electricity: H2 --> 2H+ + 2e
         
-        h: int hour under examination [h]
-        e: float < 0 energy required  [kWh]
+        h: int hour under examination [step]
+        e: float < 0 energy required  [kW]
         available_hyd: float available hydrogen H tank SOC[h-1] [kg]
       
         output : hydrogen absorbed and electricity supplied that hour [kg]
@@ -791,7 +791,7 @@ class fuel_cell:
         ##########################
         if self.model=='FCS-C5000':
            
-            p_required = -e                    # [kWh]
+            p_required = -e                    # [kW]
             
             p = min(p_required,self.Npower)    # [kW] how much electricity can be absorbed by the fuel cell absorb
             
@@ -810,7 +810,7 @@ class fuel_cell:
                 p = 0
                 # turn off the fuel cell
                 
-            return (-hyd,p,0,0) # return hydrogen absorbed [kg] and electricity required [kWh]
+            return (-hyd,p,0,0) # return hydrogen absorbed [kg] and electricity required [kW]
 
         ###############################
         if self.model=='PEM General' or self.model=='SOFC':
@@ -821,10 +821,10 @@ class fuel_cell:
                 e_required = e
                 hyd,p,FC_Heat,etaFC,hydrogen = fuel_cell.use1(self,h,e_required,available_hyd)
                 if abs(hyd) > 0:
-                    self.n_modules_used[h] = 1
+                    self.n_modules_used[step] = 1
                 else:
-                    self.n_modules_used[h] = 0
-                self.EFF[h]   = etaFC
+                    self.n_modules_used[step] = 0
+                self.EFF[step]   = etaFC
     
                             
             if abs(e) > self.Npower:      # if Electric Power required is higher than nominal one, i.e., more modules can be used
@@ -840,15 +840,15 @@ class fuel_cell:
                             hyd_1 = hyd_11[i-1]                 # Hydrogen requested using i-1 modules
                             p_1 = p*(i-1)                       # Total power requested using i-1 modules 
                             FC_Heat_1 = FC_Heat*(i-1)
-                            self.EFF[h] = etaFC                 # work efficiency of modules working at nominal power 
+                            self.EFF[step] = etaFC                 # work efficiency of modules working at nominal power 
                         
                             remained_available_hyd = available_hyd-abs(hyd_1)
                             hyd,p,FC_Heat,etaFC = fuel_cell.h2power(self,remained_available_hyd)
                             if abs(hyd) > 0:
-                                self.n_modules_used[h] = i
-                                self.EFF_last_module[h] = etaFC
+                                self.n_modules_used[step] = i
+                                self.EFF_last_module[step] = etaFC
                             else:
-                                self.n_modules_used[h] = i-1
+                                self.n_modules_used[step] = i-1
                             hyd = -hyd+hyd_1
                             p = p+p_1
                             FC_Heat = FC_Heat+FC_Heat_1
@@ -857,17 +857,17 @@ class fuel_cell:
                         hyd_1 = hyd*n_modules_used             # total amount of H2 requested by modules working at full load
                         p_1 = p*n_modules_used                 # total power produced    // // // // //  
                         FC_Heat_1 = FC_Heat*n_modules_used
-                        self.EFF[h] = etaFC                    # work efficiency of modules working at nominal power 
+                        self.EFF[step] = etaFC                    # work efficiency of modules working at nominal power 
                         
                         if abs(e) <= self.MaxPowerTot:                             # if available energy is lower than total installed power
                             e_excess_req = -(abs(e)-self.Npower*n_modules_used)    # remaining requested power after considering modules at full load
                             remained_available_hyd = available_hyd-abs(hyd_1)
                             hyd,p,FC_Heat,etaFC,hydrogen = fuel_cell.use1(self,h,e_excess_req,remained_available_hyd)
                             if abs(hyd) > 0:
-                                self.n_modules_used[h] = n_modules_used+1
-                                self.EFF_last_module[h] = etaFC
+                                self.n_modules_used[step] = n_modules_used+1
+                                self.EFF_last_module[step] = etaFC
                             else:
-                                self.n_modules_used[h] = n_modules_used
+                                self.n_modules_used[step] = n_modules_used
                             hyd = hyd+hyd_1
                             p = p+p_1
                             FC_Heat = FC_Heat+FC_Heat_1   
@@ -876,25 +876,25 @@ class fuel_cell:
                             p = p_1
                             hyd = hyd_1
                             FC_Heat = FC_Heat_1
-                            self.n_modules_used[h] = self.n_modules
+                            self.n_modules_used[step] = self.n_modules
                             
                 else:                             # only one module used because requested hydrogen from one module is higher than the available one 
                     if abs(hyd) > 0:
-                        self.n_modules_used[h] = 1
+                        self.n_modules_used[step] = 1
                     else:
-                        self.n_modules_used[h] = 0
-                    self.EFF[h] = etaFC
+                        self.n_modules_used[step] = 0
+                    self.EFF[step] = etaFC
 
-        return (hyd,p,FC_Heat)  # return hydrogen absorbed [kg] electricity required [kWh] and heat as a co-product [kWh]
+        return (hyd,p,FC_Heat)  # return hydrogen absorbed [kg] electricity required [kW] and heat as a co-product [kW]
         
             
-    def use1(self,h,e,available_hyd):
+    def use1(self,step,timestep,p,available_hyd):
          
         'Finding the working point of the FuelCell by explicitly solving the system:'
         
         if self.model == 'PEM General':
             
-            p_required = -e                                             # [kWh] --> equivalent to kW for the considered timestep
+            p_required = -p                                            # [kW] 
             FC_CellCurrDensity = self.PI(p_required)/self.FC_CellArea   # [A/cm^2] current density value at which the fuel cell is working 
             
             # Checking if resulting current density is high enough for the fuel cell to start, otherwise hydrogen used = 0
@@ -904,8 +904,8 @@ class fuel_cell:
                 etaFC              = 0      # [-] fuel cell efficiency
                 hyd                = 0      # [kg] hydrogen used in the considered timestep
                 Current            = 0      # [A] Operational Current
-                p_required         = 0      # [kWh] required energy - when timestep is kept at 1 h kWh = kW
-                FC_Heat            = 0      # [kWh] thermal energy used
+                p_required         = 0      # [kW] required energy - when timestep is kept at 1 h kW = kW
+                FC_Heat            = 0      # [kW] thermal energy used
                 FC_CellCurrDensity = 0
                 hydrogen           = hyd
             
@@ -931,18 +931,21 @@ class fuel_cell:
              
                 etaFC = eta_th*eta_voltage                        # [-] FC efficiency
                 
-                self.VOLT[h]      = V_cell                        # [V]      Cell voltage history
-                self.CURR_DENS[h] = FC_CellCurrDensity            # [A/cm2]  Cell current density history
+                self.VOLT[step]      = V_cell                        # [V]      Cell voltage history
+                self.CURR_DENS[step] = FC_CellCurrDensity            # [A/cm2]  Cell current density history
                 
                 'Hydrogen demand'
              
                 FC_HydroCons = Current*self.nc*3600/(95719.25*1000)/self.rhoStdh2*self.timestep   # [Sm3] (Chavan 2017)
-                hyd = FC_HydroCons*self.rhoStdh2/self.timestep                                    # [kg/h]
-                FC_deltaHydrogen = - FC_HydroCons*self.rhoStdh2*self.HHVh2*1000/3600              # [kWh]
+                
+              #  hyd = FC_HydroCons*self.rhoStdh2/ (self.timestep)                        # [kg/h]
+              #  FC_deltaHydrogen = - FC_HydroCons*self.rhoStdh2*self.HHVh2*1000/3600              # [kW]
+                hyd = FC_HydroCons*self.rhoStdh2 * timestep/60                # [kg/timestep] ???
+                FC_deltaHydrogen = - FC_HydroCons*self.rhoStdh2*self.HHVh2*1000/3600              # [kW]
              
                 'Process heat, that can be recovered'
               
-                FC_Heat = ((1.481*self.nc)/FC_Vstack-1)*p_required*self.timestep               # [kWh] --> equivalent to kW for the considered timestep of 1h
+                FC_Heat = ((1.481*self.nc)/FC_Vstack-1)*p_required*self.timestep               # [kW]
                 
                 hydrogen = -hyd   # [kg] check value to be implemented in use function
                 
@@ -951,7 +954,7 @@ class fuel_cell:
                     # defining the electric load that can be covered with the available hydrogen
                     hyd,p_required,FC_Heat,etaFC = fuel_cell.h2power(self,available_hyd)
 
-            return (-hyd,p_required,FC_Heat,etaFC,hydrogen)  # return hydrogen absorbed [kg] electricity required [kWh] and heat as a co-product [kWh]
+            return (-hyd,p_required,FC_Heat,etaFC,hydrogen)  # return hydrogen absorbed [kg] electricity required [kW] and heat as a co-product [kW]
 
         if self.model == 'SOFC':
             
@@ -962,7 +965,7 @@ class fuel_cell:
             H20MolStdEntropy = c.H2OMOL_S_E   # [J/K*mol]    Specific molar entropy
             
             
-            p_required=-e                                               # [kWh] --> equivalent to kW for the considered timestep
+            p_required=-p                                              # [kW] --> equivalent to kW for the considered timestep
             
             FC_CellCurrDensity = self.PI(p_required)/self.FC_CellArea   # [A/cm^2] current density value at which the fuel cell is working 
             
@@ -973,8 +976,8 @@ class fuel_cell:
                 etaFC         = 0      # [-] fuel cell efficiency
                 hyd           = 0      # [kg] hydrogen used in the considered timestep
                 Current       = 0      # [A] Operational Current
-                p_required    = 0      # [kWh] required energy - when timestep is kept at 1 h kWh = kW
-                FC_Heat       = 0      # [kWh] thermal energy used
+                p_required    = 0      # [kW] required energy - when timestep is kept at 1 h kW = kW
+                FC_Heat       = 0      # [kW] thermal energy used
                 FC_CellCurrDensity = 0
                 hydrogen = hyd
             
@@ -1007,7 +1010,7 @@ class fuel_cell:
                 
                 FC_HydroCons     = ((Current*self.nc*3600)/(c.FARADAY*1000))/(self.rhoStdh2*self.timestep)     # [Sm^3] volumetric hydrogen consumption in the timestep
                 hyd              = FC_HydroCons*self.rhoStdh2/self.timestep                                    # [kg/h] hourly hydrogen consumption
-                FC_deltaHydrogen = - FC_HydroCons*self.rhoStdh2*self.HHVh2*1000/3600                           # [kWh]
+                FC_deltaHydrogen = - FC_HydroCons*self.rhoStdh2*self.HHVh2*1000/3600                           # [kW]
                 
                 'Air demand'     
                 
@@ -1034,7 +1037,7 @@ class fuel_cell:
                 
                 DeltaS = -((H20MolStdEntropy-(O2MolStdEntropy/2)-H2MolStdEntropy)+(c.R_UNIVERSAL/2)*ln((pH2**2)*pO2/(pH2O**2))) # [J/mol*K]
                 
-                FC_Heat_elec = ((((z*self.FC_OperatingTemp*DeltaS + Current*TotalLoss)*self.timestep)*self.nc)/1000)  # [kWh] --> equivalent to kW for the considered timestep of 1h
+                FC_Heat_elec = ((((z*self.FC_OperatingTemp*DeltaS + Current*TotalLoss)*self.timestep)*self.nc)/1000)  # [kW] --> equivalent to kW for the considered timestep of 1h
                 
                 'Heat contained in anodic and cathodic flow'
                 
@@ -1051,7 +1054,7 @@ class fuel_cell:
                     # defining the electric load that can be covered with the available hydrogen
                     hyd,p_required,FC_Heat,etaFC = fuel_cell.h2power(self,available_hyd)
 
-            return (-hyd,p_required,FC_Heat,etaFC,hydrogen)  # return hydrogen absorbed [kg] electricity required [kWh] and heat as a co-product [kWh]
+            return (-hyd,p_required,FC_Heat,etaFC,hydrogen)  # return hydrogen absorbed [kg] electricity required [kW] and heat as a co-product [kW]
 
 
     def calculate_ageing(self,economic_data):
@@ -1252,14 +1255,14 @@ class fuel_cell:
         v_deg_rate_exp=a*np.exp(self.phi*b)
         print("v_deg="+str(self.v_deg_rate_pol))
         
-        T_cell_h_paper=(0.1*self.v_rated)/(v_deg_rate_paper/1e6)   #[h]
+        T_cell_h_paper=(0.1*self.v_rated)/(v_deg_rate_paper/1e6)   #[step]
         T_cell_y_paper=T_cell_h_paper/h_utilizzo_year
 
-        self.T_cell_h_pol=(0.1*self.v_rated)/(self.v_deg_rate_pol/1e6)   #[h]
+        self.T_cell_h_pol=(0.1*self.v_rated)/(self.v_deg_rate_pol/1e6)   #[step]
         self.T_cell_y_pol=self.T_cell_h_pol/h_utilizzo_year
         print("T_cell="+str(self.T_cell_h_pol))
 
-        T_cell_h_exp=(0.1*self.v_rated)/(v_deg_rate_exp/1e6)   #[h]
+        T_cell_h_exp=(0.1*self.v_rated)/(v_deg_rate_exp/1e6)   #[step]
         T_cell_y_exp=T_cell_h_exp/h_utilizzo_year
 
         n_replacements=int(economic_data['investment years']*(8760/self.T_cell_h_pol))
@@ -1301,7 +1304,7 @@ if __name__ == "__main__":
                 'ageing': False
                 }
     
-    sim_hours=100                               # [h] simulated period of time - usually it's 1 year minimum
+    sim_hours=100                               # [step] simulated period of time - usually it's 1 year minimum
     time=np.arange(sim_hours)
     
     fc = fuel_cell(inp_test,sim_hours)         # creating fuel cell object
@@ -1323,8 +1326,8 @@ if __name__ == "__main__":
     P_el     = np.zeros(len(flow))      # [kW] electricity produced
     P_th     = np.zeros(len(flow))      # [kW] produced heat
     
-    for h in range(len(flow1)):
-        hyd_used[h],P_el[h],P_th[h] = fc.use(h,flow1[h],available_hydrogen)
+    for step in range(len(flow1)):
+        hyd_used[step],P_el[step],P_th[step] = fc.use(h,flow1[step],available_hydrogen)
         
     # fc.EFF[fc.EFF == 0] = math.nan      # activate to avoid representation o '0' values when fuel cell is turned off
     
@@ -1396,8 +1399,8 @@ if __name__ == "__main__":
     plt.ylabel('$\\eta$')
 
    
-    for h in range(len(flow)):
-        hyd_used[h],P_el[h],P_th[h] = fc.use(h,flow[h],available_hydrogen)
+    for step in range(len(flow)):
+        hyd_used[step],P_el[step],P_th[step] = fc.use(h,flow[step],available_hydrogen)
         
     fig, ax = plt.subplots(dpi=600)
     ax.bar(-flow,fc.n_modules_used,color='tab:green',width=60,zorder=3)
@@ -1411,8 +1414,8 @@ if __name__ == "__main__":
 
     fd   = -np.random.uniform(0.08*fc.Npower,5.2*fc.Npower,sim_hours)   # [kW] power required from the Fuel Cell - random values
     
-    for h in range(len(fd)):
-        hyd_used[h],P_el[h],P_th[h] = fc.use(h,fd[h],available_hydrogen)
+    for step in range(len(fd)):
+        hyd_used[step],P_el[step],P_th[step] = fc.use(h,fd[step],available_hydrogen)
         
     fig, ax = plt.subplots(dpi=1000)
     ax2 = ax.twinx() 
@@ -1422,7 +1425,7 @@ if __name__ == "__main__":
     h1, l1 = ax.get_legend_handles_labels()
     h2, l2 = ax2.get_legend_handles_labels()
     ax.legend(h1+h2, l1+l2, loc='lower center',bbox_to_anchor=(0.5, 1.08), ncol =3, fontsize ='small')
-    ax.set_xlabel('Time [h]')
+    ax.set_xlabel('Time [step]')
     ax.set_ylabel('Efficiency [-]')
     ax2.set_ylabel('Power Output [kW]')
     ax.grid()
@@ -1434,7 +1437,7 @@ if __name__ == "__main__":
     ax.bar(np.arange(num)-0.2,P_el[:num],width=0.35,zorder=3,color='lightseagreen',edgecolor='k',label='Electric output', alpha =0.8)
     ax.bar(np.arange(num)+0.,P_th[:num],width=0.35,zorder=3,color='indianred',edgecolor='k',align='edge',label='Thermal output',alpha =0.8)
     ax.legend(loc='lower center',bbox_to_anchor=(0.5, 1.08), ncol =3, fontsize ='small')
-    ax.set_xlabel('Time [h]')
+    ax.set_xlabel('Time [step]')
     ax.set_ylabel('Power [kW]')
     ax2.set_ylabel('Power Output [kW]')
     ax.grid()

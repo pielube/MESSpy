@@ -10,7 +10,7 @@ import plotly.graph_objects as go
 import matplotlib.patches as mpatches
 
         
-def total_balances(simulation_name,loc,var=None):
+def total_balances(simulation_name,loc,timestep,var=None):
     """
     Total balances figures
     
@@ -27,7 +27,7 @@ def total_balances(simulation_name,loc,var=None):
     ###### total energy balances
     
     carriers = ['electricity','heating water','gas','hydrogen','HP hydrogen']
-    units    = {'electricity': 'kWh', 'hydrogen': 'kg', 'HP hydrogen': 'kg', 'gas':'kWh', 'heating water':'kWh'}
+    units    = {'electricity': 'kWh/y', 'hydrogen': 'kg/y', 'HP hydrogen': 'kg/y', 'gas':'kWh/y', 'heating water':'kWh/y'}
     
     if var: 
         
@@ -42,8 +42,8 @@ def total_balances(simulation_name,loc,var=None):
         print('\nTotal '+carrier+' balances '+loc+':\n') 
         for b in balances[loc][carrier]:
             
-            positiv=round(balances[loc][carrier][b][balances[loc][carrier][b]>0].sum(),1)
-            negativ=round(balances[loc][carrier][b][balances[loc][carrier][b]<0].sum(),1)
+            positiv=round(balances[loc][carrier][b][balances[loc][carrier][b]>0].sum(),1)*timestep/60
+            negativ=round(balances[loc][carrier][b][balances[loc][carrier][b]<0].sum(),1)*timestep/60
             
             if positiv != 0:
                 print(b+' '+str(round(positiv,1))+' '+units[carrier])
@@ -52,6 +52,7 @@ def total_balances(simulation_name,loc,var=None):
             if negativ != 0:
                 print(b+' '+str(round(negativ,1))+' '+units[carrier])
                 balance += round(negativ,1)
+     
                 
                 
     print(f"Total {carrier} balance {balance} {units[carrier]}")
@@ -722,7 +723,7 @@ def NPV_plot(study_case):
     plt.grid()
     plt.ylabel('Net Present Value [€]')
     plt.xlabel('Time [years]')
-    plt.xlim(0,len(y)-1)
+  #  plt.xlim(0,len(y)-1)
     #plt.ylim(-15000,15000)
     plt.show()
     

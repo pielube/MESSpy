@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 
 class wind:    
     
-    def __init__(self, params, simulation_hours, path=os.getcwd(), ts=1):
+    def __init__(self, params, timestep_number, timestep, path=os.getcwd(), ts=1):
         """
         Create a wind object based on the specified model
     
@@ -53,7 +53,6 @@ class wind:
         self.params             = params
         self.ts                 = ts
         self.cost               = False # will be updated with tec_cost()
-        self.simulation_hours   = simulation_hours
         self.property           = params['owned']   # bool value to take into account if the plant is owned or only electricity purchase is considered. 
                                                     # Main impact on economic assessment and key parameters
         
@@ -80,27 +79,31 @@ class wind:
             self.wind_prod = (pd.read_csv(self.series,skiprows =3,\
                              usecols = ["electricity"]).values).reshape(-1,)    # importing hourly wind production data for 
                                                                                 # the selected location. Expressed as ratio kWprod/1KWrated
-            self.prod_1kw = np.tile(self.wind_prod, int(self.simulation_hours/8760))  # creating the production series needed for the entire simulation
+            self.prod_1kw = np.tile(self.wind_prod, int(timestep_number*timestep/60/8760))  # creating the production series needed for the entire simulation
             self.wprod = self.prod_1kw*self.params['Npower']
+            
+            # from hourly to timestep
+            if timestep < 60:
+                self.wprod =  np.repeat(self.wprod*timestep/60, 60/timestep)
             
             if __name__ == "__main__":
                 os.chdir('../../techs')
             else:
                 os.chdir('../..')
         
-    def use(self,h,ws_input,rho=1.225,ts=1):
+    def use(self,step,ws_input,rho=1.225,ts=1):
         """
         Produce electricity
         
-        h : int hour to be simulated
+        step : int step to be simulated
         windspeed: float wind speed [m/s]
         rho: density [kg/m3]
     
-        output : float electricity produced that hour [kWh]
+        output : float electricity produced that timestep [kW]
     
         """
         if self.params['model'] == 'simple':
-            self.energy = self.wprod[h]
+            self.energy = self.wprod[step]
         
         else:
             ws_turbine=ws_input
@@ -279,7 +282,7 @@ class wind:
         if tech_cost['cost per unit'] == 'default price correlation':
             C0 = 1270 # €/kW
             scale_factor = 0.8 # 0:1
-            C = size * C0 **  scale_factor
+            C = C0 * size **  scale_factor
         else:
             C = size * tech_cost['cost per unit']
 
@@ -290,56 +293,6 @@ class wind:
 
         self.cost = tech_cost
 
-###########################################################################################################################################################
 
-if __name__ == "__main__":
-    
-    """
-    Functional Test
-    """
-
-    # params = {
-    #             'model': 'detailed',
-    #             'area':  39.6 ,
-    #             'efficiency': 0.45,
-    #             'Npower': 10,
-    #             'WSrated': 11.0,
-    #             'WScutin': 2.5,
-    #             'WScutout': 32.0,
-    #             'beta': 0.,
-    #             'idx': 5,
-    #             'z_i': 40.,
-    #             'z_hub': 30.,
-    #             'alpha': 0.25,
-    #             'Vu': 0.5,
-    #             'Nbands': 10
-    #             }
-
-    # # windsp = np.array([0.5,3.0,12.0,35.0])
-    # windsp = np.array([11.0])    
-    
-    # wind = wind(params)
-    
-    # for h in range(len(windsp)):
-    #     print(wind.use(h,windsp[h]))    
-    
-
-    params = {
-                'model' : 'simple',
-                'Npower': 5000
-                }
-    
-    simulation_hours = 8760
-        
-    wind = wind(params, simulation_hours)
-    
-    # Plot
-    
-    fig, ax = plt.subplots(dpi=600)
-    ax.plot(wind.wprod, zorder=3, lw=1)
-    ax.set_xlabel('Time [h]')
-    ax.set_ylabel('Power Production [kW]')
-    ax.grid(alpha=0.4)
-    ax.set_title('Wind Energy Production')
 
     
