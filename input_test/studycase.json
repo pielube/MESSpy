@@ -15,8 +15,10 @@
 							"owned": true},		     
             				      				
 				"battery": {"nominal capacity": 3,
-							"max E-rate": 0.5,
-							"efficiency": 0.9,
+							"charging efficiency": 0.8,
+							"discharging efficiency": 0.9,
+							"max charging power": 2.8,
+							"max discharging power": 2.6,
 							"ageing": true,
 							"life cycles": 6000,
 							"end life capacity": 80,

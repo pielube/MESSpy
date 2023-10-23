@@ -53,11 +53,12 @@ class battery:
       
         self.collective = parameters['collective'] # int 0: no collective rules. 1: priority to csc and then charge or discharge the battery.
 
-    def use(self,step,timestep,P2E,p):
+    def use(self,step,timestep,P2E,p):   # !!! P2E WIP
         """
         The battery can supply or absorb electricity
      
         step: int step to be simulated
+        timestep: int selected time resolution for the simulation [min]
         p: power requested (p<0) or provided (p>0) [kW]
       
         output : electricity supplied or absorbed that step [kW]
@@ -73,12 +74,12 @@ class battery:
             if p > self.MpowerC:
                 p = self.MpowerC
                               
-            if p*self.eta*timestep/60 < (self.max_capacity-self.LOC[step]): # if battery can't be full charged [kWh]
-                self.LOC[step+1] = self.LOC[step]+p*self.eta*timestep/60 # charge [kWh]
+            if p*self.etaC*timestep/60 < (self.max_capacity-self.LOC[step]): # if battery can't be full charged [kWh]
+                self.LOC[step+1] = self.LOC[step]+p*self.etaC*timestep/60 # charge [kWh]
             
             else: # if batter can be full charged
                 self.LOC[step+1] = self.max_capacity
-                p = ((self.max_capacity-self.LOC[step]) / self.eta)*60/timestep
+                p = ((self.max_capacity-self.LOC[step]) / self.etaC)*60/timestep
             
             if self.LOC[step+1] > self.used_capacity: # update used capacity
                 self.used_capacity = self.LOC[step+1] 
@@ -88,21 +89,21 @@ class battery:
             
         else: # discharge battery (this logic allows to back-calculate the LOC[0], it's useful for long term storage systems)
             
-            p = p/self.eta # how much power is really required
+            p = p/self.etaD # how much power is really required
             if(self.used_capacity==self.nom_capacity):  # the nom_capacity has been reached, so LOC[step+1] can't become negative 
                    
-                discharge = min(-p,self.LOC[step]*60/timestep,self.max_capacity*self.max_E_rate) # how much power can battery supply? [kW]         
+                discharge = min(-p,self.LOC[step]*60/timestep,self.max_capacity*self.MpowerD) # how much power can battery supply? [kW]         
                 self.LOC[step+1] = self.LOC[step]-discharge*timestep/60 # discharge battery
                 
             else: # the max_capacity has not yet been reached, so LOC[step+1] may become negative and then the past LOC may be translated   
                                                   
-                discharge = min(-p,(self.LOC[step]+self.max_capacity-self.used_capacity)*60/timestep,self.max_capacity*self.max_E_rate) # how much power can battery supply?
+                discharge = min(-p,(self.LOC[step]+self.max_capacity-self.used_capacity)*60/timestep,self.max_capacity*self.MpowerD) # how much power can battery supply?
                 self.LOC[step+1] = self.LOC[step]-discharge*timestep/60 # discharge battery
                 if self.LOC[step+1] < 0: # if the level of charge has become negative
                     self.used_capacity += - self.LOC[step+1] # incrase the used capacity
                     self.LOC[:step+2] += - self.LOC[step+1]  # traslate the past LOC array
             
-            return(discharge*self.eta) # return electricity supplied
+            return(discharge*self.etaD) # return electricity supplied
         
     def calculate_ageing(self,step,timestep):      
         

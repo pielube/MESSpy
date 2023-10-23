@@ -63,7 +63,7 @@ class location:
                                'process chilled water'  : {}} 
 
         self.timestep = general['timestep'] # timestep
-        self.timestep_number = int( general['simulation length']* 365*24*60 / self.timestep ) # number of timestep  
+        self.timestep_number = int( general['simulation length']* 365*24*60 / self.timestep ) # number of timesteps  
 
         # create the objects of present technologies and add them to the technologies dictionary
         # initialise power balance and add them to the power_balance dictionary

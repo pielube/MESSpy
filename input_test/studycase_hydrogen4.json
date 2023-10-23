@@ -20,11 +20,13 @@
                                              "feed": true,
                                              "priority":  7 },
 							                     				
-							      "wind": 	  {  "model"   : "simple",
-                							     "series"  : "windproduction.csv",
-                                                 "Npower"  : 200000,
-                                                 "priority": 2, 
-                                                 "owned"   : true},
+				"PV": 	{	"tilt": 0,
+							"azimuth": 30,
+							"losses": 20,
+							"peakP": 50000,
+							"serie": "TMY",
+							"priority": 2,
+							"owned": true},
 
                   		       "electrolyzer": { 
                                       		     "Npower": 1000,

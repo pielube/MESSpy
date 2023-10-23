@@ -3,7 +3,8 @@ COSTANTS MODULE
 
     This module contains:
             - Main phisical constants
-            - Fluid properties          
+            - Fluid properties
+            - Global variables: parameters dependent on simulation-specfic input (selected time-horizon, timestep...)
             
     For the sake of non-ambiguity, all technologies implement the same values by referring to this module
             
@@ -92,3 +93,11 @@ CV_AIR       = 0.7178                      # [kJ/kgK]     Air mass specific cost
 'Steam'
 
 H1_STEAM800 = 4159.9                       # [kJ/kg]     Steam mass specific enthalpy @ T = 800°C, P = 116000 Pa
+
+
+#%%
+
+'GLOBAL VARIABLES'  # !!! WIP - 
+
+
+

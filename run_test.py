@@ -31,17 +31,17 @@ name_economic = 'From Rec0 to Rec' # str name for economic_assesment_results fil
 path = r'./input_test' # change the path with r'./input_dev' if you are working on your own run_dev
 #path = r'./input_dev'
 
-file_studycase      = 'studycase'
-file_refcase        = 'refcase'
+# =============================================================================
+# file_studycase      = 'studycase'
+# file_refcase        = 'refcase'
+# =============================================================================
 
 # =============================================================================
 # file_studycase      = 'studycase4'
 # file_refcase        = 'refcase4'
 # =============================================================================
-# =============================================================================
-# file_studycase      = 'studycase_hydrogen'
-# file_refcase        = 'refcase_hydrogen'
-# =============================================================================
+file_studycase      = 'studycase_hydrogen'
+file_refcase        = 'refcase_hydrogen'
 file_general        = 'general'
 file_tech_cost      = 'tech_cost'
 file_energy_market  = 'energy_market'
@@ -131,9 +131,9 @@ if file_studycase in ['studycase4','studycase'] and file_refcase in ['refcase4',
 #     pp.total_balances(name_studycase,'consumer_2','heating water')
 # =============================================================================
     
- #   pp.REC_electricity_balance(name_studycase)
+    pp.REC_electricity_balance(name_studycase)
      
-   # pp.hourly_balances_electricity(name_studycase,'prosumer_1', 20, 21)
+    pp.hourly_balances_electricity(name_studycase,'prosumer_1', 20, 21)
 # =============================================================================
 #     pp.hourly_balances_electricity(name_studycase,'prosumer_2', 2, 3)
 #     
