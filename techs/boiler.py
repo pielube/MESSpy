@@ -9,7 +9,7 @@ import numpy as np
 import os
 import sys 
 sys.path.append(os.path.abspath(os.path.join(os.getcwd(),os.path.pardir)))   # temorarily adding constants module path 
-import constants as c
+from core import constants as c
 
 class boiler_el:    
     

@@ -19,7 +19,7 @@ from scipy.interpolate import RegularGridInterpolator
 import matplotlib.pyplot as plt
 
 ## Custom
-import constants as c
+from core import constants as c
 
 
 def bilinear_interp(_map,v1,v2):

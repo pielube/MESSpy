@@ -1,0 +1,3 @@
+see studycase_info
+
+refcase.json is the technological configuration before to the energy efficiency intervention to be evaluated

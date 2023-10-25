@@ -7,7 +7,7 @@ from sklearn.linear_model import LinearRegression
 import os
 import sys 
 sys.path.append(os.path.abspath(os.path.join(os.getcwd(),os.path.pardir)))   # temporarily adding constants module path 
-import constants as c
+from core import constants as c
 import pickle
 import scipy.fft
 import scipy.optimize

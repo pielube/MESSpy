@@ -3,15 +3,13 @@ import pandas as pd
 import numpy as np
 import os
 import pickle
-import os
 import sys 
-import math as m
 sys.path.append(os.path.abspath(os.path.join(os.getcwd(),os.path.pardir)))   # temorarily adding constants module path 
-import constants as c
+from core import constants as c
 
 class PV:    
     
-    def __init__(self,parameters,general,timestep_number,timestep,location_name,path,check,file_structure,file_general):
+    def __init__(self,parameters,location_name,path,check,file_structure,file_general):
         """
         Create a PV object based on PV production taken from PVGIS data 
     
@@ -66,18 +64,15 @@ class PV:
             else: # if a new pv serie must be downoladed from PV gis
                 print(f"Downolading a new PV serie from PVgis for {location_name}_{file_general}_{file_structure}") 
                     
-                latitude = general['latitude']
-                longitude = general['longitude']
-    
                 losses = parameters['losses']
                 tilt = parameters['tilt']
                 azimuth = parameters['azimuth']
                 
                 
                 if parameters['serie'] == 'TMY':
-                    weather = pvlib.iotools.get_pvgis_tmy(latitude, longitude, map_variables=True)[0]
+                    weather = pvlib.iotools.get_pvgis_tmy(c.latitude, c.longitude, map_variables=True)[0]
                     # Actual production calculation (extract all available data points)
-                    res = pvlib.iotools.get_pvgis_hourly(latitude,longitude,surface_tilt=tilt,surface_azimuth=azimuth,pvcalculation=True,peakpower=1,loss=losses,optimalangles=False)
+                    res = pvlib.iotools.get_pvgis_hourly(c.latitude,c.longitude,surface_tilt=tilt,surface_azimuth=azimuth,pvcalculation=True,peakpower=1,loss=losses,optimalangles=False)
                     # Index to select TMY relevant data points
                     pv = res[0]['P']
                     refindex = weather.index
@@ -87,22 +82,22 @@ class PV:
                     
                 else: # INT
                     year = parameters['serie']
-                    res = pvlib.iotools.get_pvgis_hourly(latitude,longitude,start=year,end=year,surface_tilt=tilt,surface_azimuth=azimuth,pvcalculation=True,peakpower=1,loss=losses,optimalangles=False)
+                    res = pvlib.iotools.get_pvgis_hourly(c.latitude,c.longitude,start=year,end=year,surface_tilt=tilt,surface_azimuth=azimuth,pvcalculation=True,peakpower=1,loss=losses,optimalangles=False)
                     pv = res[0]['P']
                 
                 pv = pd.DataFrame(pv)
                 
                 # time zone correction
-                if general['UTC time zone'] > 0:
+                if c.UTC > 0:
                     pv_index = pv.index
-                    pv_index = pv_index.shift(general['UTC time zone']*60,'T')
+                    pv_index = pv_index.shift(c.UTC*60,'T')
                     pv.index = pv_index
                     
-                    pv2 = pd.DataFrame(data=pv[-general['UTC time zone']:], index=None, columns=pv.columns)
-                    pv = pv[:-general['UTC time zone']]
+                    pv2 = pd.DataFrame(data=pv[-c.UTC:], index=None, columns=pv.columns)
+                    pv = pv[:-c.UTC]
                     
-                    reindex = pv.index[:general['UTC time zone']]
-                    reindex = reindex.shift(-general['UTC time zone']*60,'T')
+                    reindex = pv.index[:c.UTC]
+                    reindex = reindex.shift(-c.UTC*60,'T')
                     pv2.index = reindex  
                     pv = pd.concat([pv2,pv])
                     
@@ -113,16 +108,16 @@ class PV:
                 # Is CEST (Central European Summertime) observed? if yes it means that State is applying DST
                 # DST lasts between last sunday of march at 00:00:00+UTC+1 and last sunday of october at 00:00:00+UTC+2
                 # For example in Italy DST in 2022 starts in March 27th at 02:00:00 and finishes in October 30th at 03:00:00
-                if general['DST']==True:
+                if c.DST==True:
                 
                     zzz_in=pv[pv.index.month==3]
                     zzz_in=zzz_in[zzz_in.index.weekday==6]
-                    zzz_in=zzz_in[zzz_in.index.hour==1+general['UTC time zone']]
+                    zzz_in=zzz_in[zzz_in.index.hour==1+c.UTC]
                     zzz_in = pd.Series(zzz_in.index).unique()[-1]
                   
                     zzz_end=pv[pv.index.month==10]
                     zzz_end=zzz_end[zzz_end.index.weekday==6]
-                    zzz_end=zzz_end[zzz_end.index.hour==1+general['UTC time zone']]
+                    zzz_end=zzz_end[zzz_end.index.hour==1+c.UTC]
                     zzz_end = pd.Series(zzz_end.index).unique()[-1]
                     
                     pv.loc[zzz_in:zzz_end] = pv.loc[zzz_in:zzz_end].shift(60,'T')
@@ -142,19 +137,19 @@ class PV:
             pv = pv * self.peakP/1000
             
             # electricity produced every hour in the reference_year [kWh] [kW]
-            self.production = np.tile(pv,int(timestep_number*timestep/60/8760)) # from 1 year to simlation length years
+            self.production = np.tile(pv,int(c.timestep_number*c.timestep/60/8760)) # from 1 year to simlation length years
         
             # from hourly to timestep
-            if timestep < 60:
-                self.production =  np.repeat(self.production, 60/timestep) # [kW] creating a production series alligned with selected timestep 
+            if c.timestep < 60:
+                self.production =  np.repeat(self.production, 60/c.timestep) # [kW] creating a production series alligned with selected timestep 
         else:
             # read a specific production serie expressed as kW/kWpeak
             self.peakP = parameters['peakP']
             pv = pd.read_csv(path+'/production/'+parameters['serie'])['P'].to_numpy()
             pv = pv * (1-parameters['losses']/100)      # add losses if to be added
             pv = pv*self.peakP                          # kWh
-            self.production = np.tile(pv,timestep_number*timestep/60/8760)
-            if len(self.production != timestep_number):
+            self.production = np.tile(pv,c.timestep_number*c.timestep/60/8760)
+            if len(self.production != c.timestep_number):
                 raise ValueError(f"Warning! Checks the length and timestep of the PV production you input for {location_name}.")
 
 
@@ -162,7 +157,7 @@ class PV:
         """
         Produce electricity
         
-        h : int hour to be simulated
+        step : int step to be simulated
     
         output : float electricity produced that hour [kWh]    
         """
@@ -212,3 +207,18 @@ class PV:
         tech_cost['OeM'] = tech_cost['OeM'] *C /100 # €
 
         self.cost = tech_cost    
+        
+        
+        
+###########################################################################################################################################################
+
+if __name__ == "__main__":
+    
+    """
+    Functional test
+    """
+    
+    
+    
+    
+    

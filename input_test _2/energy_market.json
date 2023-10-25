@@ -1,0 +1,17 @@
+{								 					 
+"REC": {"collective self consumption incentives": 0.118,
+		"incentives redistribution": {	"producers": 40,
+										"consumers": 40,
+										"manager": 20},
+		"costitution cost": 0,
+        "OeM": 0},
+		 
+"electricity": {"purchase": 0.30, 
+                "sale": 0.10},
+                
+"interest rate": 0.05,
+
+"inflation rate": { "electricity": 0.02},
+					      
+"investment years": 30
+}
