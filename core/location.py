@@ -122,7 +122,7 @@ class location:
             self.power_balance['process cold water']['absorber'] = np.zeros(c.timestep_number) # array absorber process steam balance 
             
         if 'heatpump' in self.system:
-            self.technologies['heatpump'] = heatpump(system['heatpump'],c.timestep_number) # heatpump object created and add to 'technologies' dictionary
+            self.technologies['heatpump'] = heatpump(system['heatpump']) # heatpump object created and add to 'technologies' dictionary
             self.power_balance['electricity']['heatpump'] = np.zeros(c.timestep_number) # array heatpump electricity balance
             self.power_balance['heating water']['heatpump'] = np.zeros(c.timestep_number) # array heatpump heat balance
             self.power_balance['heating water']['inertial TES'] = np.zeros(c.timestep_number) # array inertial tank heat balance
@@ -285,7 +285,7 @@ class location:
                 pb['heating water'] += self.power_balance['heating water']['boiler_ng'][step] # heat balance update: + heat produced by boiler_ng
         
             if tech_name == 'heatpump':     
-                self.power_balance['electricity']['heatpump'][step], self.power_balance['heating water']['heatpump'][step], self.power_balance['heating water']['inertial TES'][step] = self.technologies['heatpump'].use(weather['temp_air'][step],pb['heating water'],pb['electricity'],step,self.P2E) 
+                self.power_balance['electricity']['heatpump'][step], self.power_balance['heating water']['heatpump'][step], self.power_balance['heating water']['inertial TES'][step] = self.technologies['heatpump'].use(weather['temp_air'][step],pb['heating water'],pb['electricity'],step) 
              
                 pb['electricity'] += self.power_balance['electricity']['heatpump'][step] # electricity absorbed by heatpump
                 self.power_balance['electricity']['demand'][step] += self.power_balance['electricity']['heatpump'][step] # add heatpump demand to 'electricity demand'

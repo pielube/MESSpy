@@ -114,50 +114,7 @@ class REC:
                         self.power_balance['electricity']['into grid'][step] += self.locations[location_name].power_balance['electricity']['grid'][step] # electricity fed into the grid from the whole rec at step step
                     else:                                                     
                         self.power_balance['electricity']['from grid'][step] += self.locations[location_name].power_balance['electricity']['grid'][step] # electricity withdrawn from the grid the whole rec at step step
-                
-               
-            ###################################################################################################################################
-            ### solve smart heatpumps (REC_surplus == True) (only available with timestep == 60)
-            HPs_available = []
-            TESs_temperature = []            
-            if - self.power_balance['electricity']['into grid'][step] - self.power_balance['electricity']['from grid'][step] > 0: # if there is surplus
-            
-                # find the HPs available
-                for location_name in self.locations:
-                    if 'heatpump' in self.locations[location_name].technologies:
-                            if self.locations[location_name].technologies['heatpump'].REC_surplus:
-                                if c.timestep != 60:
-                                    raise ValueError("Warning! Heatpumps with strategy REC_suruplus == True only work with timestep == 60 ")
-                                if self.locations[location_name].technologies['heatpump'].mode == 1:
-                                    if self.locations[location_name].technologies['heatpump'].satisfaction_story[step] in [0,1,2,3]:   
-                                        HPs_available.append(location_name)
-                                        TESs_temperature.append(self.locations[location_name].technologies['heatpump'].i_TES_t)
-                            
-                # order locations according to iTES temperature 
-                HPs_available = [HPs_available for _,HPs_available in sorted(zip(TESs_temperature,HPs_available))]
-             
-            while - self.power_balance['electricity']['into grid'][step] - self.power_balance['electricity']['from grid'][step] > 0: # while there is surplus
-                surplus = - self.power_balance['electricity']['into grid'][step] - self.power_balance['electricity']['from grid'][step]
-                if HPs_available == []:
-                        break
-                location_name = HPs_available[0]
-                HPs_available = HPs_available[1:]
- 
-                # clean balance
-                self.locations[location_name].power_balance['electricity']['demand'][step] += - self.locations[location_name].power_balance['electricity']['heatpump'][step]
-                self.locations[location_name].power_balance['electricity']['grid'][step] += self.locations[location_name].power_balance['electricity']['heatpump'][step]
-                self.power_balance['electricity']['from grid'][step] += self.locations[location_name].power_balance['electricity']['heatpump'][step] # electricity fed into the grid from the whole rec at hour h
-
-                # resimulate 
-                self.locations[location_name].technologies['heatpump'].i_TES_t = self.locations[location_name].technologies['heatpump'].i_TES_story[step]
-                self.locations[location_name].power_balance['electricity']['heatpump'][step], self.locations[location_name].power_balance['heat']['heatpump'][step], self.locations[location_name].power_balance['heat']['inertial TES'][step] = self.locations[location_name].technologies['heatpump'].use(self.weather['temp_air'][step],self.locations[location_name].power_balance['heat']['demand'][step],surplus,step) 
-  
-                # updata balance
-                self.locations[location_name].power_balance['electricity']['demand'][step] += self.locations[location_name].power_balance['electricity']['heatpump'][step]
-                self.locations[location_name].power_balance['electricity']['grid'][step] += - self.locations[location_name].power_balance['electricity']['heatpump'][step]
-                self.power_balance['electricity']['from grid'][step] += - self.locations[location_name].power_balance['electricity']['heatpump'][step] # electricity fed into the grid from the whole rec at hour h
-             
-            ###################################################################################################################################
+                          
             ### calculate collective self consumption and who contributed to it
             self.power_balance['electricity']['collective self consumption'][step] = min(-self.power_balance['electricity']['into grid'][step],self.power_balance['electricity']['from grid'][step]) # calculate REC collective self consumption how regulation establishes      
             

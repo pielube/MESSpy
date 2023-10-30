@@ -1,0 +1,2 @@
+weather_TMY is automatically generated based on typical metereological year from PVgis
+is you want to use different weather you have to add it in this folder and to recall them in general.json "weather" (see rec.py _init_)

@@ -215,16 +215,17 @@ def NPV(file_studycase,file_refcase,name_studycase,name_refcase,economic_data,si
 
          
         # REC incentives redistribution
-        csc = balances[location_name]['electricity']['collective self consumption']
-        inc_pro = - csc * economic_data['REC']['incentives redistribution']['producers']/100 * economic_data['REC']['collective self consumption incentives']
-        inc_pro = np.tile(inc_pro,years_factor)
-        inc_pro = np.reshape(inc_pro,(-1,8760))    
-        results[location_name]['CF_studycase']['CSC'] += inc_pro.sum(axis=1,where=inc_pro>0) 
-        
-        inc_con = csc * economic_data['REC']['incentives redistribution']['consumers']/100 * economic_data['REC']['collective self consumption incentives']
-        inc_con= np.tile(inc_con,years_factor)
-        inc_con = np.reshape(inc_con,(-1,8760))
-        results[location_name]['CF_studycase']['CSC'] += inc_con.sum(axis=1,where=inc_con>0)   
+        if 'REC' in economic_data:
+            csc = balances[location_name]['electricity']['collective self consumption']
+            inc_pro = - csc * economic_data['REC']['incentives redistribution']['producers']/100 * economic_data['REC']['collective self consumption incentives']
+            inc_pro = np.tile(inc_pro,years_factor)
+            inc_pro = np.reshape(inc_pro,(-1,8760))    
+            results[location_name]['CF_studycase']['CSC'] += inc_pro.sum(axis=1,where=inc_pro>0) 
+            
+            inc_con = csc * economic_data['REC']['incentives redistribution']['consumers']/100 * economic_data['REC']['collective self consumption incentives']
+            inc_con= np.tile(inc_con,years_factor)
+            inc_con = np.reshape(inc_con,(-1,8760))
+            results[location_name]['CF_studycase']['CSC'] += inc_con.sum(axis=1,where=inc_con>0)   
         
 
         # CF update considering inflation on each carrier
