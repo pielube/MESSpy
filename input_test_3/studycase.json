@@ -27,7 +27,7 @@
 
                   		       "electrolyzer": { 
                                       		     "Npower"            : 1000,
-                                  	             "number of modules" : 60,
+                                  	             "number of modules" : 100,
                                       	         "stack model"       : "PEM General",
                                       	         "strategy"          : "hydrogen-first",
                                       	         "only_renewables"   : false,

@@ -839,7 +839,6 @@ def plot_post_process(balances_pp,studycase,loc,first_day,last_day):
     if (last_day-first_day) <= 10: # in order to better visualize daily behaviour if short timespans are selected
         # plt.xticks(list(range(first_day*24*60//c.timestep, ((last_day+1)*24*60//c.timestep)+1,24*60//c.timestep)), [str(x) for x in list(range(first_day*24, ((last_day+1)*24)+1,24))], rotation=45) 
         plt.xticks(list(range(int(x[0]),int(np.ceil(x[-1]))+2,24)), [str(x) for x in list(range(first_day*24, ((last_day+1)*24)+1,24))], rotation=45) 
-
     # ax.xaxis.set_tick_params(bottom=True,labelbottom=True)
     #plt.xticks([0,6,12,18,24],['0','6','12','18','24'],fontsize=10,color='g')
     #plt.xticks([0,6,12,18,24,30,36,42,48],['0','6','12','18','24','30','36','42','48'],fontsize=10,color='g')
