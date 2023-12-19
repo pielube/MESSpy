@@ -255,6 +255,7 @@ def NPV(file_studycase,
         # REC incentives redistribution
         if 'REC' in economic_data:
             csc     = balances[location_name]['electricity']['collective self consumption']
+
             inc_pro = - csc * economic_data['REC']['incentives redistribution']['producers']/100 * economic_data['REC']['collective self consumption incentives']
             inc_pro = np.tile(inc_pro,years_factor)
             inc_pro = np.reshape(inc_pro,(-1,8760))    

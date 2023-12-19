@@ -28,6 +28,7 @@ import postprocess_test_2 as pp
 path = r'./input_test_2'
 #path = r'./input_xxx'
 
+
 # Selecting simulation names: change them to your liking
 name_studycase = 'HP heating' # just a name for saving results of the studycase simulation
 name_refcase = 'Boiler heating' # just a name for saving results of the refcase simulation
@@ -87,8 +88,13 @@ POST PROCESS - Investment assessment comparing refcase and studycase
 ================================
 """
 # Net present value calculation to asses the investment comparing refcase and studycase (saves results in both .pkl and .csv)
+<<<<<<< HEAD
 eco.NPV(file_studycase,file_refcase,name_studycase,name_refcase,energy_market,path,name_economic,'pkl')
 eco.NPV(file_studycase,file_refcase,name_studycase,name_refcase,energy_market,path,name_economic,'csv',sep=';',dec=',')
+=======
+eco.NPV(file_studycase,file_refcase,name_studycase,name_refcase,energy_market,general['simulation years'],general['timestep'],path,name_economic,'pkl')
+eco.NPV(file_studycase,file_refcase,name_studycase,name_refcase,energy_market,general['simulation years'],general['timestep'],path,name_economic,'csv',sep=';',dec=',')
+>>>>>>> 4575e15ecb709d7f5ce76609615ede3aa60af9fa
 
 #%% ###########################################################################
 """
@@ -103,6 +109,7 @@ with open('results/pkl/balances_'+name_studycase+'.pkl', 'rb')              as f
 with open('results/pkl/balances_'+name_refcase+'.pkl', 'rb')                as f: balances0 = pickle.load(f)
 with open('results/pkl/economic_assessment_'+name_economic+'.pkl', 'rb')    as f: economic  = pickle.load(f)
 
+
 # Here some examples of graphs
 pp.location_balance(name_refcase,'prosumer','electricity')
 pp.location_balance(name_refcase,'prosumer','gas')
@@ -111,11 +118,13 @@ pp.location_balance(name_studycase,'prosumer','electricity')
 pp.location_balance(name_studycase,'prosumer','gas')
 pp.location_balance(name_studycase,'prosumer','heating water')
 
+
 pp.LOC_plot(name_studycase)
 pp.cop(sim.locations['prosumer'].technologies['heatpump'].cop_story)
 pp.heating_demand( -sim.locations['prosumer'].power_balance['heating water']['demand'])
 
 pp.satisfaction_story(sim.locations['prosumer'].technologies['heatpump'].satisfaction_story) 
+
 
 pp.NPV_plot(name_economic)
 
