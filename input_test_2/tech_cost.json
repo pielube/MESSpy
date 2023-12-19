@@ -1,0 +1,21 @@
+{			
+"PV": { "cost per unit": 1200, 
+        "OeM": 1, 
+        "refund": { "rate": 50, "years": 10},
+        "replacement": {"rate": 80, "years": 25}},
+        
+"battery": {"cost per unit": 800, 
+            "OeM": 1, 
+            "refund": { "rate": 50, "years": 10},
+            "replacement": {"rate": 60, "years": 20}},   
+            
+"heatpump": {"cost per unit": 900, 
+             "OeM": 0.5, 
+             "refund": { "rate": 65, "years": 10},
+             "replacement": {"rate": 60, "years": 20}},  
+            
+"boiler_ng": {"cost per unit": 200, 
+              "OeM": 1, 
+              "refund": { "rate": 0, "years": 0},
+              "replacement": {"rate": 60, "years": 20}}       
+}

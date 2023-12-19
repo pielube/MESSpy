@@ -1,0 +1,19 @@
+{
+"prosumer": {	"electricity demand": { "series": "load_test_1.csv",
+                        				"priority": 1},      
+                        				
+				 "heating water demand": {   "series": "heating_test.csv",
+                                             "priority": 2},  
+                        				                    				           				
+                "electricity grid": {   "draw": true,
+                                        "feed": false,
+                                        "priority": 4},
+                                                       				                    				           				
+                "gas grid": {           "draw": true,
+                                        "feed": false,
+                                        "priority": 5},
+                
+                "boiler_ng":{       "Ppeak": 24,
+                                    "efficiency": 0.90,
+                                    "priority": 3}}              
+}

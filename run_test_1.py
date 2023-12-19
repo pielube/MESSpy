@@ -49,11 +49,11 @@ file_refcase        = 'refcase'
 ### NOW you can Run file (F5) ###
 
 # Opening input files:
-with open(os.path.join(path,f"{file_studycase}.json"),'r') as f: studycase = json.load(f)
-with open(os.path.join(path,f"{file_refcase}.json"),'r') as f: refcase = json.load(f)
-with open(os.path.join(path,f"{file_general}.json"),'r') as f: general = json.load(f)
-with open(os.path.join(path,f"{file_tech_cost}.json"),'r') as f: tech_cost = json.load(f)
-with open(os.path.join(path,f"{file_energy_market}.json"),'r') as f: energy_market = json.load(f)
+with open(os.path.join(path,f"{file_studycase}.json"),'r')      as f: studycase     = json.load(f)
+with open(os.path.join(path,f"{file_refcase}.json"),'r')        as f: refcase       = json.load(f)
+with open(os.path.join(path,f"{file_general}.json"),'r')        as f: general       = json.load(f)
+with open(os.path.join(path,f"{file_tech_cost}.json"),'r')      as f: tech_cost     = json.load(f)
+with open(os.path.join(path,f"{file_energy_market}.json"),'r')  as f: energy_market = json.load(f)
 
 
 #%% ###########################################################################
@@ -65,8 +65,8 @@ SOLVER - studycase simulation
 sim = rec.REC(studycase,general,file_studycase,file_general,path) # create REC object
 sim.REC_power_simulation() # simulate REC power balances
 sim.tech_cost(tech_cost) # calculate the cost of all technologies 
-sim.save(name_studycase,'pkl') # saving results in .pkl format (usefull if you make postprocess using python)
-sim.save(name_studycase,'csv',sep=';',dec=',') # saving results in .csv (usefull if you make postprocess using other languages/programmes)
+sim.save(name_studycase,'pkl') # saving results in .pkl format (useful if you make postprocess using python)
+sim.save(name_studycase,'csv',sep=';',dec=',') # saving results in .csv (useful if you make postprocess using other languages/programmes)
     
 #%% ###########################################################################
 """
@@ -77,9 +77,8 @@ SOLVER - refcase simulation
 sim0 = rec.REC(refcase,general,file_refcase,file_general,path) # create REC object
 sim0.REC_power_simulation() # simulate REC power balances
 sim0.tech_cost(tech_cost) # calculate the cost of all technologies 
-sim0.save(name_refcase,'pkl') # saving results in .pkl format (usefull if you make postprocess using python)
-sim0.save(name_refcase,'csv',sep=';',dec=',') # saving results in .csv (usefull if you make postprocess using other languages/programmes)
-
+sim0.save(name_refcase,'pkl') # saving results in .pkl format (useful if you make postprocess using python)
+sim0.save(name_refcase,'csv',sep=';',dec=',') # saving results in .csv (useful if you make postprocess using other languages/programmes)
 
 #%% ###########################################################################
 """
@@ -87,8 +86,8 @@ POST PROCESS - Investment assessment comparing refcase and studycase
 ================================
 """
 # Net present value calculation to asses the investment comparing refcase and studycase (saves results in both .pkl and .csv)
-eco.NPV(file_studycase,file_refcase,name_studycase,name_refcase,energy_market,general['simulation years'],general['timestep'],path,name_economic,'pkl')
-eco.NPV(file_studycase,file_refcase,name_studycase,name_refcase,energy_market,general['simulation years'],general['timestep'],path,name_economic,'csv',sep=';',dec=',')
+eco.NPV(file_studycase,file_refcase,name_studycase,name_refcase,energy_market,path,name_economic,'pkl')
+eco.NPV(file_studycase,file_refcase,name_studycase,name_refcase,energy_market,path,name_economic,'csv',sep=';',dec=',')
 
 #%% ###########################################################################
 """
@@ -98,10 +97,10 @@ some post-process are alredy avaiable as examples in postprocess_test_1
 you should create your own postprocess_dev.py and create your own graphs
 """
 
-# Here you can read the main results: balances, balances0 and economic. But you can also find balances on Variable Explorer: sim and sim0. Otherwise you can find them in .csv.
-with open('results/pkl/balances_'+name_studycase+'.pkl', 'rb') as f: balances = pickle.load(f)
-with open('results/pkl/balances_'+name_refcase+'.pkl', 'rb') as f: balances0 = pickle.load(f)
-with open('results/pkl/economic_assessment_'+name_economic+'.pkl', 'rb') as f: economic = pickle.load(f)
+# Here the main simulation results are read: balances, balances0 and economic. Balances are also available in the Variable Explorer panel: sim and sim0. Results are also available in .csv format in results/csv folder.
+with open('results/pkl/balances_'+name_studycase+'.pkl', 'rb')              as f: balances  = pickle.load(f)
+with open('results/pkl/balances_'+name_refcase+'.pkl', 'rb')                as f: balances0 = pickle.load(f)
+with open('results/pkl/economic_assessment_'+name_economic+'.pkl', 'rb')    as f: economic  = pickle.load(f)
 
 # Here some examples of graphs
 pp.location_balance(name_refcase,'prosumer','electricity')
@@ -135,7 +134,7 @@ npv = []
 sc = [] # self-consumption
 ss = [] # self-sufficiency
 
-print('\n Sensitivety analysis running:')
+print('\n Sensitivity analysis running:')
 for pv in pv_size:
     print(pv)
     name_studycase = f"PV size = {pv}"

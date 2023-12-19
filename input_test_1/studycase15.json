@@ -1,5 +1,5 @@
 {
-"prosumer": {	"electricity demand": { "serie": "15load_test_1.csv",
+"prosumer": {	"electricity demand": { "series": "15load_test_1.csv",
                         				"priority": 1},  
                         				           				
                 "electricity grid": {   "draw": true,
@@ -25,14 +25,14 @@
 							"collective": 0,
 							"priority": 3}},
 							
-"consumer 1": {	"electricity demand": { "serie": "15load_test_2.csv",
+"consumer 1": {	"electricity demand": { "series": "15load_test_2.csv",
                         				"priority": 1},  
                         				           				
                 "electricity grid": {   "draw": true,
                                         "feed": false,
                                         "priority": 3}},
                                         
-"consumer 2": {	"electricity demand": { "serie": "15load_test_3.csv",
+"consumer 2": {	"electricity demand": { "series": "15load_test_3.csv",
                         				"priority": 1},  
                     				           				
                 "electricity grid": {   "draw": true,

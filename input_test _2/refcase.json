@@ -1,8 +1,0 @@
-{
-"prosumer_1": {	"electricity demand": { "serie": "load_test_1.csv",
-                        				"priority": 1},  
-                        				           				
-                "electricity grid": {   "draw": true,
-                                        "feed": true,
-                                        "priority": 3}}                  
-}

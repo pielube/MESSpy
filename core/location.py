@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from techs import (heatpump, boiler_el, boiler_ng, boiler_h2, PV, wind, battery, H_tank, HPH_tank, O2_tank, fuel_cell, electrolyzer, inverter, chp_gt, Chp, Absorber, hydrogen_compressor, Compressor)
+from techs import (heatpump, boiler_el, boiler_ng, boiler_h2, PV, wind, battery, H_tank, HPH_tank, O2_tank, fuel_cell, electrolyzer, inverter, chp_gt, Chp, Absorber, hydrogen_compressor, Compressor, SMR)
 from core import constants as c
 
 class location:
@@ -11,17 +11,17 @@ class location:
     
         system: dictionary (all the inputs are optional)
             'demand'': dictionary
-                'electricity':              str 'file_name.csv' time series of electricity demand  [kW]
-                'heating water':            str 'file_name.csv' time series of heating and dhw demand  [kW]
-                'cooling water':            str 'file_name.csv' time series of cooling demand  [kW]
-                'hydrogen':                 str 'file_name.csv' time series of hydrogen demand  [kg/s]
-                'HP hydrogen':              str 'file_name.csv' time series of High-Pressure hydrogen demand  [kg/s]
-                'gas':                      str 'file_name.csv' time series of gas demand  [kW]
-                'process steam':            str 'file_name.csv' time series of process steam demand  [kg/s]
-                'process heat':             str 'file_name.csv' time series of process heat demand  [kW]
-                'process hot water':        str 'file_name.csv' time series of process hot water demand  [kW]
-                'process cold water':       str 'file_name.csv' time series of process cold water demand (absorber, 7-12 °C)  [kW]
+                'electricity':              str 'file_name.csv' time series of electricity demand                               [kW]
+                'heating water':            str 'file_name.csv' time series of heating and dhw demand                           [kW]
+                'cooling water':            str 'file_name.csv' time series of cooling demand                                   [kW]
+                'process heat':             str 'file_name.csv' time series of process heat demand                              [kW]
+                'process hot water':        str 'file_name.csv' time series of process hot water demand                         [kW]
+                'process cold water':       str 'file_name.csv' time series of process cold water demand (absorber, 7-12 °C)    [kW]
                 'process chilled water':    str 'file_name.csv' time series of process chilled water demand (absorber, 1-5 °C)  [kW]
+                'hydrogen':                 str 'file_name.csv' time series of hydrogen demand                                  [kg/s]
+                'HP hydrogen':              str 'file_name.csv' time series of High-Pressure hydrogen demand                    [kg/s]
+                'process steam':            str 'file_name.csv' time series of process steam demand                             [kg/s]
+                'gas':                      str 'file_name.csv' time series of gas demand                                       [Sm3/s]
             'PV':                       dictionary parameters needed to create PV object (see PV.py)
             'inverter':                 dictionary parameters needed to create inverter object (see inverter.py)
             'wind':                     dictionary parameters needed to create wind object (see wind.py)
@@ -37,6 +37,7 @@ class location:
             'chp_gt':                   dicitonary parameters needed to create a chp object based on gas turbine technoology (see chp_gt.py)
             'hydrogen_compressor':      dicitonary parameters needed to create a mhhc object (see mhhc compressor.py)
             'mechanical compressor':    dicitonary parameters needed to create a mechanical object (see compressor.py)
+            'SMR':                      dicitonary parameters needed to create a mechanical object (see Steam_methane_reformer.py)
             
         output : location object able to:
             simulate the energy flows of present technologies .loc_simulation
@@ -45,60 +46,60 @@ class location:
         
         self.system = dict(sorted(system.items(), key=lambda item: item[1]['priority'])) # ordered by priority
         self.name = location_name
-        self.technologies = {}                                 # initialise technologies dictionary
-        self.power_balance = {'electricity'            : {},   # initialise power balances dictionaries
-                               'heating water'          : {}, 
-                               'cooling water'          : {}, 
-                               'hydrogen'               : {},
-                               'LP hydrogen'            : {},
-                               'HP hydrogen'            : {},
-                               'water'                  : {},
-                               'oxygen'                 : {},
-                               'gas'                    : {}, 
-                               'process steam'          : {},
-                               'process heat'           : {},
-                               'process hot water'      : {},
-                               'process cold water'     : {},
-                               'process chilled water'  : {}} 
+        self.technologies = {}                                  # initialise technologies dictionary
+        self.power_balance = {                                  # initialise power balances dictionaries
+                                'electricity'            : {},  # [kW]
+                                'heating water'          : {},  # [kW]
+                                'cooling water'          : {},  # [kW]
+                                'process heat'           : {},  # [kW]
+                                'process hot water'      : {},  # [kW]
+                                'process cold water'     : {},  # [kW]
+                                'process chilled water'  : {},  # [kW]
+                                'hydrogen'               : {},  # [kg/s]
+                                'LP hydrogen'            : {},  # [kg/s]
+                                'HP hydrogen'            : {},  # [kg/s]
+                                'oxygen'                 : {},  # [kg/s]
+                                'process steam'          : {},  # [kg/s]
+                                'gas'                    : {},  # [Sm^3/s]
+                                'water'                  : {}}  # [m^3/s]
 
         # create the objects of present technologies and add them to the technologies dictionary
         # initialise power balance and add them to the power_balance dictionary
         
-        for carrier in self.power_balance: 
+        for carrier in self.power_balance: # creating grid series and importing energy carrier demand series if defined
             
-            if f"{carrier} grid" in self.system: 
-                self.power_balance[carrier]['grid'] = np.zeros(c.timestep_number) # array energy carrier bought from the grid (-) or feed into the grid (+)
+            if f"{carrier} grid" in self.system:    # grid connection 
+                self.power_balance[carrier]['grid'] = np.zeros(c.timestep_number) # creating the energy carrier array for grid exchanges. Bought from the grid (-) or feed into the grid (+)
 
-            if f"{carrier} demand" in self.system: # read and check demand series
-                
-                if carrier == 'hydrogen' or carrier == 'HP hydrogen':
-                    self.hydrogen_demand = carrier  # demand can be defined as 'hydrogen demand' or 'HP hydrogen demand' depending on the required delivery pressure
-                    if self.system[carrier+' demand']['strategy'] == 'supply-led' and self.system[carrier+' demand']['serie'] != False:
+            if f"{carrier} demand" in self.system:  # read and check energy/material stream demand series
+                if carrier in ['hydrogen','HP hydrogen']:   # hydrogen energy carrier specific requirements. Depending oon the selected simulation strategy. 
+                    self.hydrogen_demand = carrier                      # demand can be defined as 'hydrogen demand' or 'HP hydrogen demand' depending on the required delivery pressure
+                    if self.system[carrier+' demand']['strategy'] == 'supply-led' and self.system[carrier+' demand']['series'] != False:
                         raise ValueError(f"Warning in {self.name} location: supply-led strategy is not consistent with providing a demand series.\n\
                         Options to fix the problem: \n\
-                            (a) - Insert 'false' at {carrier} demand 'serie' in studycase.json\n\
+                            (a) - Insert 'false' at {carrier} demand 'series' in studycase.json\n\
                             (b) - Change 'strategy' to 'demand-led' in studycase.json")
-                            
-                if carrier in ['hydrogen','HP hydrogen','process steam'] and self.system[carrier+' demand']['serie'] != False:
-                    self.power_balance[carrier]['demand'] = - pd.read_csv(path+'/loads/'+system[f"{carrier} demand"]['serie'])['kg/s'].to_numpy() 
-                    
-                elif carrier in ['hydrogen','HP hydrogen','process steam'] and not self.system[carrier+' demand']['serie']:
-                    if self.system[carrier+' demand']['strategy'] == 'supply-led' and self.system[carrier+' demand']['serie'] == False:
-                        self.power_balance[carrier]['demand'] =  np.zeros(c.timestep_number)
-                        
-                else:     
-                     self.power_balance[carrier]['demand'] = - pd.read_csv(path+'/loads/'+system[f"{carrier} demand"]['serie'])['kW'].to_numpy() 
-                     
-                ### check demand serie length
-                if len(self.power_balance[carrier]['demand']) == c.timestep_number: 
-                    pass 
+                    elif self.system[carrier+' demand']['strategy'] == 'supply-led':            # if selected strategy is supply-led and a demand series is not provided (as it should be the case) 
+                        self.power_balance[carrier]['demand'] =  np.zeros(c.timestep_number)    # no demand is considered in the simulation - the system is investigated in order to assess how much hydrogen it can produce    
+                    elif self.system[carrier+' demand']['strategy'] == 'demand-led':
+                        self.power_balance[carrier]['demand'] = - pd.read_csv(path+'/loads/'+system[f"{carrier} demand"]['series'])['kg/s'].to_numpy() 
                 
-                elif len(self.power_balance[carrier]['demand'])<c.timestep_number:
-                                    
-                    if c.timestep_number%len(self.power_balance[carrier]['demand']) == 0:
-                        self.power_balance[carrier]['demand'] = np.tile(self.power_balance[carrier]['demand'],int(c.timestep_number/len(self.power_balance[carrier]['demand']))  ) 
+                # checking input files, different units for different energy carriers
+                elif carrier == 'process steam':    # [kg/s]
+                    self.power_balance[carrier]['demand']   = - pd.read_csv(path+'/loads/'+system[f"{carrier} demand"]['series'])['kg/s'].to_numpy() 
+                elif carrier == 'gas':              # [Sm3/s]
+                    self.power_balance[carrier]['demand']   = - pd.read_csv(path+'/loads/'+system[f"{carrier} demand"]['series'])['Sm3/s'].to_numpy() 
+                else:                               # [kW]
+                    self.power_balance[carrier]['demand']   = - pd.read_csv(path+'/loads/'+system[f"{carrier} demand"]['series'])['kW'].to_numpy() 
+                     
+                ### check demand series length
+                if len(self.power_balance[carrier]['demand']) == c.timestep_number:             # if demand series has the length of the entire simulation (for all years considered)
+                    pass 
+                elif len(self.power_balance[carrier]['demand']) < c.timestep_number:            # if the length of the demand array is less than the total number of timesteps in the simulation
+                    if c.timestep_number % len(self.power_balance[carrier]['demand']) == 0:     # if the number of timesteps is evenly divisible by the length of the current demand array
+                        self.power_balance[carrier]['demand'] = np.tile(self.power_balance[carrier]['demand'],int(c.timestep_number/len(self.power_balance[carrier]['demand']))) # replicate the demand array for the considered number of years to cover all timesteps in the simulation 
                 else:
-                    raise ValueError(f"Warning! Checks the length of the {carrier} demand series you input for {self.name}. In general.json it checks the timestep and the simulation length")
+                    raise ValueError(f"Warning! Check the length of the {carrier} input demand series in {self.name}. Allign it with selected timestep and simulation length in general.json")
 
         if 'chp_gt' in self.system:
             self.technologies['chp_gt'] = chp_gt(system['chp_gt'],c.timestep_number) # chp_gt object created and added to 'technologies' dictionary
@@ -122,7 +123,7 @@ class location:
             self.power_balance['process cold water']['absorber'] = np.zeros(c.timestep_number) # array absorber process steam balance 
             
         if 'heatpump' in self.system:
-            self.technologies['heatpump'] = heatpump(system['heatpump'],c.timestep_number) # heatpump object created and add to 'technologies' dictionary
+            self.technologies['heatpump'] = heatpump(system['heatpump']) # heatpump object created and add to 'technologies' dictionary
             self.power_balance['electricity']['heatpump'] = np.zeros(c.timestep_number) # array heatpump electricity balance
             self.power_balance['heating water']['heatpump'] = np.zeros(c.timestep_number) # array heatpump heat balance
             self.power_balance['heating water']['inertial TES'] = np.zeros(c.timestep_number) # array inertial tank heat balance
@@ -146,7 +147,7 @@ class location:
             self.power_balance['electricity']['inverter'] = np.zeros(c.timestep_number)        # array inverter electricity balance
             
         if 'wind' in self.system:
-            self.technologies['wind'] = wind(self.system['wind'],c.timestep_number,c.timestep,path)    # wind object created and add to 'technologies' dictionary
+            self.technologies['wind'] = wind(self.system['wind'],path=path)    # wind object created and add to 'technologies' dictionary
             self.power_balance['electricity']['wind'] = np.zeros(c.timestep_number)        # array wind electricity balance 
            
         if 'battery' in self.system:
@@ -186,10 +187,15 @@ class location:
                     (b) - Change electrolyzers 'only_renewables' strategy in studycase.json\n\\ ")
                 
         if 'fuel cell' in self.system:
-            self.technologies['fuel cell'] = fuel_cell(self.system['fuel cell'],c.timestep_number,c.timestep) # Fuel cell object created and to 'technologies' dictionary
+            self.technologies['fuel cell'] = fuel_cell(self.system['fuel cell'],c.timestep_number) # Fuel cell object created and to 'technologies' dictionary
             self.power_balance['electricity']['fuel cell']     = np.zeros(c.timestep_number)     # array fuel cell electricity balance
             self.power_balance['hydrogen']['fuel cell']        = np.zeros(c.timestep_number)     # array fuel cell hydrogen balance
             self.power_balance['heating water']['fuel cell']   = np.zeros(c.timestep_number)     # array fuel cell heat balance used
+        
+        if 'SMR' in self.system:
+            self.technologies['SMR'] = SMR(self.system['SMR'],c.timestep)             # Steam methane reformer object created and to 'technologies' dictionary
+            self.power_balance['hydrogen']['SMR']   = np.zeros(c.timestep_number)     # array Steam methane reformer hydrogen balance
+            self.power_balance['gas']['SMR']        = np.zeros(c.timestep_number)     # array Steam methane reformer gas balance
             
         if 'hydrogen compressor' in self.system:
             self.technologies['hydrogen compressor'] = hydrogen_compressor(self.system['hydrogen compressor'],c.timestep_number) # MHHC compressor object created and to 'technologies' dictionary
@@ -217,13 +223,9 @@ class location:
                                     electrolyzer or a buffer tank, check priorities in studycase.json.\n\
                                     Options to fix the problem: \n\
                     (a) - Insert electrolyzer technology in studycase.json\n")
-            if 'O2 tank' not in self.system:
-                maxflowrate = self.technologies['electrolyzer'].maxh2prod_stack
-            else:
-                maxflowrate =   self.technologies['electrolyzer'].maxh2prod_stack +\
-                                self.technologies['electrolyzer'].maxh2prod_stack*self.technologies['electrolyzer'].oxy  # maximum hydrogen mass flow rate + maximum oxygen mass flow rate
-            self.technologies['mechanical compressor'] = Compressor(self.system['mechanical compressor'],c.timestep_number,maxflowrate = maxflowrate) # H tank object created and to 'technologies' dictionary
-            self.power_balance['electricity']['mechanical compressor']    = np.zeros(c.timestep_number) # array H tank hydrogen balance
+            maxflowrate_ele = self.technologies['electrolyzer'].maxh2prod_stack            
+            self.technologies['mechanical compressor'] = Compressor(self.system['mechanical compressor'],c.timestep_number,maxflowrate_ele=maxflowrate_ele) # compressor object created and to 'technologies' dictionary
+            self.power_balance['electricity']['mechanical compressor']    = np.zeros(c.timestep_number) # array copressor hydrogen balance
             self.power_balance['hydrogen']['mechanical compressor']       = np.zeros(c.timestep_number) # array of hydrogen flow entering the mechanical compressor from LPH tank
             self.power_balance['HP hydrogen']['mechanical compressor']    = np.zeros(c.timestep_number) # array of compressed hydrogen flow sent toward HPH tank
             self.power_balance['cooling water']['mechanical compressor']  = np.zeros(c.timestep_number) # array of water flow to be fed to the refrigeration system 
@@ -285,7 +287,7 @@ class location:
                 pb['heating water'] += self.power_balance['heating water']['boiler_ng'][step] # heat balance update: + heat produced by boiler_ng
         
             if tech_name == 'heatpump':     
-                self.power_balance['electricity']['heatpump'][step], self.power_balance['heating water']['heatpump'][step], self.power_balance['heating water']['inertial TES'][step] = self.technologies['heatpump'].use(weather['temp_air'][step],pb['heating water'],pb['electricity'],step,self.P2E) 
+                self.power_balance['electricity']['heatpump'][step], self.power_balance['heating water']['heatpump'][step], self.power_balance['heating water']['inertial TES'][step] = self.technologies['heatpump'].use(weather['temp_air'][step],pb['heating water'],pb['electricity'],step) 
              
                 pb['electricity'] += self.power_balance['electricity']['heatpump'][step] # electricity absorbed by heatpump
                 self.power_balance['electricity']['demand'][step] += self.power_balance['electricity']['heatpump'][step] # add heatpump demand to 'electricity demand'
@@ -354,7 +356,7 @@ class location:
                             if producible_hyd < self.technologies['H tank'].max_capacity*0.00001: # to avoid unnecessary iteration
                                 producible_hyd = 0
                         elif 'H tank' in self.system and 'HPH tank' not in self.system and self.system[self.hydrogen_demand+' demand']['strategy'] == 'demand-led':   # hydrogen can only be stored into an H tank 
-                            producible_hyd  = self.technologies['H tank'].max_capacity-self.technologies['H tank'].LOC[step] + (-pb['hydrogen']) # the tank can't be full
+                            producible_hyd  = self.technologies['H tank'].max_capacity-self.technologies['H tank'].LOC[step] + (-pb['hydrogen'])*c.timestep*60 # the tank can't be full
                             if producible_hyd < self.technologies['H tank'].max_capacity*0.00001:                           # to avoid unnecessary iteration
                                 producible_hyd = 0
                         elif 'H tank' in self.system and 'HPH tank' not in self.system and self.system[self.hydrogen_demand+' demand']['strategy'] == 'supply-led':   # hydrogen can only be stored into an H tank 
@@ -363,12 +365,13 @@ class location:
                             # storable_hydrogen_lp    = self.technologies['LPH tank'].max_capacity-self.technologies['LPH tank'].LOC[step] # the tank can't be full
                             producible_hyd   = self.technologies['H tank'].max_capacity-self.technologies['H tank'].LOC[step] # the tank can't be full                        
                         else:
-                            producible_hyd = max(0,-pb['hydrogen']) # hydrogen is consumed by a technology with a higher priority than tank
+                            producible_hyd = max(0,-pb['hydrogen']*c.timestep*60) # hydrogen is consumed by a technology with a higher priority than tank
                         if producible_hyd > 0:
+                        
                             self.power_balance['hydrogen']['electrolyzer'][step],   \
                             self.power_balance['electricity']['electrolyzer'][step],\
                             self.power_balance['oxygen']['electrolyzer'][step],     \
-                            self.power_balance['water']['electrolyzer'][step]        = self.technologies['electrolyzer'].use(step,c.timestep,storable_hydrogen=producible_hyd,e=pb['electricity'])      # [:2] # hydrogen supplied by electrolyzer(+) # electricity absorbed by the electorlyzer(-) 
+                            self.power_balance['water']['electrolyzer'][step]        = self.technologies['electrolyzer'].use(step,storable_hydrogen=producible_hyd,p=pb['electricity'])      # [:2] # hydrogen supplied by electrolyzer(+) # electricity absorbed by the electorlyzer(-) 
                             
                             pb['hydrogen']      += self.power_balance['hydrogen']['electrolyzer'][step]
                             pb['electricity']   += self.power_balance['electricity']['electrolyzer'][step]
@@ -378,50 +381,71 @@ class location:
                 elif self.technologies['electrolyzer'].strategy == 'hydrogen-first' and self.technologies['electrolyzer'].only_renewables == False: # electrolyzer working both with energy from renewables and from grid, but giving precedence to electricity from renewables
                     
                     if 'hydrogen grid' in self.system and self.system["hydrogen grid"]["feed"] and 'H tank' not in self.system: # hydrogen can be fed into an hydrogen grid
-                        producible_hyd = 9999999999999999999
-                    elif 'H tank' in self.system and 'HPH tank' not in self.system and self.system[self.hydrogen_demand+' demand']['strategy'] == 'demand-led':   # hydrogen can only be stored into an H tank 
-                        producible_hyd  = self.technologies['H tank'].max_capacity-self.technologies['H tank'].LOC[step] + (-pb['hydrogen']) # the tank can't be full
+                        producible_hyd  = 9999999999999999999                                                                                                        # [kg] maximum amount of producible hydrogen for the considered timestep. No limitations for this case 
+                    elif 'hydrogen grid' in self.system and self.system["hydrogen grid"]["feed"] and self.system['electrolyzer']['minimum_load']: # hydrogen can be fed into an hydrogen grid
+                        producible_hyd  = 9999999999999999999
+                    elif 'H tank' in self.system and 'HPH tank' not in self.system and self.system[self.hydrogen_demand+' demand']['strategy'] == 'demand-led':     # hydrogen can only be stored into an H tank 
+                        producible_hyd  = self.technologies['H tank'].max_capacity-self.technologies['H tank'].LOC[step] + (-pb['hydrogen'])*c.timestep*60          # [kg] maximum amount of producible hydrogen for the considered timestep. Taking into account available tank capacity and hydrogen demand in the timestep. 
                         if producible_hyd < self.technologies['H tank'].max_capacity*0.00001: # to avoid unnecessary iteration
                             producible_hyd = 0
-                    elif 'H tank' in self.system and 'HPH tank' not in self.system and self.system[self.hydrogen_demand+' demand']['strategy'] == 'supply-led':   # hydrogen can only be stored into an H tank 
-                        producible_hyd = 9999999999999999999   # electrolyzer can produce continuously as the storage capacity is infinite. Tank is dimensioned at the end of simulation
+                    elif 'H tank' in self.system and 'HPH tank' not in self.system and self.system[self.hydrogen_demand+' demand']['strategy'] == 'supply-led':     # hydrogen can only be stored into an H tank 
+                        producible_hyd = 9999999999999999999                                                                                                        # electrolyzer can produce continuously as the storage capacity is infinite. Tank size is defined at the end of simulation
                     elif 'H tank' in self.system and 'HPH tank' in self.system:
                         producible_hyd   = self.technologies['H tank'].max_capacity-self.technologies['H tank'].LOC[step] # the tank can't be full                        
                     else:
-                        producible_hyd = max(0,-pb['hydrogen']) # hydrogen is consumed by a technology which have higher priority than tank
+                        producible_hyd = max(0,-pb['hydrogen']*c.timestep*60)  # hydrogen is consumed by a technology thathas higher priority than tank
                     if producible_hyd > 0:
                         self.power_balance['hydrogen']['electrolyzer'][step],   \
                         self.power_balance['electricity']['electrolyzer'][step],\
                         self.power_balance['oxygen']['electrolyzer'][step],     \
-                        self.power_balance['water']['electrolyzer'][step]        = self.technologies['electrolyzer'].use(step,storable_hydrogen=producible_hyd,e=pb['electricity'])      # [:2] # hydrogen supplied by electrolyzer(+) # electricity absorbed by the electorlyzer(-) 
-                            
-                    available_hyd = self.technologies['H tank'].LOC[step] + self.technologies['H tank'].max_capacity - self.technologies['H tank'].used_capacity
-                    if available_hyd + self.power_balance['hydrogen']['electrolyzer'][step] < -pb['hydrogen']:     # hydrogen produced from electrolyzer with only renewables and the tank are not sufficient to cover the hydrogen demand in this hour --> need for grid interaction
-                        hyd_from_ele = (-pb['hydrogen']) - available_hyd     # The electrolyzer must generate only the quantity of hydrogen the tank can't cover (thus using even electricity from grid) 
+                        self.power_balance['water']['electrolyzer'][step]        = self.technologies['electrolyzer'].use(step,storable_hydrogen=producible_hyd,p=pb['electricity'])      # hydrogen [kg/s] and oxygen [kg/s] produced by the electrolyzer (+) electricity [kW] and water absorbed [m^3/s] (-) 
+                                                
+                    # avaliable hydrogen calculation
+                    available_hyd = self.technologies['H tank'].LOC[step] + self.technologies['H tank'].max_capacity - self.technologies['H tank'].used_capacity    # [kg] hydrogen amount available in the storage system at the considered timestep. 
+                    
+                    # evaluating need for grid interaction based on available hydrogen
+                    if (available_hyd/(c.timestep*60) + self.power_balance['hydrogen']['electrolyzer'][step]) < -pb['hydrogen']:    # if hydrogen produced from electrolyzer with only renewables and the tank is not sufficient to cover the hydrogen demand in this timestep --> need for grid interaction
+                        hyd_from_ele = (-pb['hydrogen']) - available_hyd/(c.timestep*60)                                            # [kg/s] the electrolyzer is required to produce the amount of hydrogen the tank can't cover (thus using also grid electricity) 
                         self.power_balance['hydrogen']['electrolyzer'][step],   \
                         self.power_balance['electricity']['electrolyzer'][step],\
                         self.power_balance['oxygen']['electrolyzer'][step],     \
-                        self.power_balance['water']['electrolyzer'][step]        = self.technologies['electrolyzer'].use(step,hydrog=hyd_from_ele)      # [:2] # hydrogen supplied by electrolyzer(+) # electricity absorbed by the electorlyzer(-) 
+                        self.power_balance['water']['electrolyzer'][step]        = self.technologies['electrolyzer'].use(step,hydrog=hyd_from_ele)      # hydrogen [kg/s] and oxygen [kg/s] produced by the electrolyzer (+) electricity [kW] and water absorbed [m^3/s] (-) 
                         
-                        pb['hydrogen']      += self.power_balance['hydrogen']['electrolyzer'][step]
-                        pb['electricity']   += self.power_balance['electricity']['electrolyzer'][step]
-                        pb['oxygen']        += self.power_balance['oxygen']['electrolyzer'][step]
-                        pb['water']         += self.power_balance['water']['electrolyzer'][step]
-
-                    else:
-                        pb['hydrogen']      += self.power_balance['hydrogen']['electrolyzer'][step]
-                        pb['electricity']   += self.power_balance['electricity']['electrolyzer'][step]
-                        pb['oxygen']        += self.power_balance['oxygen']['electrolyzer'][step]
-                        pb['water']         += self.power_balance['water']['electrolyzer'][step]
+                        # pb['hydrogen']      += self.power_balance['hydrogen']['electrolyzer'][step]
+                        # pb['electricity']   += self.power_balance['electricity']['electrolyzer'][step]
+                        # pb['oxygen']        += self.power_balance['oxygen']['electrolyzer'][step]
+                        # pb['water']         += self.power_balance['water']['electrolyzer'][step]
+                    
+                    # !!! evaluating need for grid interaction based on imposed minimum operational load. Lower functoning boundary
+                    if self.system['electrolyzer']['minimum_load'] and abs(self.power_balance['electricity']['electrolyzer'][step]) < self.technologies['electrolyzer'].min_partial_load:
+                        self.power_balance['hydrogen']['electrolyzer'][step],   \
+                        self.power_balance['electricity']['electrolyzer'][step],\
+                        self.power_balance['oxygen']['electrolyzer'][step],     \
+                        self.power_balance['water']['electrolyzer'][step]        = self.technologies['electrolyzer'].use(step,storable_hydrogen=producible_hyd,p=self.technologies['electrolyzer'].min_partial_load)      # [:2] # hydrogen supplied by electrolyzer(+) # electricity absorbed by the electorlyzer(-) 
+                        
+                        # pb['hydrogen']      += self.power_balance['hydrogen']['electrolyzer'][step]
+                        # pb['electricity']   += self.power_balance['electricity']['electrolyzer'][step]
+                        # pb['oxygen']        += self.power_balance['oxygen']['electrolyzer'][step]
+                        # pb['water']         += self.power_balance['water']['electrolyzer'][step]
+                    
+                    # else:
+                    #     pb['hydrogen']      += self.power_balance['hydrogen']['electrolyzer'][step]
+                    #     pb['electricity']   += self.power_balance['electricity']['electrolyzer'][step]
+                    #     pb['oxygen']        += self.power_balance['oxygen']['electrolyzer'][step]
+                    #     pb['water']         += self.power_balance['water']['electrolyzer'][step]
+                    pb['hydrogen']      += self.power_balance['hydrogen']['electrolyzer'][step]
+                    pb['electricity']   += self.power_balance['electricity']['electrolyzer'][step]
+                    pb['oxygen']        += self.power_balance['oxygen']['electrolyzer'][step]
+                    pb['water']         += self.power_balance['water']['electrolyzer'][step]
                 
                 elif self.technologies['electrolyzer'].strategy == 'full-time': # electrolyzer working continuously at each time step of the simulation
                     if "electricity grid" in self.system and self.system["electricity grid"]["draw"]:  # to assure full-time operation the system must be connected to the grid
                         # if self.system[self.hydrogen_demand+' demand']['strategy'] == 'supply-led':    
-                        producible_hyd = 9999999999999999999
+                        producible_hyd = 9999999999999999999                    # [kg] maximum amount of producible hydrogen for the considered timestep. No limitations for this case 
                         self.power_balance['hydrogen']['electrolyzer'][step],     \
                         self.power_balance['electricity']['electrolyzer'][step],  \
                         self.power_balance['oxygen']['electrolyzer'][step],       \
-                        self.power_balance['water']['electrolyzer'][step]         = self.technologies['electrolyzer'].use(step,storable_hydrogen=producible_hyd,e=pb['electricity'])      # [:2] # hydrogen supplied by electrolyzer(+) # electricity absorbed by the electorlyzer(-) 
+                        self.power_balance['water']['electrolyzer'][step]         = self.technologies['electrolyzer'].use(step,storable_hydrogen=producible_hyd)      # [:2] # hydrogen supplied by electrolyzer(+) # electricity absorbed by the electorlyzer(-) 
                     
                         pb['hydrogen']      += self.power_balance['hydrogen']['electrolyzer'][step]
                         pb['electricity']   += self.power_balance['electricity']['electrolyzer'][step]
@@ -447,7 +471,7 @@ class location:
             if tech_name == 'mechanical compressor':   
                 if 'HPH tank' not in self.system:
                     if 'O2 tank' not in self.system:
-                        if "electricity grid" in self.system and self.system["electricity grid"]["draw"]:
+                        if "electricity grid" in self.system and self.system["electricity grid"]["draw"] and self.technologies['mechanical compressor'].only_renewables == False:
                             if 'hydrogen demand' in self.system:
                                 massflow = max(0,self.power_balance['hydrogen']['electrolyzer'][step] + self.power_balance['hydrogen']['demand'][step])
                             else:
@@ -456,8 +480,8 @@ class location:
                             self.power_balance['electricity']['mechanical compressor'][step] = self.technologies['mechanical compressor'].use(step,massflowrate= massflow)[:2] # hydrogen compressed by the compressor (+) and electricity consumption (-) 
                             
                             pb['electricity']   += self.power_balance['electricity']['mechanical compressor'][step]
-                    
-                        elif "electricity grid" not in self.system or self.system["electricity grid"]["draw"] == False:   # if the system is configurated as fully off-grid, relying only on RES production
+
+                        elif "electricity grid" not in self.system or self.technologies['mechanical compressor'].only_renewables == True:  #self.system["electricity grid"]["draw"] == False:   # if the system is configurated as fully off-grid, relying only on RES production
                             if self.power_balance['hydrogen']['electrolyzer'][step] > 0 :  # if hydrogen has been produced by the electrolyzer and electricity is available in the system
                                 if 'hydrogen demand' in self.system:
                                     demand = self.power_balance['hydrogen']['demand'][step] # hydrogen demand at timestep h
@@ -489,7 +513,7 @@ class location:
                                     
                                     while a1 >= 0:       # while loop necessary to iterate in the redistribution of renewable electricity to satisfy both electrolyzer and compressor demand
                                         hydrogen_ele,  \
-                                        electricity_ele = self.technologies['electrolyzer'].use(step,storable_hydrogen=producible_hyd,e=a1*en)[:2]  # [kg] of produced H2 and [kW] of consumed electricity for the given energy input  
+                                        electricity_ele = self.technologies['electrolyzer'].use(step,storable_hydrogen=producible_hyd,p=a1*en)[:2]  # [kg] of produced H2 and [kW] of consumed electricity for the given energy input  
                                         massflow = max(0, hydrogen_ele + demand)
                                         a = -self.technologies['mechanical compressor'].use(step,massflowrate= massflow)[1] # [kW] compressor energy consumption for a certain h2 mass flow rate
                                         b1 = a/en
@@ -505,7 +529,7 @@ class location:
                                     self.power_balance['hydrogen']['electrolyzer'][step],   \
                                     self.power_balance['electricity']['electrolyzer'][step],\
                                     self.power_balance['oxygen']['electrolyzer'][step],     \
-                                    self.power_balance['water']['electrolyzer'][step]        = self.technologies['electrolyzer'].use(step,storable_hydrogen=producible_hyd,e=a1*en)      # [:2] # hydrogen supplied by electrolyzer(+) # electricity absorbed by the electorlyzer(-) 
+                                    self.power_balance['water']['electrolyzer'][step]        = self.technologies['electrolyzer'].use(step,storable_hydrogen=producible_hyd,p=a1*en)      # [:2] # hydrogen supplied by electrolyzer(+) # electricity absorbed by the electorlyzer(-) 
                                     
                                     pb['hydrogen']      += self.power_balance['hydrogen']['electrolyzer'][step]    - hy
                                     pb['electricity']   += self.power_balance['electricity']['electrolyzer'][step] - el
@@ -627,7 +651,7 @@ class location:
                     else:
                         available_hyd = max(0,pb['hydrogen']) # hydrogen is produced by an electrolyzer with a higher priority than fc
                     if available_hyd > 0:
-                        use = self.technologies['fuel cell'].use(step,self.P2E,pb['electricity'],available_hyd)     # saving fuel cell working parameters for the current timeframe
+                        use = self.technologies['fuel cell'].use(step,pb['electricity'],available_hyd)     # saving fuel cell working parameters for the current timeframe
                         self.power_balance['hydrogen']['fuel cell'][step] =    use[0] # hydrogen absorbed by fuel cell(-)
                         self.power_balance['electricity']['fuel cell'][step] = use[1] # electricity supplied(+) 
         
@@ -639,7 +663,13 @@ class location:
                         pb['hydrogen'] += self.power_balance['hydrogen']['fuel cell'][step]
                         pb['electricity'] += self.power_balance['electricity']['fuel cell'][step]
                         pb['heating water'] += self.power_balance['heating water']['fuel cell'][step] 
-                    
+            
+            if tech_name == 'SMR':
+                if pb['hydrogen'] < 0:
+                    self.power_balance['gas']['SMR'][step], self.power_balance['hydrogen']['SMR'][step] = self.technologies['SMR'].use(pb['hydrogen']) # NG consumed and hydrogen produced from SMR
+                    pb['gas'] += self.power_balance['gas']['SMR'][step] # gas balance update: - gas consumed by SMR
+                    pb['hydrogen'] += self.power_balance['hydrogen']['SMR'][step] # hydrogen balance update: + hydrogen produced by SMR                   
+                
             if tech_name == 'boiler_h2':                                                                                                                                   
                 if "hydrogen grid" in self.system and self.system["hydrogen grid"]["draw"]: # hydrogen can be withdranw from an hydrogen grid
                     available_hyd = 9999999999999999999 
@@ -710,13 +740,15 @@ class location:
             ### demand and grid   
             for carrier in pb: # for each energy carrier
                 if tech_name == f"{carrier} demand":                
-                    pb[carrier] += self.power_balance[carrier]['demand'][step]    # power balance update: energy demand(-)  
-                    
+                    pb[carrier] += self.power_balance[carrier]['demand'][step]    # power balance update: energy demand(-)
+                    break
+                
                 if tech_name == f"{carrier} grid":
                     if pb[carrier] > 0 and self.system[f"{carrier} grid"]['feed'] or pb[carrier] < 0 and self.system[f"{carrier} grid"]['draw']:
                         self.power_balance[carrier]['grid'][step] = -pb[carrier] # energy from grid(+) or into grid(-) 
-                        pb[carrier] += self.power_balance[carrier]['grid'][step]  # electricity balance update      
-
+                        pb[carrier] += self.power_balance[carrier]['grid'][step]  # electricity balance update
+                        break
+                    
 #%%            
         ### Global check on power balances at the end of every timestep
         for carrier in pb:

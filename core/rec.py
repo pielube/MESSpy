@@ -38,6 +38,15 @@ class REC:
         otherwise they are downloaded from PVgis considering the typical meteorological year.
         
         """
+        ### Add global variables to constants.py as c, to make them known to the other modules.
+        c.timestep          = general['timestep']                                           # [min] timestep 
+        c.timestep_number   = int( general['simulation years']* 365*24*60 / c.timestep )    # [-] number of timestep 
+        c.simulation_years  = general['simulation years']
+        c.P2E               = c.timestep*60                                                 # conversion factor from kW to kJ or from kg/s to kg
+        c.latitude          = general['latitude']
+        c.longitude         = general["longitude"]
+        c.UTC               = general["UTC time zone"] # int 0,1,2 [UTC] es. Italy is in UTC+1 time zone EUROPEAN DATABASE
+        c.DST               = general["DST"] # boolean, Daily saving time (fusorario)
 
         ##############################################################################################
         ### Check if new input files have to been downloaded from PV gis 
@@ -69,24 +78,12 @@ class REC:
             with open(f"previous_simulation/{file_general}_{file_structure}.pkl", 'wb') as f: pickle.dump(general, f)
         ##############################################################################################
 
-        ### Add global variables to constants.py as c, to make them known to the other modules.
-        c.timestep = general['timestep'] # timestep [min]
-        c.timestep_number = int( general['simulation years']* 365*24*60 / c.timestep ) # number of timestep [#]
-
-        c.simulation_years = general['simulation years']
-        c.P2E = c.timestep*60 # conversion factor from kW to kJ or from kg/s to kg
-        c.latitude = general['latitude']
-        c.longitude = general["longitude"]
-        c.UTC = general["UTC time zone"] # int 0,1,2 [UTC] es. Italy is in UTC+1 time zone EUROPEAN DATABASE
-        c.DST = general["DST"] # boolean, Daily saving time (fusorario)
 
         self.locations = {} # initialise REC locations dictionary
         self.power_balance = {'electricity': {}, 'heating water': {}, 'cooling water': {}, 'hydrogen': {}, 'gas': {}, 'process steam': {}} # initialise power balances dictionaries
-     
         ### create location objects and add them to the REC locations dictionary
         for location_name in structure: # location_name are the keys of 'structure' dictionary and will be used as keys of REC 'locations' dictionary too
-            self.locations[location_name] = location.location(structure[location_name],location_name,path,check_pv,file_structure,file_general) # create location object and add it to REC 'locations' dictionary                
-                     
+            self.locations[location_name] = location.location(structure[location_name],location_name,path,check_pv,file_structure,file_general) # create location object and add it to REC 'locations' dictionary                     
 
     def REC_power_simulation(self):
         """
@@ -96,7 +93,6 @@ class REC:
             updating location power balances
             updating REC power balances
         """
-        
         ### initialise REC electricity balances
         self.power_balance['electricity']['from grid'] = np.zeros(c.timestep_number) # array of electricity withdrawn from the grid from the whole rec
         self.power_balance['electricity']['into grid'] = np.zeros(c.timestep_number) # array of electricity withdrawn from the grid
@@ -114,50 +110,7 @@ class REC:
                         self.power_balance['electricity']['into grid'][step] += self.locations[location_name].power_balance['electricity']['grid'][step] # electricity fed into the grid from the whole rec at step step
                     else:                                                     
                         self.power_balance['electricity']['from grid'][step] += self.locations[location_name].power_balance['electricity']['grid'][step] # electricity withdrawn from the grid the whole rec at step step
-                
-               
-            ###################################################################################################################################
-            ### solve smart heatpumps (REC_surplus == True) (only available with timestep == 60)
-            HPs_available = []
-            TESs_temperature = []            
-            if - self.power_balance['electricity']['into grid'][step] - self.power_balance['electricity']['from grid'][step] > 0: # if there is surplus
-            
-                # find the HPs available
-                for location_name in self.locations:
-                    if 'heatpump' in self.locations[location_name].technologies:
-                            if self.locations[location_name].technologies['heatpump'].REC_surplus:
-                                if c.timestep != 60:
-                                    raise ValueError("Warning! Heatpumps with strategy REC_suruplus == True only work with timestep == 60 ")
-                                if self.locations[location_name].technologies['heatpump'].mode == 1:
-                                    if self.locations[location_name].technologies['heatpump'].satisfaction_story[step] in [0,1,2,3]:   
-                                        HPs_available.append(location_name)
-                                        TESs_temperature.append(self.locations[location_name].technologies['heatpump'].i_TES_t)
-                            
-                # order locations according to iTES temperature 
-                HPs_available = [HPs_available for _,HPs_available in sorted(zip(TESs_temperature,HPs_available))]
-             
-            while - self.power_balance['electricity']['into grid'][step] - self.power_balance['electricity']['from grid'][step] > 0: # while there is surplus
-                surplus = - self.power_balance['electricity']['into grid'][step] - self.power_balance['electricity']['from grid'][step]
-                if HPs_available == []:
-                        break
-                location_name = HPs_available[0]
-                HPs_available = HPs_available[1:]
- 
-                # clean balance
-                self.locations[location_name].power_balance['electricity']['demand'][step] += - self.locations[location_name].power_balance['electricity']['heatpump'][step]
-                self.locations[location_name].power_balance['electricity']['grid'][step] += self.locations[location_name].power_balance['electricity']['heatpump'][step]
-                self.power_balance['electricity']['from grid'][step] += self.locations[location_name].power_balance['electricity']['heatpump'][step] # electricity fed into the grid from the whole rec at hour h
-
-                # resimulate 
-                self.locations[location_name].technologies['heatpump'].i_TES_t = self.locations[location_name].technologies['heatpump'].i_TES_story[step]
-                self.locations[location_name].power_balance['electricity']['heatpump'][step], self.locations[location_name].power_balance['heat']['heatpump'][step], self.locations[location_name].power_balance['heat']['inertial TES'][step] = self.locations[location_name].technologies['heatpump'].use(self.weather['temp_air'][step],self.locations[location_name].power_balance['heat']['demand'][step],surplus,step) 
-  
-                # updata balance
-                self.locations[location_name].power_balance['electricity']['demand'][step] += self.locations[location_name].power_balance['electricity']['heatpump'][step]
-                self.locations[location_name].power_balance['electricity']['grid'][step] += - self.locations[location_name].power_balance['electricity']['heatpump'][step]
-                self.power_balance['electricity']['from grid'][step] += - self.locations[location_name].power_balance['electricity']['heatpump'][step] # electricity fed into the grid from the whole rec at hour h
-             
-            ###################################################################################################################################
+                          
             ### calculate collective self consumption and who contributed to it
             self.power_balance['electricity']['collective self consumption'][step] = min(-self.power_balance['electricity']['into grid'][step],self.power_balance['electricity']['from grid'][step]) # calculate REC collective self consumption how regulation establishes      
             
@@ -244,7 +197,7 @@ class REC:
                     parameters[location_name][tech_name]['hourly capacity factor'] =   ((-balances[location_name]['electricity'][tech_name])/             \
                                                                                 (self.locations[location_name].technologies[tech_name].MaxPowerStack))*100
                     parameters[location_name][tech_name]['capacity factor'] =   ((-balances[location_name]['electricity'][tech_name].sum())/             \
-                                                                                (self.locations[location_name].technologies[tech_name].MaxPowerStack*self.timestep_number))*100
+                                                                                (self.locations[location_name].technologies[tech_name].MaxPowerStack*c.timestep_number))*100
                     
             tech_name = 'fuel cell'
             if tech_name in self.locations[location_name].technologies:
@@ -313,10 +266,13 @@ class REC:
         previous_simulation/files.csv
 
         """                        
-
+        
         if check and os.path.exists(f"{path}/weather/TMY_{file_general}.csv"): # if the prevoius weather series can be used
             weather = pd.read_csv(f"{path}/weather/TMY_{file_general}.csv")
-        
+            # from hourly values to updated timestep
+            if c.timestep < 60:
+                weather = pd.DataFrame(np.repeat(weather.values, 60/c.timestep, axis=0), columns=weather.columns)
+                
         else: # if new weather data must be downoladed from PV gis
             print('Downolading typical metereological year data from PVGIS for '+file_general)   
                             
@@ -363,11 +319,10 @@ class REC:
 
                 weather['Local time - DST'] = weather.index
                 weather.set_index('Local time - DST',inplace=True)  
-                                             
+            
+            weather = pd.DataFrame(np.repeat(weather.values, 60/c.timestep, axis=0), columns=weather.columns)
             weather.to_csv(f"{path}/weather/TMY_{file_general}.csv") 
             
-        weather = pd.DataFrame(np.repeat(weather.values, 4, axis=0), columns=weather.columns)
-
         return(weather)
    
     def tech_cost(self,tech_cost):

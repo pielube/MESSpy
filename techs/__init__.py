@@ -13,3 +13,4 @@ from .chp import Chp
 from .chp import Absorber
 from .mhhc_compressor import hydrogen_compressor
 from .compressor import Compressor
+from .steam_methane_reformer import SMR

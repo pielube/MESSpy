@@ -4,7 +4,6 @@ COSTANTS MODULE
     This module contains:
             - Main phisical constants
             - Fluid properties
-            - Global variables: parameters dependent on simulation-specfic input (selected time-horizon, timestep...)
             
     For the sake of non-ambiguity, all technologies implement the same values by referring to this module
             
@@ -85,7 +84,7 @@ O2MOL_S_E   = 205.1                       # [J/K*mol]    Oxygen Standard Entropy
 
 'Air'
 
-AIRMOLMASS   = 28.96547                    # [g/mol]      Air molar mass
+AIRMOLMASS   = 28.96547e-3                 # [kg/mol]      Air molar mass
 AIRSDENSITY  = 1.225                       # [kg/Sm^3]    Air density at Standard conditions (T = 15°C, P = 101325 Pa) -> PropsSI('D', 'T', 273.15, 'P', 101325, 'Air')
 CP_AIR       = 1.0063                      # [kJ/kgK]     Air mass specific costant pressure specific heat (T = 25°C, P = 101325 Pa)
 CV_AIR       = 0.7178                      # [kJ/kgK]     Air mass specific costant volume specific heat (T = 25°C, P = 101325 Pa) 
@@ -95,12 +94,6 @@ CV_AIR       = 0.7178                      # [kJ/kgK]     Air mass specific cost
 H1_STEAM800 = 4159.9                       # [kJ/kg]     Steam mass specific enthalpy @ T = 800°C, P = 116000 Pa
 
 
-#%%
-
-'GLOBAL VARIABLES'
-
-kWh2kJ = 3600                              # [kJ/kWh] conversion factor from kWh to kJ
-# others will be added by rec.py because they are dependent on general.json
 
 
 

@@ -1,3 +1,0 @@
-"reference year": str (year of reference for the emission intensity of the grid (expected, depending of RES integration and fossil fuel displacement in power generation))
-"2025": int value of grid emission intensity  [gCO2/kWh]
-"2035": int value of grid emission intensity  [gCO2/kWh]

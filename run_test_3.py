@@ -1,5 +1,5 @@
 """
-MESSpy - Run_test
+MESSpy - Run_test_3 - Analysis of an illustrative case study involving hydrogen technologies
 
 don't work on this script:
     you should create your own run_dev.py, input_dev/, postprocess_dev.py and preprocess_dev.py
@@ -10,45 +10,50 @@ don't work on this script:
 PRE PROCESSING
 ==============
 """
-
-# Import modules
-from rec import REC
-from economics import NPV, LCOH
-import preprocess_test as pre
-#import preprocess_dev as pre
+# Import modules: do not edit
+from core import rec
+from core import economics as eco
 import os
 import json
 import pickle
 
-# Selecting simulation names
-name_studycase = 'Post' # str name for energy_balances_results file.pkl
-name_refcase = 'Pre' # str name for energy_balances_results file.pkl
-name_economic = 'Post vs Pre' # str name for economic_assesment_results file.pkl
+# Import modules: change if willing to use different pre- and post-process modules
+import preprocess_test_3 as pre
+import postprocess_test_3 as pp
+#import postprocess_xxx as pp
+#import preprocess_xxx as pre
 
-# Selecting input files:
-path = r'./input_test' # change the path with r'./input_dev' if you are working on your own run_dev
+# Selecting input files folder: change it if you want to run your your own simulation
+path = r'./input_test_3' 
+#path = r'./input_xxx'
 
+# Selecting simulation names: change them to your liking
+name_studycase  = 'Post' # illustrative name for saving the results of the studycase simulation
+name_refcase    = 'Pre' # illustrative name for saving the results of the refcase simulation
+name_economic   = 'Post vs Pre' # illustrative name for saving the results of economic evaluation
+
+# Selecting the names of the .json files to be read as simulations input: change it if you want to run your your own simulation
+file_tech_cost      = 'tech_cost'
+file_energy_market  = 'energy_market'
+file_general        = 'general'
 file_studycase      = 'studycase'
 file_refcase        = 'refcase'
 
 # =============================================================================
-# file_studycase      = 'studycase4'
-# file_refcase        = 'refcase4'
+# # If you are interested in testing 15 minutes timestep simulations:
+# file_general        = 'general15' 
+# file_studycase      = 'studycase15' 
+# file_refcase        = 'refcase15'
 # =============================================================================
 
-file_general        = 'general'
-file_tech_cost      = 'tech_cost'
-file_energy_market  = 'energy_market'
-file_emissions      = 'emissions'
+### NOW you can Run the simulation (F5) ###
 
 # Opening input files:
-with open(os.path.join(path,f"{file_studycase}.json"),'r') as f: studycase = json.load(f)
-with open(os.path.join(path,f"{file_refcase}.json"),'r') as f: refcase = json.load(f)
-with open(os.path.join(path,f"{file_emissions}.json"),'r') as f: emissions = json.load(f)
-with open(os.path.join(path,f"{file_general}.json"),'r') as f: general = json.load(f)
-with open(os.path.join(path,f"{file_tech_cost}.json"),'r') as f: tech_cost = json.load(f)
-with open(os.path.join(path,f"{file_energy_market}.json"),'r') as f: energy_market = json.load(f)
-
+with open(os.path.join(path,f"{file_studycase}.json"),'r')      as f: studycase     = json.load(f)
+with open(os.path.join(path,f"{file_refcase}.json"),'r')        as f: refcase       = json.load(f)
+with open(os.path.join(path,f"{file_general}.json"),'r')        as f: general       = json.load(f)
+with open(os.path.join(path,f"{file_tech_cost}.json"),'r')      as f: tech_cost     = json.load(f)
+with open(os.path.join(path,f"{file_energy_market}.json"),'r')  as f: energy_market = json.load(f)
 
 #%% ###########################################################################
 """
@@ -56,151 +61,111 @@ SOLVER - studycase simulation
 ======
 """
 
-rec = REC(studycase,general,file_studycase,file_general,path) # create REC object
-rec.REC_power_simulation() # simulate REC enegy balances
-rec.tech_cost(tech_cost) # calculate the cost of all technologies 
-rec.save(name_studycase) # save results in 'name_studycase.pkl'
+sim = rec.REC(studycase,general,file_studycase,file_general,path) # create REC object
+sim.REC_power_simulation() # simulate REC power balances
+sim.tech_cost(tech_cost) # calculate the cost of all technologies 
+sim.save(name_studycase,'pkl') # saving results in .pkl format (useful if you make postprocess using python)
+sim.save(name_studycase,'csv',sep=';',dec=',') # saving results in .csv (useful if you make postprocess using other languages/programmes)
     
-
 #%% ###########################################################################
 """
 SOLVER - refcase simulation
 ================================
 """
   
-# Reference case simulation (run only if changed)
-rec0 = REC(refcase,general,file_refcase,file_general,path) # create REC object
-rec0.REC_power_simulation() # simulate REC 
-rec0.tech_cost(tech_cost) # calculate the cost of all technologies 
-rec0.save(name_refcase) # save results in 'name_refcase.pkl'
-
+sim0 = rec.REC(refcase,general,file_refcase,file_general,path) # create REC object
+sim0.REC_power_simulation() # simulate REC power balances
+sim0.tech_cost(tech_cost) # calculate the cost of all technologies 
+sim0.save(name_refcase,'pkl') # saving results in .pkl format (usefull if you make postprocess using python)
+sim0.save(name_refcase,'csv',sep=';',dec=',') # saving results in .csv (useful if you make postprocess using other languages/programmes)
 
 #%% ###########################################################################
 """
-POST PROCESS - Investment assessment
+POST PROCESS - Investment assessment comparing refcase and studycase
 ================================
 """
-# Net present value calculation to asses the investment comparing refcase and studycase
-NPV(file_studycase,file_refcase,name_studycase,name_refcase,energy_market,general['simulation years'],general['timestep'],path,name_economic)
-
+# Net present value calculation to asses the investment comparing refcase and studycase (saves results in both .pkl and .csv)
+eco.NPV(file_studycase,file_refcase,name_studycase,name_refcase,energy_market,path,name_economic,'pkl')
+eco.NPV(file_studycase,file_refcase,name_studycase,name_refcase,energy_market,path,name_economic,'csv',sep=';',dec=',')
 
 #%% ###########################################################################
 """
 POST PROCESS - PLOTTING
 ================================
 some post-process are alredy avaiable as examples in postprocess_test
-you should create your own postprocess_dev.py
+you should create your own postprocess_dev.py and create your own graphs
 """
 
-import postprocess_test as pp
-#import postprocess_dev as pp
+# Here the main simulation results are read: balances, balances0 and economic. Balances are also available in the Variable Explorer panel: sim and sim0. Results are also available in .csv format in results/csv folder.
+with open('results/pkl/balances_'+name_studycase+'.pkl', 'rb')              as f: balances  = pickle.load(f)
+with open('results/pkl/balances_'+name_refcase+'.pkl', 'rb')                as f: balances0 = pickle.load(f)
+with open('results/pkl/economic_assessment_'+name_economic+'.pkl', 'rb')    as f: economic  = pickle.load(f)
 
-#pp.location_balance(name_refcase,'prosumer_1','electricity')
-#pp.location_balance(name_studycase,'prosumer_1','electricity')
-#b = pp.REC_electricity_balance(name_studycase)
+# Total balances figures and hydrogen-related ghg emissions calculation in post-process. 'balance_pp': dictionary containing total balances calculation useful for LCOH calculation, NPV calculation and post process plots
+balances_pp = pp.energy_balance_results(studycase,name_studycase,'industrial_facility',print_=True,plot=True)
+ghg         = pp.ghg_emissions(name_studycase,'industrial_facility',energy_market,print_= True)
 
+# Levelised Cost of Hydrogen calculation
+LCOH = eco.LCOH('industrial_facility',balances_pp,studycase,name_studycase,energy_market,path,name_economic,revenues=False,refund=True,plot=True,print_=True)
 
+# Some plot examples
+pp.hydrogen_production(name_studycase,'industrial_facility')   
+pp.plot_post_process(balances_pp,studycase,'industrial_facility',20,24)
+pp.LOC_plot(name_studycase)
 pp.NPV_plot(name_economic)
-
-
-# =============================================================================
-#     pp.total_balances(name_studycase,'prosumer_2','electricity')
-#     pp.total_balances(name_studycase,'prosumer_2','hydrogen')
-#     pp.total_balances(name_studycase,'consumer_1','electricity')
-#     
-#     pp.total_balances(name_refcase,'consumer_2','electricity')
-#     pp.total_balances(name_refcase,'consumer_2','heating water')
-#     pp.total_balances(name_refcase,'consumer_2','gas')
-#     pp.total_balances(name_studycase,'consumer_2','electricity')
-#     pp.total_balances(name_studycase,'consumer_2','heating water')
-# =============================================================================
     
-    #
-     
-    #pp.hourly_balances_electricity(name_studycase,'prosumer_1', 20, 21)
-# =============================================================================
-#     pp.hourly_balances_electricity(name_studycase,'prosumer_2', 2, 3)
-#     
-#     pp.hourly_balances_electricity(name_studycase,'consumer_1', 2, 3)
-#     pp.hourly_balances_electricity(name_studycase,'consumer_2', 2, 3)
-#     
-#     pp.csc_allocation_sum(name_studycase)
-#     pp.storage_control(name_studycase)
-#     pp.ele_param(name_studycase, 2, 3)
-#     pp.fc_param(name_studycase, 2, 3)
-#     
-#     # Optional for each location involving hydrogen: Useful to calculate  RES autoconsumption, RES surplus, electricity consumed for hydrogen chain and Green Index
-#     balances_pp = pp.energy_balance_results(studycase,name_studycase,general['simulation length'],'prosumer_2', print_ = True, plot = True)
-#     pp.plot_post_process(balances_pp,studycase,'prosumer_2',235,237)
-#     pp.plot_post_process(balances_pp,studycase,'prosumer_2',120,125)
-#     pp.plot_post_process(balances_pp,studycase,'prosumer_2',220,240)
-#     pp.ghg_emissions(name_studycase,'prosumer_2',emissions, '2025')
-# 
-#     LCOH('prosumer_2',balances_pp,studycase,name_studycase,energy_market,general['simulation length'],path,name_economic, revenues = False, refund = True)
-#     
-#     pp.LOC_plot(name_studycase)
-#     
-#     pp.NPV_plot(name_economic)
-# 
-# =============================================================================
-
-
-#%% ##########################################################################
-# =============================================================================
-# Here you can read the main results (balances and economic):
-# =============================================================================
-
-with open('results/economic_assessment_'+name_economic+'.pkl', 'rb') as f: economic = pickle.load(f)
-with open('results/balances_'+name_studycase+'.pkl', 'rb') as f: balances = pickle.load(f)
-
 
 #%% ##########################################################################
 "Sensitivity analysis - practical example"
-# click on the following code and press Ctrl+5 to discomment all together
+# Run MESS several times as the installed PV power varies
 
 # =============================================================================
 # import numpy as np
 # import matplotlib.pyplot as plt
 # 
-# pv_size = np.arange(1,11)
-# npv = []
-# sc = [] # self-consumption
-# ss = [] # self-sufficiency
+# intervals   = 11
+# wind_size   = np.linspace(100000,300000,intervals)
 # 
-# for pv in pv_size:
-#     print(pv)
-#     name_studycase = f"PV size = {pv}"
-#     new_studycase = pre.change_peakP(studycase, 'prosumer_1', pv) # change PV size 
-#     rec = REC(new_studycase,general,file_studycase,file_general,path) # create REC object
-#     rec.REC_energy_simulation() # simulate REC enegy balances
-#     rec.tech_cost(tech_cost) # calculate the cost of all technologies 
-#     rec.save(name_studycase) # save results in 'name_studycase.pkl'
+# # Creating lists to store parameters of the sensitivity analisys
+# lcoh        = [] # levelized cost of hydrogen
+# ghg         = [] # emission intensity
+# 
+# print('\nSensitivity analysis running:')
+# print('Wind Farm Size:')
+# 
+# for wind in wind_size: # varying wind power size
+#     print('                 '+str(int(wind/1000))+ ' MW' )
 #     
-#     with open('results/balances_'+name_studycase+'.pkl', 'rb') as f: balances = pickle.load(f)
-#     demand = -balances['prosumer_1']['electricity']['demand'].sum() # read from saved results .pkl
-#     production = balances['prosumer_1']['electricity']['PV'].sum()
-#     into_grid = balances['prosumer_1']['electricity']['grid'].sum(where=balances['prosumer_1']['electricity']['grid']<0)
-#     from_grid = balances['prosumer_1']['electricity']['grid'].sum(where=balances['prosumer_1']['electricity']['grid']>0)
+#     name_studycase = f"Wind size = {wind/1000} MW"
+#     new_studycase = pre.change_peakW(studycase, 'industrial_facility', wind) # change wind size 
+#     cs = rec.REC(new_studycase,general,file_studycase,file_general,path) # create REC object
+#     cs.REC_power_simulation() # simulate REC enegy balances
+#     cs.tech_cost(tech_cost) # calculate the cost of all technologies 
+#     cs.save(name_studycase,'pkl') # save results in 'name_studycase.pkl'
 #     
-#     # you can also read values from the python object rec. (in this case you do not need rec.save)
-#     # demand = -rec.locations['prosumer_1'].energy_balance['electricity']['demand'].sum() # read from python 
+#     with open('results/pkl/balances_'+name_studycase+'.pkl', 'rb') as f: balances = pickle.load(f)
+#     balances_pp = pp.energy_balance_results(studycase,name_studycase,'industrial_facility')
+#     lcoh.append(eco.LCOH('industrial_facility',balances_pp,studycase,name_studycase,energy_market,path,name_economic)) 
+#     ghg.append(pp.ghg_emissions(name_studycase,'industrial_facility',energy_market))
 #     
-#     sc.append((production+into_grid)/production*100)
-#     ss.append((demand-from_grid)/demand*100)
-#     
-# plt.figure(dpi=1000)
-# plt.plot(pv_size,sc,label='Self-consumption')
-# plt.plot(pv_size,ss,label='Self-sufficiency')
-# plt.xlabel("PV peak power [kWp]")
-# plt.ylabel("[%]")
-# plt.grid()
-# plt.legend()
-# plt.title('prosumer_1')
+# # Plotting the results
+# fig, ax1 = plt.subplots(dpi=1000)   
+# ax1.plot(wind_size/1000,lcoh,label='LCOH',color='tab:blue')
+# ax1.set_xlabel("Wind Farm Size [MW]")
+# ax1.set_ylabel("LCOH [€/kgH$_\mathregular{2}$]", color='tab:blue')
+# ax1.grid()
+# ax1.set_title('industrial_facility')
+# 
+# ax2 = ax1.twinx()
+# ax2.plot(wind_size/1000,ghg,label='GHG',color='tomato')
+# ax2.set_ylabel("GHG [kgH$_\mathregular{2}$/kgCO$_\mathregular{2}$]",color='tomato')
+# 
+# lines, labels = ax1.get_legend_handles_labels()
+# lines2, labels2 = ax2.get_legend_handles_labels()
+# ax2.legend(lines + lines2, labels + labels2, loc='best')  
+# 
 # plt.show()
 # =============================================================================
-
-
-
 
 
 
