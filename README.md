@@ -28,7 +28,7 @@ Models of different technologies are avialable and still under development to in
 ### MESS needs the load profiles as input as a .csv file
 Depending on the type of meter installed, these data is in some cases made available by the electricity/gas supplier, in others it must be requested, while sometimes it cannot be obtained. In the latter case, specific programmes are required to generate such profiles in the specific .csv format needed as one of the program inputs. There are many programmes available online, the authors recommend the following:\
 bottom-up model: https://github.com/RAMP-project/RAMP \
-bottom-up model: https://github.com/open-ideas/StROBe
+bottom-up model: https://github.com/open-ideas/StROBe \
 top-down model: https://github.com/PasquinoFI/LoBi
 
 ### Timestep
@@ -53,7 +53,7 @@ To get started, download the repository.
 Three examples analysis are available:
 - "run_test_1" A small energy community composed by two consumers and one prosumer with PV and battery. A sensisivety analysi is also carried out.
 - "run_test_2" A residential building replaces the gas boiler with a heat pump
-- "run_test_3" Supercool hydrogen things
+- "run_test_3" Supercool hydrogen things \
 Choose one of these, read it and press run!
 
 ### Input files
