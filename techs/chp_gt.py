@@ -7,11 +7,11 @@ import sys
 from scipy.interpolate import interp1d
 from CoolProp.CoolProp import PropsSI
 sys.path.append(os.path.abspath(os.path.join(os.getcwd(),os.path.pardir)))   # temorarily adding constants module path 
-import constants as c
+from core import constants as c
 
 class chp_gt:    
     
-    def __init__(self,parameters,simulation_hours):
+    def __init__(self,parameters,timestep_number):
         
         """
         Create a GT-based CHP object
@@ -23,7 +23,7 @@ class chp_gt:
                       
         output : CHP object able to:
             
-            # supply or abrosrb hydrogen .use(h,hyd)
+            # supply or abrosrb hydrogen .use(step,hyd)
             # record the level of charge .LOC
             # calculate its own volume (pressure) .volume(pressure)
         """
@@ -197,23 +197,24 @@ class chp_gt:
             return y
     
     
-    def use(self,h,t_air,steamdemand,available_hyd):
+    def use(self,step,t_air,steamdemand,available_hyd):
         """
         The chp system consumes fuel and produces multiple output energy streams as defined by the specific technology
         
         inputs
-            h:      int hour to be simulated
+            step:      int step to be simulated
             t_air:  float air temperature for the considered timestep [°C]
-            demand: float energy carrier request driving the demand [kWh] (electricity,heat or steam [kg/h])
+            demand: float energy carrier request driving the demand [kW] (electricity,heat or steam [kg/s])
       
         output 
-            carrier1:    produced energy stream driving the system functioning [kWh] 
-            carrier2:    2nd energy stream produced as co-product [kWh]
+            carrier1:    produced energy stream driving the system functioning [kW] 
+            carrier2:    2nd energy stream produced as co-product [kW]
             ...
-            nth-carrier: nth energy stream produced as co-product [kWh]
+            nth-carrier: nth energy stream produced as co-product [kW]
                 
         """
-        demand = abs(steamdemand)/3600                    # converting steam demand from kg/h to kg/s 
+        #demand = abs(steamdemand)/3600                    # converting steam demand from kg/h to kg/s 
+        demand = steamdemand                              # should be given in gk/s
         
         bound = []                                        # operational boundaries of the CHP system for the given air temperature
         for label in self.limits:
@@ -227,21 +228,23 @@ class chp_gt:
         if demand in pd.Interval(bound[0],bound[1],closed='both'):  # steam demand within the GT + HRSG range for given temperature
             pass
            
-        elif demand > self.maxprod[h]:
-            demand = self.maxprod[h]
+        elif demand > self.maxprod[step]:
+            demand = self.maxprod[step]
          
-        elif demand < self.minprod[h]:                    # GT running to avoid shutdowns (given it would be turned off only for 62/8760 h/y  - 0.06 % of the time)
-            demand = self.minprod[h]
+        elif demand < self.minprod[step]:                    # GT running to avoid shutdowns (given it would be turned off only for 62/8760 h/y  - 0.06 % of the time)
+            demand = self.minprod[step]
             
         self.wel[h]= self.bilinear_interpolation(self.Wel_map,demand,t_air)  
-        self.steam_chp[h]= demand
+        self.steam_chp[step]= demand
         # steam_SG[h]= 0   
-        self.steam_miss[h]= 0
-        self.mH2CHP[h]= self.bilinear_interpolation(self.mH2fuel_map,demand,t_air)
+        self.steam_miss[step]= 0
+        self.mH2CHP[step]= self.bilinear_interpolation(self.mH2fuel_map,demand,t_air)
         # mH2SG[h] = 0
         # mH2[h] = mH2CHP[h]
         
-        return(self.steam_chp[h]*3600,self.wel[h],-self.mH2CHP[h]*3600) # return hydrogen supplied
+        #return(self.steam_chp[h]*3600,self.wel[h],-self.mH2CHP[h]*3600) # return hydrogen supplied [kg/s]
+        return(self.steam_chp[step],self.wel[step],-self.mH2CHP[step]) # return hydrogen supplied [kg/s]
+
                     
 
 

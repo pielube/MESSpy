@@ -1,0 +1,53 @@
+{
+"industrial_facility": { "hydrogen demand": {    "series"   : "15hydrogen_demand_test.csv",
+                                                 "priority": 1,
+                                                 "strategy": "demand-led"  },
+	    
+                            "electricity grid": { "draw": true,
+                                                  "feed": true,
+                                                  "priority":6  },
+                                                  
+                            "water grid": {       "draw": true,
+                                                  "feed": false,
+                                                  "priority":8  },
+                            
+                            "hydrogen grid": {       "draw": true,
+                                                     "feed": true,
+                                                     "priority":9  },
+                                                   
+                            "oxygen grid": { "draw": false,
+                                             "feed": true,
+                                             "priority":  7 },
+							                     				
+							      "wind": 	  {  "model"   : "simple",
+                							     "series"  : "15windproduction.csv",
+                                                 "Npower"  : 100000,
+                                                 "priority": 2, 
+                                                 "owned"   : true},
+
+                  		       "electrolyzer": { 
+                                      		     "Npower": 1000,
+                                  	             "number of modules": 100,
+                                      	         "stack model": "PEM General",
+                                      	         "strategy": "hydrogen-first",
+                                      	         "only_renewables": false,
+												 "minimum_load": false,
+                                              	 "priority":3},
+                                              	 
+                            "mechanical compressor":{
+                                 		            "P_out": 300,
+                                                    "P_in": 30,
+                                                    "T_in": 343.15,
+                                                    "compressor model": "simple_compressor",
+                                                    "fluid": "Hydrogen",
+                                                    "pressure losses IC": 0.02,
+                                                    "T_IC": 308.15,
+                                                    "n_stages": 3,
+                                                    "only_renewables": false,
+                                                    "priority":4},
+                             "H tank":{
+                                       "max capacity": 60000,
+                                       "pressure": 300,
+                                       "priority":5}               				      		
+                           }
+}   

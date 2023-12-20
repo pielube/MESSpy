@@ -1,0 +1,12 @@
+{
+"industrial_facility": { "gas demand"  : { "series"   : "15gas_demand_test.csv",
+                                                    "priority": 1  },
+	    
+                          "electricity grid"    : { "draw"  : true,
+                                                  "feed"    : true,
+                                                  "priority": 3 },
+                            
+                          "gas grid"            : {  "draw": true,
+                                                     "feed": true,
+                                                     "priority":2  }}
+}   

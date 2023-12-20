@@ -1,0 +1,22 @@
+{
+"prosumer": {	"electricity demand": { "series": "15load_test_1.csv",
+                        				"priority": 1},  
+                        				           				
+                "electricity grid": {   "draw": true,
+                                        "feed": true,
+                                        "priority": 3}},
+                                        
+"consumer 1": {	"electricity demand": { "series": "15load_test_2.csv",
+                        				"priority": 1},  
+                        				           				
+                "electricity grid": {   "draw": true,
+                                        "feed": false,
+                                        "priority": 3}},
+                                        
+"consumer 2": {	"electricity demand": { "series": "15load_test_3.csv",
+                        				"priority": 1},  
+                    				           				
+                "electricity grid": {   "draw": true,
+                                        "feed": false,
+                                        "priority": 3}}                     
+}

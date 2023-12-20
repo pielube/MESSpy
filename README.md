@@ -1,10 +1,10 @@
 # MESSpy - Multi-Energy System Simulator
-An open-source model for simulating multy-energy systems such as Renewable Energy Communities and much more.
+An open-source model for simulating multy-energy systems such as Renewable Energy Communities, about hydrogen supercool things and much more.
 
 ![image](https://user-images.githubusercontent.com/83342584/177154238-c0e6b9fa-69b4-40c8-9b45-9d16919e079b.png)
 
 ### Authors
-**Pietro Lubello**, **Mattia Pasqui**, **Alessandro Mati**, **Andrea Ademollo** and **Carlo Carcasci**\
+**Mattia Pasqui**, **Alessandro Mati**, **Andrea Ademollo**, **Pietro Lubello**,  and **Carlo Carcasci**\
 Department of Industrial Engineering (DIEF), University of Florence (UNIFI), Italy
 
 ## Overview
@@ -25,17 +25,22 @@ Models of different technologies are avialable and still under development to in
 - Boilers (ng, ele or H2)
 - CHP (combined heat and power)
 
-### MESS needs the hourly load profiles as input as a .csv file
+### MESS needs the load profiles as input as a .csv file
 Depending on the type of meter installed, these data is in some cases made available by the electricity/gas supplier, in others it must be requested, while sometimes it cannot be obtained. In the latter case, specific programmes are required to generate such profiles in the specific .csv format needed as one of the program inputs. There are many programmes available online, the authors recommend the following:\
 bottom-up model: https://github.com/RAMP-project/RAMP \
+bottom-up model: https://github.com/open-ideas/StROBe
 top-down model: https://github.com/PasquinoFI/LoBi
+
+### Timestep
+Simulation timestep can vary from 1 to 60 minutes. The time horizon from 1 year to as many years as you want.
 
 ### Requirements
 The model is developed in Python 3.9, and requires the following libraries:
 - numpy
 - pandas
 - os
-- pickle (results are saved in .pickle)
+- pickle (results can be saved in .pickle)
+- csv (results can be saved in .pickle)
 - json (input files are .json)
 - pvlib (used to download PV production series and weather data based on typical meteorological year)
 - matplotlib (used in post_process)
@@ -44,14 +49,23 @@ A less up-to-date but fully functional and documented fortran version is also av
 https://github.com/pielube/MESS-Fortran
 
 ## Quick start
-To get started, download the repository and simply run the "run_test.py" script
+To get started, download the repository.
+Three examples analysis are available:
+- "run_test_1" A small energy community composed by two consumers and one prosumer with PV and battery. A sensisivety analysi is also carried out.
+- "run_test_2" A residential building replaces the gas boiler with a heat pump
+- "run_test_3" Supercool hydrogen things
+Choose one of these, read it and press run!
 
 ### Input files
 You can modify them from a python interface or simply from notepad. The "Input_test" folder contains a demonstration case study. 
 - general.json defines the general input. More details can be found in rec.py prologue comments.
-- structure.json defines the structure of the case study. Here you can define all the locations to consider, each technology inside the locations and technology's parameters. More detalis can be found in rec.py and location.py comments to the code.
+- studycase.json defines the structure of the case study. Here you can define all the locations to consider, each technology inside the locations and technology's parameters. More detalis can be found in rec.py and location.py comments to the code.
 - refcase.json This file has the same structure of structure.json and defines the "buiseness as usual" case, which is used as a reference case for calculating the cash flows of the study case and performing the economic assessment.
-- economics.json defines economic parameters. More details can be found in the comments of economics.py
+- energy_market.json defines economic parameters. More details can be found in the comments of economics.py
+- tech_cost.json defines economic parameters. More details can be found in the comments of economics.py
+
+### Output files
+Results are saved in both .pkl and .csv
 
 ### How to continue
 We suggest you to create your own run_dev.py, input_dev/ and post_process_dev.py and to work on them instead of modifying the existing file used as initial test. 

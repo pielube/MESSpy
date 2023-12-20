@@ -1,0 +1,19 @@
+{
+"prosumer": {	"electricity demand": { "series": "15load_test_1.csv",
+                        				"priority": 1},   
+                        				
+                 "heating water demand": {   "series": "15heating_test.csv",
+                                             "priority": 2},         				   
+                        				                    				           				
+                "electricity grid": {   "draw": true,
+                                        "feed": false,
+                                        "priority": 4},
+                                        
+                "heatpump":{    "type": 1,                                
+                                "nom Pth": 8,                                
+                                "t rad heat": 45,
+                                "t rad cool": 12,                                
+                                "inertial TES volume": 100,
+                                "inertial TES dispersion": 0.36,
+                                "priority": 3}}
+}
