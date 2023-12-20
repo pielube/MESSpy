@@ -18,8 +18,8 @@ import json
 import pickle
 
 # Import modules: change if willing to use different pre- and post-process modules
-import preprocess_test_3 as pre
-import postprocess_test_3 as pp
+import preprocess_test as pre
+import postprocess_test as pp
 #import postprocess_xxx as pp
 #import preprocess_xxx as pre
 

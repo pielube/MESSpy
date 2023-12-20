@@ -20,7 +20,7 @@ import pickle
 
 # Import modules: change it if you want to run your your own simulation
 
-import postprocess_test_2 as pp
+import postprocess_test as pp
 #import postprocess_xxx as pp
 #import preprocess_xxx as pre
 
@@ -120,7 +120,6 @@ pp.cop(sim.locations['prosumer'].technologies['heatpump'].cop_story)
 pp.heating_demand( -sim.locations['prosumer'].power_balance['heating water']['demand'])
 
 pp.satisfaction_story(sim.locations['prosumer'].technologies['heatpump'].satisfaction_story) 
-
 
 pp.NPV_plot(name_economic)
 

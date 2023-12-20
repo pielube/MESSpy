@@ -19,8 +19,8 @@ import json
 import pickle
 
 # Import modules: change it if you want to run your your own simulation
-import preprocess_test_1 as pre
-import postprocess_test_1 as pp
+import preprocess_test as pre
+import postprocess_test as pp
 #import postprocess_xxx as pp
 #import preprocess_xxx as pre
 
