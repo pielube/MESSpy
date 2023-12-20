@@ -40,10 +40,10 @@ file_studycase      = 'studycase'
 file_refcase        = 'refcase'
 
 # =============================================================================
-# # If you are interested in testing 15 minutes timestep simulations:
-# file_general        = 'general15' 
-# file_studycase      = 'studycase15' 
-# file_refcase        = 'refcase15'
+# # # If interested in testing simulations with 15 minutes timestep resolution:
+# # file_general        = 'general15' 
+# # file_studycase      = 'studycase15' 
+# # file_refcase        = 'refcase15'
 # =============================================================================
 
 ### NOW you can Run the simulation (F5) ###
@@ -102,11 +102,11 @@ with open('results/pkl/balances_'+name_refcase+'.pkl', 'rb')                as f
 with open('results/pkl/economic_assessment_'+name_economic+'.pkl', 'rb')    as f: economic  = pickle.load(f)
 
 # Total balances figures and hydrogen-related ghg emissions calculation in post-process. 'balance_pp': dictionary containing total balances calculation useful for LCOH calculation, NPV calculation and post process plots
-balances_pp = pp.energy_balance_results(studycase,name_studycase,'industrial_facility',print_=True,plot=False)
+balances_pp = pp.energy_balance_results(studycase,name_studycase,'industrial_facility',print_=True,plot=True)
 ghg         = pp.ghg_emissions(name_studycase,'industrial_facility',energy_market,print_= True)
 
 # Levelised Cost of Hydrogen calculation
-LCOH = eco.LCOH('industrial_facility',balances_pp,studycase,name_studycase,energy_market,path,name_economic,revenues=False,refund=True,plot=False,print_=True)
+LCOH = eco.LCOH('industrial_facility',balances_pp,studycase,name_studycase,energy_market,path,name_economic,revenues=False,refund=True,plot=True,print_=True)
 
 # Some plot examples
 pp.hydrogen_production(name_studycase,'industrial_facility')   

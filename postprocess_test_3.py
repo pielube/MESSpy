@@ -556,7 +556,7 @@ def plot_post_process(balances_pp,studycase,loc,first_day,last_day):
         x = x*(c.timestep/60) # ensuring values are presented on a hourly basis
         width=0.9
         system = dict(sorted(studycase[loc].items(), key=lambda item: item[1]['priority'])) # ordered by priority
-        
+        hourly_steps = 60//c.timestep # number of simulation steps considered in 1 hour - depending on input parameters. If simulaton is on hourly basis, hourly_steps=1
         
     if 'wind' in balances and 'PV' not in balances:
         for tech_name_plot in balances['tech from grid']:                    
@@ -569,10 +569,10 @@ def plot_post_process(balances_pp,studycase,loc,first_day,last_day):
             ax.axis["xzero"].major_ticklabels.set_visible(False)
             for n in ["bottom","top", "right"]:ax.axis[n].set_visible(True)
             ax.grid(axis='y', alpha = 0.5, zorder = -4)
-            ax.bar(x, balances['tech windsc'][tech_name_plot][first_day*24*60//c.timestep:last_day*24*60//c.timestep+24*60//c.timestep], width,  label='Wind self consumption', color='yellowgreen')
-            ax.bar(x, balances['tech from grid'][tech_name_plot][first_day*24*60//c.timestep:last_day*24*60//c.timestep+24*60//c.timestep], width, bottom=balances['tech windsc'][tech_name_plot][first_day*24*60//c.timestep:last_day*24*60//c.timestep+24*60//c.timestep], label='From grid', color='tomato')
+            ax.bar(x, balances['tech windsc'][tech_name_plot][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps], width,  label='Wind self consumption', color='yellowgreen')
+            ax.bar(x, balances['tech from grid'][tech_name_plot][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps], width, bottom=balances['tech windsc'][tech_name_plot][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps], label='From grid', color='tomato')
             plt.title(tech_name_plot+' days '+str(first_day)+'-'+str(last_day))
-            plt.plot(x,-balances[tech_name_plot][first_day*24*60//c.timestep:last_day*24*60//c.timestep+24*60//c.timestep],'k',label='load')     
+            plt.plot(x,-balances[tech_name_plot][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps],'k',label='load')     
             plt.legend(ncol=2, bbox_to_anchor = (1.01,-0.11))
             plt.ylabel("Power [kW] ")
             plt.xlabel( "Time  [h] ")
@@ -592,10 +592,10 @@ def plot_post_process(balances_pp,studycase,loc,first_day,last_day):
             ax.axis["xzero"].major_ticklabels.set_visible(False)
             for n in ["bottom","top", "right"]: ax.axis[n].set_visible(True)
             ax.grid(axis='y', alpha = 0.5, zorder = -4)
-            ax.bar(x, balances['tech pvsc'][tech_name_plot][first_day*24*60//c.timestep:last_day*24*60//c.timestep+24*60//c.timestep], width,  label='PV self consumption', color='yellowgreen')
-            ax.bar(x, balances['tech from grid'][tech_name_plot][first_day*24*60//c.timestep:last_day*24*60//c.timestep+24*60//c.timestep], width, bottom=balances['tech pvsc'][tech_name_plot][first_day*24*60//c.timestep:last_day*24*60//c.timestep+24*60//c.timestep], label='From grid', color='tomato')
+            ax.bar(x, balances['tech pvsc'][tech_name_plot][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps], width,  label='PV self consumption', color='yellowgreen')
+            ax.bar(x, balances['tech from grid'][tech_name_plot][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps], width, bottom=balances['tech pvsc'][tech_name_plot][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps], label='From grid', color='tomato')
             plt.title(tech_name_plot+' days '+str(first_day)+'-'+str(last_day))
-            plt.plot(x,-balances[tech_name_plot][first_day*24*60//c.timestep:last_day*24*60//c.timestep+24*60//c.timestep],'k',label='load')     
+            plt.plot(x,-balances[tech_name_plot][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps],'k',label='load')     
             plt.legend(ncol=2, bbox_to_anchor = (1.01,-0.11))
             plt.ylabel("Power [kW] ")
             plt.xlabel( "Time  [h] ")
@@ -618,11 +618,11 @@ def plot_post_process(balances_pp,studycase,loc,first_day,last_day):
                 for n in ["bottom","top", "right"]:
                     ax.axis[n].set_visible(True)
                 ax.grid(axis='y', alpha = 0.5, zorder = -4)
-                ax.bar(x, balances['tech pvsc'][tech_name_plot][first_day*24*60//c.timestep:last_day*24*60//c.timestep+24*60//c.timestep], width,  label='PV self consumption', color='yellowgreen')
-                ax.bar(x, balances['tech windsc'][tech_name_plot][first_day*24*60//c.timestep:last_day*24*60//c.timestep+24*60//c.timestep], width, bottom=balances['tech pvsc'][tech_name_plot][first_day*24*60//c.timestep:last_day*24*60//c.timestep+24*60//c.timestep], label='wind self consumption', color='orange')
-                ax.bar(x, balances['tech from grid'][tech_name_plot][first_day*24*60//c.timestep:last_day*24*60//c.timestep+24*60//c.timestep], width, bottom=balances['tech pvsc'][tech_name_plot][first_day*24*60//c.timestep:last_day*24*60//c.timestep+24*60//c.timestep]+balances['tech windsc'][tech_name_plot][first_day*24*60//c.timestep:last_day*24*60//c.timestep+24*60//c.timestep], label='From grid', color='tomato')
+                ax.bar(x, balances['tech pvsc'][tech_name_plot][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps], width,  label='PV self consumption', color='yellowgreen')
+                ax.bar(x, balances['tech windsc'][tech_name_plot][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps], width, bottom=balances['tech pvsc'][tech_name_plot][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps], label='wind self consumption', color='orange')
+                ax.bar(x, balances['tech from grid'][tech_name_plot][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps], width, bottom=balances['tech pvsc'][tech_name_plot][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps]+balances['tech windsc'][tech_name_plot][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps], label='From grid', color='tomato')
                 plt.title(tech_name_plot+' days '+str(first_day)+'-'+str(last_day))
-                plt.plot(x,-balances[tech_name_plot][first_day*24*60//c.timestep:last_day*24*60//c.timestep+24*60//c.timestep],'k',label='load')     
+                plt.plot(x,-balances[tech_name_plot][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps],'k',label='load')     
                 plt.legend(ncol=2, bbox_to_anchor = (1.01,-0.11))
                 plt.ylabel("Power [kW]")
                 plt.xlabel( "Time  [h] ")
@@ -642,11 +642,11 @@ def plot_post_process(balances_pp,studycase,loc,first_day,last_day):
                 for n in ["bottom","top", "right"]:
                     ax.axis[n].set_visible(True)
                 ax.grid(axis='y', alpha = 0.5, zorder = -4)
-                ax.bar(x, balances['tech windsc'][tech_name_plot][first_day*24*60//c.timestep:last_day*24*60//c.timestep+24*60//c.timestep], width,  label='wind self consumption', color='orange')
-                ax.bar(x, balances['tech pvsc'][tech_name_plot][first_day*24*60//c.timestep:last_day*24*60//c.timestep+24*60//c.timestep], width, bottom=balances['tech windsc'][tech_name_plot][first_day*24*60//c.timestep:last_day*24*60//c.timestep+24*60//c.timestep], label='PV self consumption', color='yellowgreen')
-                ax.bar(x, balances['tech from grid'][tech_name_plot][first_day*24*60//c.timestep:last_day*24*60//c.timestep+24*60//c.timestep], width, bottom=balances['tech pvsc'][tech_name_plot][first_day*24*60//c.timestep:last_day*24*60//c.timestep+24*60//c.timestep]+balances['tech windsc'][tech_name_plot][first_day*24*60//c.timestep:last_day*24*60//c.timestep+24*60//c.timestep], label='From grid', color='tomato')
+                ax.bar(x, balances['tech windsc'][tech_name_plot][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps], width,  label='wind self consumption', color='orange')
+                ax.bar(x, balances['tech pvsc'][tech_name_plot][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps], width, bottom=balances['tech windsc'][tech_name_plot][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps], label='PV self consumption', color='yellowgreen')
+                ax.bar(x, balances['tech from grid'][tech_name_plot][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps], width, bottom=balances['tech pvsc'][tech_name_plot][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps]+balances['tech windsc'][tech_name_plot][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps], label='From grid', color='tomato')
                 plt.title(tech_name_plot+' days '+str(first_day)+'-'+str(last_day))
-                plt.plot(x,-balances[tech_name_plot][first_day*24*60//c.timestep:last_day*24*60//c.timestep+24*60//c.timestep],'k',label='load')     
+                plt.plot(x,-balances[tech_name_plot][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps],'k',label='load')     
                 plt.legend(ncol=2, bbox_to_anchor = (1.01,-0.11))
                 plt.ylabel("Power [kW]")
                 plt.xlabel( "Time  [h] ")
@@ -657,37 +657,37 @@ def plot_post_process(balances_pp,studycase,loc,first_day,last_day):
             
     # Hourly energy balances   
     if 'PV' in balances:
-        pv = balances['PV'][first_day*24*60//c.timestep:last_day*24*60//c.timestep+24*60//c.timestep]
+        pv = balances['PV'][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps]
     
     if 'wind' in balances:
-        wind = balances['wind'][first_day*24*60//c.timestep:last_day*24*60//c.timestep+24*60//c.timestep]
+        wind = balances['wind'][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps]
         
     if 'grid' in balances:                
-        into_grid = np.zeros(24*(last_day-first_day+1)*60//c.timestep)
-        from_grid = np.zeros(24*(last_day-first_day+1)*60//c.timestep)
-        for i,e in enumerate(balances['grid'][first_day*24*60//c.timestep:last_day*24*60//c.timestep+24*60//c.timestep]):
+        into_grid = np.zeros(24*(last_day-first_day+1)*hourly_steps)
+        from_grid = np.zeros(24*(last_day-first_day+1)*hourly_steps)
+        for i,e in enumerate(balances['grid'][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps]):
             if e > 0:
                 from_grid[i] = e
             else:
                 into_grid[i] = e 
     
     if 'battery' in balances:
-        charge_battery = np.zeros(24*(last_day-first_day+1)*60//c.timestep)
-        discharge_battery = np.zeros(24*(last_day-first_day+1)*60//c.timestep)
-        for i,e in enumerate(balances['battery'][first_day*24*60//c.timestep:last_day*24*60//c.timestep+24*60//c.timestep]):
+        charge_battery = np.zeros(24*(last_day-first_day+1)*hourly_steps)
+        discharge_battery = np.zeros(24*(last_day-first_day+1)*hourly_steps)
+        for i,e in enumerate(balances['battery'][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps]):
             if e > 0:
                 discharge_battery[i] = e
             else:
                 charge_battery[i] = e 
     
     if 'electrolyzer' in balances:
-        ele = balances['electrolyzer'][first_day*24*60//c.timestep:last_day*24*60//c.timestep+24*60//c.timestep]
+        ele = balances['electrolyzer'][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps]
     
     if 'mechanical compressor' in balances:
-        compressor = balances['mechanical compressor'][first_day*24*60//c.timestep:last_day*24*60//c.timestep+24*60//c.timestep]
+        compressor = balances['mechanical compressor'][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps]
     
     if 'fuel cell' in balances:
-        fc = balances['fuel cell'][first_day*24*60//c.timestep:last_day*24*60//c.timestep+24*60//c.timestep]
+        fc = balances['fuel cell'][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps]
         
     x = np.arange(first_day*24*60/c.timestep,(last_day+1)*24*60/c.timestep)        
     x = x*(c.timestep/60) # ensuring values are presented on a hourly basis
@@ -705,12 +705,12 @@ def plot_post_process(balances_pp,studycase,loc,first_day,last_day):
     ax.grid(axis='y', alpha = 0.5, zorder = -4)
     
     if 'demand' in balances:
-        load = -balances['demand'][first_day*24*60//c.timestep:last_day*24*60//c.timestep+24*60//c.timestep]+balances['hyd tot electricity'][first_day*24*60//c.timestep:last_day*24*60//c.timestep+24*60//c.timestep]
-        el_demand = balances['demand'][first_day*24*60//c.timestep:last_day*24*60//c.timestep+24*60//c.timestep]
+        load = -balances['demand'][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps]+balances['hyd tot electricity'][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps]
+        el_demand = balances['demand'][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps]
         ax.bar(x, el_demand, width, label='To el-devices', color='grey')
     else:
-        load = balances['hyd tot electricity'][first_day*24*60//c.timestep:last_day*24*60//c.timestep+24*60//c.timestep] 
-        el_demand = np.zeros(24*(last_day-first_day+1)*60//c.timestep)
+        load = balances['hyd tot electricity'][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps] 
+        el_demand = np.zeros(24*(last_day-first_day+1)*hourly_steps)
         
     if 'PV' in balances and 'wind' in balances:
         if list(system.keys()).index('PV') < list(system.keys()).index('wind'): # PV comes before wind
@@ -837,7 +837,7 @@ def plot_post_process(balances_pp,studycase,loc,first_day,last_day):
     plt.ylabel("Power [kW]")
     plt.xlabel("Time  [h]")
     if (last_day-first_day) <= 10: # in order to better visualize daily behaviour if short timespans are selected
-        # plt.xticks(list(range(first_day*24*60//c.timestep, ((last_day+1)*24*60//c.timestep)+1,24*60//c.timestep)), [str(x) for x in list(range(first_day*24, ((last_day+1)*24)+1,24))], rotation=45) 
+        # plt.xticks(list(range(first_day*24*hourly_steps, ((last_day+1)*24*hourly_steps)+1,24*hourly_steps)), [str(x) for x in list(range(first_day*24, ((last_day+1)*24)+1,24))], rotation=45) 
         plt.xticks(list(range(int(x[0]),int(np.ceil(x[-1]))+2,24)), [str(x) for x in list(range(first_day*24, ((last_day+1)*24)+1,24))], rotation=45) 
     # ax.xaxis.set_tick_params(bottom=True,labelbottom=True)
     #plt.xticks([0,6,12,18,24],['0','6','12','18','24'],fontsize=10,color='g')
