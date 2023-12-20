@@ -39,8 +39,8 @@ file_general        = 'general'
 file_studycase      = 'studycase'
 file_refcase        = 'refcase'
 
+# If interested in testing simulations with 15 minutes timestep resolution:
 # =============================================================================
-# # # If interested in testing simulations with 15 minutes timestep resolution:
 # # file_general        = 'general15' 
 # # file_studycase      = 'studycase15' 
 # # file_refcase        = 'refcase15'
@@ -110,7 +110,7 @@ LCOH = eco.LCOH('industrial_facility',balances_pp,studycase,name_studycase,energ
 
 # Some plot examples
 pp.hydrogen_production(name_studycase,'industrial_facility')   
-pp.plot_post_process(balances_pp,studycase,'industrial_facility',20,24)
+pp.plot_post_process(balances_pp,studycase,'industrial_facility',80,90)
 pp.LOC_plot(name_studycase)
 pp.NPV_plot(name_economic)
     

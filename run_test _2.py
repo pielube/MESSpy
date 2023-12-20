@@ -40,11 +40,12 @@ file_energy_market  = 'energy_market'
 file_general        = 'general'
 file_studycase      = 'studycase'
 file_refcase        = 'refcase'
-# If you are interested in 15 minutes timestep simulations:
+
+# If interested in testing simulations with 15 minutes timestep resolution:
 # =============================================================================
-# file_general        = 'general15' 
-# file_studycase      = 'studycase15' 
-# file_refcase        = 'refcase15'
+# # file_general        = 'general15' 
+# # file_studycase      = 'studycase15' 
+# # file_refcase        = 'refcase15'
 # =============================================================================
 
 ### NOW you can Run file (F5) ###
@@ -88,13 +89,8 @@ POST PROCESS - Investment assessment comparing refcase and studycase
 ================================
 """
 # Net present value calculation to asses the investment comparing refcase and studycase (saves results in both .pkl and .csv)
-<<<<<<< HEAD
 eco.NPV(file_studycase,file_refcase,name_studycase,name_refcase,energy_market,path,name_economic,'pkl')
 eco.NPV(file_studycase,file_refcase,name_studycase,name_refcase,energy_market,path,name_economic,'csv',sep=';',dec=',')
-=======
-eco.NPV(file_studycase,file_refcase,name_studycase,name_refcase,energy_market,general['simulation years'],general['timestep'],path,name_economic,'pkl')
-eco.NPV(file_studycase,file_refcase,name_studycase,name_refcase,energy_market,general['simulation years'],general['timestep'],path,name_economic,'csv',sep=';',dec=',')
->>>>>>> 4575e15ecb709d7f5ce76609615ede3aa60af9fa
 
 #%% ###########################################################################
 """

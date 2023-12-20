@@ -39,11 +39,12 @@ file_energy_market  = 'energy_market'
 file_general        = 'general'
 file_studycase      = 'studycase'
 file_refcase        = 'refcase'
-# If you are interested in 15 minutes timestep simulations:
+
+# If interested in testing simulations with 15 minutes timestep resolution:
 # =============================================================================
-# file_general        = 'general15' 
-# file_studycase      = 'studycase15' 
-# file_refcase        = 'refcase15'
+# # file_general        = 'general15' 
+# # file_studycase      = 'studycase15' 
+# # file_refcase        = 'refcase15'
 # =============================================================================
 
 ### NOW you can Run file (F5) ###
