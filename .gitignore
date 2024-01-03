@@ -1,4 +1,9 @@
 __pycache__/
 results/
 previous_simulation/
+input_dev/
+postprocess_dev.py
+preprocess_dev.py
+run_dev.py
+
 
