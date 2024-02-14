@@ -302,7 +302,7 @@ class location:
                 self.power_balance['heating water']['boiler_h2'][step]        = self.technologies['boiler_h2'].use(step,pb['heating water'],available_hyd) # h2 consumed from boiler_h2 and heat produced by boiler_h2
 
                 pb['hydrogen']      += self.power_balance['hydrogen']['boiler_h2'][step]            # [kg/s] hydrogen balance update: - hydrogen consumed by boiler_h2
-                pb['heating water'] += self.power_balance['heating water']['boiler_ng'][step]   # [kW] heat balance update: + heat produced by boiler_ng                        
+                pb['heating water'] += self.power_balance['heating water']['boiler_h2'][step]       # [kW] heat balance update: + heat produced by boiler_h2                        
         
             if tech_name == 'heatpump':     
                 self.power_balance['electricity']['heatpump'][step], self.power_balance['heating water']['heatpump'][step], self.power_balance['heating water']['inertial TES'][step] = self.technologies['heatpump'].use(weather['temp_air'][step],pb['heating water'],pb['electricity'],step) 

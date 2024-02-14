@@ -107,13 +107,16 @@ class boiler_el(boiler):
             consumption : float energy consumption [kW]
             heatprod    : float heat produced [kW] 
         """
-
-        if -demand/self.efficiency > self.Ppeak:
-            print(f'Warning: the boiler nominal power is too low to cover heat demand - simulation step: {step}')
-        heatprod    = min(-demand,self.Ppeak*self.efficiency)
-        consumption = - heatprod/self.efficiency 
         
-        return(consumption,heatprod)
+        if demand < 0:  # [kW] heat required
+            if -demand/self.efficiency > self.Ppeak:
+                print(f'Warning: the boiler nominal power is too low to cover heat demand - simulation step: {step}')
+            heatprod    = min(-demand,self.Ppeak*self.efficiency)
+            consumption = - heatprod/self.efficiency 
+            
+            return(consumption,heatprod)
+        else:
+            return(0,0)
        
      
 class boiler_ng(boiler):    
@@ -152,7 +155,9 @@ class boiler_ng(boiler):
             heatprod        = min(-demand,self.Ppeak*self.efficiency)       # [kW] produced heat at the considered timestep
             ng_mflowrate    = (- heatprod/self.efficiency)/(self.LHVNGVOL)  # [Sm^3/s] natural gas consumption to produce the required heat  
             
-            return(ng_mflowrate,heatprod)   
+            return(ng_mflowrate,heatprod)
+        else:
+            return(0,0)
 
               
 class boiler_h2(boiler):    
@@ -198,6 +203,8 @@ class boiler_h2(boiler):
                 h2_mflowrate    = max_available_hyd                                 # [kg/s] hydrogen consumption to produce the required heat
             
             return(h2_mflowrate,heatprod)
+        else:
+            return(0,0)
         
 ###########################################################################################################################################################
 
