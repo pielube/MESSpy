@@ -12,7 +12,20 @@ During hourly simulations, technologies are used to solve energy balances one at
 "electricity* grid":    "draw": bool, true if the carrier can be withdrawn from the grid
                         "feed": bool, true if the carrier can be feed into the grid
 
-*or hydrogen, heating water, gas, process steam
+*or hydrogen, heating water, gas, process steam...
+
+'demand'': dictionary ---> units []
+	'electricity':              str 'file_name.csv' time series of electricity demand                               [kW]
+	'heating water':            str 'file_name.csv' time series of heating and dhw demand                           [kW]
+	'cooling water':            str 'file_name.csv' time series of cooling demand                                   [kW]
+	'process heat':             str 'file_name.csv' time series of process heat demand                              [kW]
+	'process hot water':        str 'file_name.csv' time series of process hot water demand                         [kW]
+	'process cold water':       str 'file_name.csv' time series of process cold water demand (absorber, 7-12 °C)    [kW]
+	'process chilled water':    str 'file_name.csv' time series of process chilled water demand (absorber, 1-5 °C)  [kW]
+	'hydrogen':                 str 'file_name.csv' time series of hydrogen demand                                  [kg/s]
+	'HP hydrogen':              str 'file_name.csv' time series of High-Pressure hydrogen demand                    [kg/s]
+	'process steam':            str 'file_name.csv' time series of process steam demand                             [kg/s]
+	'gas':                      str 'file_name.csv' time series of gas demand                                       [Sm3/s]
 
 "PV": 	"tilt": float surface tilt [deg]
 		"azimuth": float azimuth angle 0 = south, 180 = north [deg]

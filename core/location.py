@@ -35,7 +35,7 @@ class location:
             'boiler_el':                dictionary parameters needed to create fuel cell object (see boiler.py)
             'boiler_h2':                dictionary parameters needed to create fuel cell object (see boiler.py)
             'chp_gt':                   dicitonary parameters needed to create a chp object based on gas turbine technoology (see chp_gt.py)
-            'hydrogen_compressor':      dicitonary parameters needed to create a mhhc object (see mhhc compressor.py)
+            'hydrogen compressor':      dicitonary parameters needed to create a mhhc object (see mhhc compressor.py)
             'mechanical compressor':    dicitonary parameters needed to create a mechanical object (see compressor.py)
             'SMR':                      dicitonary parameters needed to create a mechanical object (see Steam_methane_reformer.py)
             
@@ -103,41 +103,46 @@ class location:
 
         if 'chp_gt' in self.system:
             self.technologies['chp_gt'] = chp_gt(system['chp_gt'],c.timestep_number) # chp_gt object created and added to 'technologies' dictionary
-            self.power_balance['process steam']['chp_gt'] = np.zeros(c.timestep_number) # array chp_gt process steam balance 
-            self.power_balance['electricity']['chp_gt'] = np.zeros(c.timestep_number) # array chp_gt electricity balance
-            self.power_balance['hydrogen']['chp_gt'] = np.zeros(c.timestep_number) # array chp_gt process hydrogen balance 
+            self.power_balance['process steam']['chp_gt']   = np.zeros(c.timestep_number) # array chp_gt process steam balance 
+            self.power_balance['electricity']['chp_gt']     = np.zeros(c.timestep_number) # array chp_gt electricity balance
+            self.power_balance['hydrogen']['chp_gt']        = np.zeros(c.timestep_number) # array chp_gt process hydrogen balance 
         
         if 'chp' in self.system:
             self.technologies['chp'] = Chp(system['chp'],c.timestep_number) # chp object created and added to 'technologies' dictionary
-            self.power_balance[self.technologies['chp'].th_out]['chp'] = np.zeros(c.timestep_number) # array chp thermal output balance (process steam/hot water)
-            self.power_balance['electricity']['chp'] = np.zeros(c.timestep_number) # array chp electricity balance
-            self.power_balance[self.technologies['chp'].fuel]['chp'] = np.zeros(c.timestep_number) # array chp fuel consumption balance
-            self.power_balance['process heat']['chp'] = np.zeros(c.timestep_number) # array chp process heat balance
-            self.power_balance['process hot water']['chp'] = np.zeros(c.timestep_number) # array chp process hot water balance
-            self.power_balance['process cold water']['chp'] = np.zeros(c.timestep_number) # array chp process cold water balance
+            self.power_balance[self.technologies['chp'].th_out]['chp']  = np.zeros(c.timestep_number) # array chp thermal output balance (process steam/hot water)
+            self.power_balance['electricity']['chp']                    = np.zeros(c.timestep_number) # array chp electricity balance
+            self.power_balance[self.technologies['chp'].fuel]['chp']    = np.zeros(c.timestep_number) # array chp fuel consumption balance
+            self.power_balance['process heat']['chp']                   = np.zeros(c.timestep_number) # array chp process heat balance
+            self.power_balance['process hot water']['chp']              = np.zeros(c.timestep_number) # array chp process hot water balance
+            self.power_balance['process cold water']['chp']             = np.zeros(c.timestep_number) # array chp process cold water balance
        
         if 'absorber' in self.system:
             self.technologies['absorber'] = Absorber(system['absorber'],c.timestep_number) # absorber object created and added to 'technologies' dictionary
-            self.power_balance['process heat']['absorber'] = np.zeros(c.timestep_number) # array absorber process steam balance 
-            self.power_balance['process hot water']['absorber'] = np.zeros(c.timestep_number) # array absorber process steam balance 
-            self.power_balance['process cold water']['absorber'] = np.zeros(c.timestep_number) # array absorber process steam balance 
+            self.power_balance['process heat']['absorber']          = np.zeros(c.timestep_number) # array absorber process steam balance 
+            self.power_balance['process hot water']['absorber']     = np.zeros(c.timestep_number) # array absorber process steam balance 
+            self.power_balance['process cold water']['absorber']    = np.zeros(c.timestep_number) # array absorber process steam balance 
             
         if 'heatpump' in self.system:
             self.technologies['heatpump'] = heatpump(system['heatpump']) # heatpump object created and add to 'technologies' dictionary
-            self.power_balance['electricity']['heatpump'] = np.zeros(c.timestep_number) # array heatpump electricity balance
-            self.power_balance['heating water']['heatpump'] = np.zeros(c.timestep_number) # array heatpump heat balance
-            self.power_balance['heating water']['inertial TES'] = np.zeros(c.timestep_number) # array inertial tank heat balance
+            self.power_balance['electricity']['heatpump']           = np.zeros(c.timestep_number) # array heatpump electricity balance
+            self.power_balance['heating water']['heatpump']         = np.zeros(c.timestep_number) # array heatpump heat balance
+            self.power_balance['heating water']['inertial TES']     = np.zeros(c.timestep_number) # array inertial tank heat balance
                 
         if 'boiler_el' in self.system:
-            self.technologies['boiler_el'] = boiler_el(self.system['boiler_el']) # boiler_el object created and add to 'technologies' dictionary
-            self.power_balance['electricity']['boiler_el'] = np.zeros(c.timestep_number) # array boiler_el electricity balance
-            self.power_balance['heating water']['boiler_el'] = np.zeros(c.timestep_number) # array boiler_el heat balance
+            self.technologies['boiler_el'] = boiler_el(self.system['boiler_el'])    # boiler_el object created and add to 'technologies' dictionary
+            self.power_balance['electricity']['boiler_el']      = np.zeros(c.timestep_number)   # array boiler_el electricity balance
+            self.power_balance['heating water']['boiler_el']    = np.zeros(c.timestep_number)   # array boiler_el heat balance
                
         if 'boiler_ng' in self.system:
-            self.technologies['boiler_ng'] = boiler_ng(self.system['boiler_ng'])  # boiler_ng object created and add to 'technologies' dictionary
-            self.power_balance['gas']['boiler_ng'] = np.zeros(c.timestep_number) # array boiler_ng gas balance
-            self.power_balance['heating water']['boiler_ng'] = np.zeros(c.timestep_number) # array boiler_ng heat balance 
-
+            self.technologies['boiler_ng'] = boiler_ng(self.system['boiler_ng'])    # boiler_ng object created and add to 'technologies' dictionary
+            self.power_balance['gas']['boiler_ng']              = np.zeros(c.timestep_number)   # array boiler_ng gas balance
+            self.power_balance['heating water']['boiler_ng']    = np.zeros(c.timestep_number)   # array boiler_ng heat balance 
+            
+        if 'boiler_h2' in self.system:
+            self.technologies['boiler_h2'] = boiler_h2(self.system['boiler_h2'])    # boiler_h2 object created and added to 'technologies' dictionary
+            self.power_balance['hydrogen']['boiler_h2']         = np.zeros(c.timestep_number)   # array boiler_h2 gas balance
+            self.power_balance['heating water']['boiler_h2']    = np.zeros(c.timestep_number)   # array boiler_h2 heat balance 
+        
         if 'PV' in self.system:
             self.technologies['PV'] = PV(self.system['PV'],self.name,path,check,file_structure,file_general) # PV object created and add to 'technologies' dictionary
             self.power_balance['electricity']['PV'] = np.zeros(c.timestep_number) # array PV electricity balance
@@ -203,18 +208,20 @@ class location:
             self.power_balance['gas']['hydrogen compressor']       = np.zeros(c.timestep_number)     # array hydrogen compressor heating water balanced used
         
         if 'H tank' and 'HPH tank' in self.system: 
+            # H_tank
             self.technologies['H tank'] = H_tank(self.system['H tank'],c.timestep_number) # H tank object created and to 'technologies' dictionary
-            self.power_balance['hydrogen']['H tank'] = np.zeros(c.timestep_number)         # array H tank hydrogen balance
-            self.technologies['HPH tank'] = HPH_tank(self.system['HPH tank'],c.timestep_number)   # HPH tank object created and to 'technologies' dictionary
-            self.power_balance['HP hydrogen']['HPH tank'] = np.zeros(c.timestep_number)        # array HPH tank hydrogen balance
+            self.power_balance['hydrogen']['H tank']        = np.zeros(c.timestep_number)   # array H tank hydrogen balance
             
-            self.tank_stream = {'H tank':'hydrogen',        # dictionary assigning different hydrogen streams to different storage technologies - necessary for loc_energy_simulation
-                                'HPH tank':'HP hydrogen'}
+            # HPH tank
+            self.technologies['HPH tank'] = HPH_tank(self.system['HPH tank'],c.timestep_number) # HPH tank object created and to 'technologies' dictionary
+            self.power_balance['HP hydrogen']['HPH tank'] = np.zeros(c.timestep_number)     # array HPH tank hydrogen balance
+            
+            self.tank_stream = {'H tank'    :'hydrogen',        # dictionary assigning different hydrogen streams to different storage technologies - necessary for loc_energy_simulation
+                                'HPH tank'  :'HP hydrogen'}
         
         if 'O2 tank' in self.system: 
             self.technologies['O2 tank'] = O2_tank(self.system['O2 tank'],c.timestep_number) # LPH tank object created and to 'technologies' dictionary
             self.power_balance['oxygen']['O2 tank'] = np.zeros(c.timestep_number)         # array LPH tank hydrogen balance
-        
             
         if 'mechanical compressor' in self.system:
             if "electrolyzer" not in self.system:
@@ -243,11 +250,6 @@ class location:
             
             self.tank_stream = {'H tank':'hydrogen'}     # dictionary assigning hydrogen stream to H tank storage technologies - necessary for loc_energy_simulation
         
-        if 'boiler_h2' in self.system:
-            self.technologies['boiler_h2'] = boiler_h2(self.system['boiler_h2'])                    # boiler_h2 object created and added to 'technologies' dictionary
-            self.power_balance['hydrogen']['boiler_h2'] = np.zeros(c.timestep_number)          # array boiler_h2 gas balance
-            self.power_balance['heating water']['boiler_h2'] = np.zeros(c.timestep_number)     # array boiler_h2 heat balance 
-
         self.power_balance['electricity']['collective self consumption']   = np.zeros(c.timestep_number) # array contribution to collective-self-consumption as producer (-) or as consumer (+)
         #self.power_balance['heating water']['collective self consumption'] = np.zeros(c.timestep_number) # array contribution to collective-self-consumption as producer (-) or as consumer (+)---heat----mio!!!
         #self.power_balance['process steam']['collective self consumption'] = np.zeros(c.timestep_number) # array contribution to collective-self-consumption as producer (-) or as consumer (+)---heat----mio!!!
@@ -261,7 +263,7 @@ class location:
         output : updating of location power balances
         """
         
-        pb = {} # power balance [kW] [kg/s]
+        pb = {} # power balance [kW] [kg/s] [Sm^3/s]
         
         for carrier in self.power_balance:
            pb[carrier] = 0 # initialise power balances 
@@ -277,14 +279,30 @@ class location:
                 pb['electricity'] += self.power_balance['electricity']['wind'][step] # elecricity balance update: + electricity produced from wind
                         
             if tech_name == 'boiler_el': 
-                self.power_balance['electricity']['boiler_el'][step], self.power_balance['heating water']['boiler_el'][step] = self.technologies['boiler_el'].use(pb['heating water']) # el consumed and heat produced from boiler_el
-                pb['electricity'] += self.power_balance['electricity']['boiler_el'][step] # elecricity balance update: - electricity consumed by boiler_el
-                pb['heating water'] += self.power_balance['heating water']['boiler_el'][step] # heat balance update: + heat produced by boiler_el
+                self.power_balance['electricity']['boiler_el'][step],\
+                self.power_balance['heating water']['boiler_el'][step] = self.technologies['boiler_el'].use(step,pb['heating water']) # elctricity consumed and heat produced from boiler_el
+                pb['electricity']   += self.power_balance['electricity']['boiler_el'][step]     # [kW] elecricity balance update: - electricity consumed by boiler_el
+                pb['heating water'] += self.power_balance['heating water']['boiler_el'][step]   # [kW] heat balance update: + heat produced by boiler_el
     
             if tech_name == 'boiler_ng': 
-                self.power_balance['gas']['boiler_ng'][step], self.power_balance['heating water']['boiler_ng'][step] = self.technologies['boiler_ng'].use(pb['heating water']) # ng consumed and heat produced from boiler_ng
-                pb['gas'] += self.power_balance['gas']['boiler_ng'][step] # gas balance update: - gas consumed by boiler_ng
-                pb['heating water'] += self.power_balance['heating water']['boiler_ng'][step] # heat balance update: + heat produced by boiler_ng
+                self.power_balance['gas']['boiler_ng'][step],\
+                self.power_balance['heating water']['boiler_ng'][step] = self.technologies['boiler_ng'].use(step,pb['heating water']) # ng consumed and heat produced from boiler_ng
+                pb['gas']           += self.power_balance['gas']['boiler_ng'][step]             # [Sm3/s] gas balance update: - gas consumed by boiler_ng
+                pb['heating water'] += self.power_balance['heating water']['boiler_ng'][step]   # [kW] heat balance update: + heat produced by boiler_ng
+                
+            if tech_name == 'boiler_h2':                                                                                                                                   
+                if "hydrogen grid" in self.system and self.system["hydrogen grid"]["draw"]:     # hydrogen directly sourced from the hydrogen grid
+                    available_hyd = float('inf')            # the grid act as an infinite source of hydrogen
+                elif 'H tank' in self.system:               # only hydrogen inside H tank can be used
+                    hydrogen_prod       = max(0,pb['hydrogen'])*(c.timestep*60)     # [kg] in case excess hydrogen is available in the system at the considered timestep: e.g. produced by a different component with higher priority than boiler_h2. Only positive values allowed to exclude demand
+                    tank_availability   = self.technologies['H tank'].LOC[step] + self.technologies['H tank'].max_capacity - self.technologies['H tank'].used_capacity # [kg] hydrogen amount available in the storage system at the considered timestep
+                    available_hyd       = tank_availability + hydrogen_prod         # [kg] hydrogen availability: tank + system
+
+                self.power_balance['hydrogen']['boiler_h2'][step],\
+                self.power_balance['heating water']['boiler_h2'][step]        = self.technologies['boiler_h2'].use(step,pb['heating water'],available_hyd) # h2 consumed from boiler_h2 and heat produced by boiler_h2
+
+                pb['hydrogen']      += self.power_balance['hydrogen']['boiler_h2'][step]            # [kg/s] hydrogen balance update: - hydrogen consumed by boiler_h2
+                pb['heating water'] += self.power_balance['heating water']['boiler_ng'][step]   # [kW] heat balance update: + heat produced by boiler_ng                        
         
             if tech_name == 'heatpump':     
                 self.power_balance['electricity']['heatpump'][step], self.power_balance['heating water']['heatpump'][step], self.power_balance['heating water']['inertial TES'][step] = self.technologies['heatpump'].use(weather['temp_air'][step],pb['heating water'],pb['electricity'],step) 
@@ -320,7 +338,7 @@ class location:
                 coproduct   = self.technologies['chp'].coproduct    # process co-product depending on the  approache chosen above 
                 if self.system['chp']['Fuel'] == 'hydrogen':
                     if "hydrogen grid" in self.system and self.system["hydrogen grid"]["draw"]: # hydrogen can be withdranw from an hydrogen grid
-                        available_hyd = 9999999999999999999 
+                        available_hyd = float('inf') 
                     elif 'H tank' in self.system:   # only hydrogen inside H tank can be used
                         available_hyd = self.technologies['H tank'].LOC[step] + self.technologies['H tank'].max_capacity - self.technologies['H tank'].used_capacity                                                                  
                     else:
@@ -465,7 +483,7 @@ class location:
                         storable_hydrogen = self.technologies['H tank'].max_capacity-self.technologies['H tank'].LOC[step] # the tank can't be full
                     if storable_hydrogen>self.technologies['H tank'].max_capacity*0.00001:
                         self.power_balance['hydrogen']['hydrogen compressor'][step], self.power_balance['gas']['hydrogen compressor'][step] = self.technologies['hydrogen compressor'].use(step,c.timestep,self.power_balance['hydrogen']['electrolyzer'][step],storable_hydrogen) # hydrogen compressed by the compressor (+) and heat requested to make it work expressed as heating water need (-) 
-                        pb['gas'] += self.power_balance['gas']['hydrogen compressor'][step]
+                        #pb['gas'] += self.power_balance['gas']['hydrogen compressor'][step]
                         #pb['hydrogen']=...self.power_balance['hydrogen']['hydrogen compressor'][step]?? come ne tengo conto di quanto comprimo? in linea teorica ne dovrei sempre comprimere esattamente quanto me ne entra perchè il controllo sullo sotrable hydrogen lho gia fatto nell'elettrolizzatore'
             
             if tech_name == 'mechanical compressor':   
@@ -665,35 +683,12 @@ class location:
                         pb['heating water'] += self.power_balance['heating water']['fuel cell'][step] 
             
             if tech_name == 'SMR':
-                if pb['hydrogen'] < 0:
+                if pb['hydrogen'] < 0:      # currently activated only in presence of hydrogen demand
                     self.power_balance['gas']['SMR'][step], self.power_balance['hydrogen']['SMR'][step] = self.technologies['SMR'].use(pb['hydrogen']) # NG consumed and hydrogen produced from SMR
-                    pb['gas'] += self.power_balance['gas']['SMR'][step] # gas balance update: - gas consumed by SMR
-                    pb['hydrogen'] += self.power_balance['hydrogen']['SMR'][step] # hydrogen balance update: + hydrogen produced by SMR                   
+                    pb['gas']       += self.power_balance['gas']['SMR'][step]       # gas balance update: - gas consumed by SMR
+                    pb['hydrogen']  += self.power_balance['hydrogen']['SMR'][step]  # hydrogen balance update: + hydrogen produced by SMR                   
                 
-            if tech_name == 'boiler_h2':                                                                                                                                   
-                if "hydrogen grid" in self.system and self.system["hydrogen grid"]["draw"]: # hydrogen can be withdranw from an hydrogen grid
-                    available_hyd = 9999999999999999999 
-                elif 'H tank' in self.system:   # only hydrogen inside H tank can be used
-                    available_hyd = self.technologies['H tank'].LOC[step] + self.technologies['H tank'].max_capacity - self.technologies['H tank'].used_capacity +pb['hydrogen']
-                                         
-                self.power_balance['hydrogen']['boiler_h2'][step], self.power_balance['gas']['boiler_h2'][step] = self.technologies['boiler_h2'].use(pb['gas'],available_hyd,1)[1:3] #h2 consumed from boiler_h2 and heat produced by boiler_h2
-                pb['hydrogen'] += self.power_balance['hydrogen']['boiler_h2'][step] # hydrogen balance update: - hydrogen consumed by boiler_h2
-                pb['gas'] += self.power_balance['gas']['boiler_h2'][step] # heat balance update: + heat produced by boiler_h2
-           
-            #!!!ANDREA HA MESSO QUESTO COME PROCESSO NEL LOCATION, QUELLO SOTTO A COSA é DOVUTO   WIP to be modified by Andrea                                                                                                                                                          
-            if tech_name == 'boiler_h2': 
-                if pb['electricity'] < 0: #? this condition must be solved if you want to produce electricity to fed into the gird
-                    if "hydrogen grid" in self.system and self.system["hydrogen grid"]["draw"]: # hydrogen can be withdranw from an hydrogen grid
-                        available_hyd = 9999999999999999999 
-                    elif 'H tank' in self.system:   # only hydrogen inside H tank can be used
-                        available_hyd = self.technologies['H tank'].LOC[step] + self.technologies['H tank'].max_capacity - self.technologies['H tank'].used_capacity                                                                  
-                    else:
-                        available_hyd = max(0,pb['hydrogen']) # hydrogen is produced by an electrolyzer which have higher priority than boiler_h2
-                    if available_hyd > 0:
-                        self.power_balance['hydrogen']['boiler_h2'][step], self.power_balance['heating water']['boiler_h2'][step] = self.technologies['boiler_h2'].use(pb['heating water'],available_hyd,1)[1:3] #h2 consumed from boiler_h2 and heat produced by boiler_h2
-                        pb['hydrogen'] += self.power_balance['hydrogen']['boiler_h2'][step] # hydrogen balance update: - hydrogen consumed by boiler_h2
-                        pb['heating water'] += self.power_balance['heating water']['boiler_h2'][step] # heat balance update: + heat produced by boiler_h2
-                    
+
             # if tech_name in ['H tank','HPH tank']:     #versione buona 
             #     if self.system['hydrogen demand']['strategy'] != 'supply-led':
             #         self.power_balance[self.tank_stream[tech_name]][tech_name][step] = self.technologies[tech_name].use(h,pb[self.tank_stream[tech_name]])
