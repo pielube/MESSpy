@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from techs import (heatpump, boiler_el, boiler_ng, boiler_h2, PV, wind, battery, H_tank, HPH_tank, O2_tank, fuel_cell, electrolyzer, inverter, chp_gt, Chp, Absorber, hydrogen_compressor, Compressor, SMR)
+from techs import (heatpump, boiler_el, boiler_ng, boiler_h2, PV, wind, battery, H_tank, HPH_tank, O2_tank, fuel_cell, electrolyzer, inverter, chp_gt, Chp, Absorber, mhhc_compressor, Compressor, SMR)
 from core import constants as c
 
 class location:
@@ -35,7 +35,7 @@ class location:
             'boiler_el':                dictionary parameters needed to create fuel cell object (see boiler.py)
             'boiler_h2':                dictionary parameters needed to create fuel cell object (see boiler.py)
             'chp_gt':                   dicitonary parameters needed to create a chp object based on gas turbine technoology (see chp_gt.py)
-            'hydrogen compressor':      dicitonary parameters needed to create a mhhc object (see mhhc compressor.py)
+            'mhhc compressor':      dicitonary parameters needed to create a mhhc object (see mhhc compressor.py)
             'mechanical compressor':    dicitonary parameters needed to create a mechanical object (see compressor.py)
             'SMR':                      dicitonary parameters needed to create a mechanical object (see Steam_methane_reformer.py)
             
@@ -202,10 +202,10 @@ class location:
             self.power_balance['hydrogen']['SMR']   = np.zeros(c.timestep_number)     # array Steam methane reformer hydrogen balance
             self.power_balance['gas']['SMR']        = np.zeros(c.timestep_number)     # array Steam methane reformer gas balance
             
-        if 'hydrogen compressor' in self.system:
-            self.technologies['hydrogen compressor'] = hydrogen_compressor(self.system['hydrogen compressor'],c.timestep_number) # MHHC compressor object created and to 'technologies' dictionary
-            self.power_balance['hydrogen']['hydrogen compressor']  = np.zeros(c.timestep_number)     # array hydrogen compressor hydrogen compressed
-            self.power_balance['gas']['hydrogen compressor']       = np.zeros(c.timestep_number)     # array hydrogen compressor heating water balanced used
+        if 'mhhc compressor' in self.system:
+            self.technologies['mhhc compressor'] = mhhc_compressor(self.system['mhhc compressor'],c.timestep_number) # MHHC compressor object created and to 'technologies' dictionary
+            self.power_balance['hydrogen']['mhhc compressor']  = np.zeros(c.timestep_number)     # array hydrogen compressor hydrogen compressed
+            self.power_balance['gas']['mhhc compressor']       = np.zeros(c.timestep_number)     # array hydrogen compressor heating water balanced used
         
         if 'H tank' and 'HPH tank' in self.system: 
             # H_tank
@@ -475,16 +475,16 @@ class location:
                     if self.system[self.hydrogen_demand+' demand']['strategy'] == 'supply-led':  # activates only at the final step of simulation
                         self.constant_flow = sum(self.power_balance['hydrogen']['electrolyzer'])/c.timestep_number # [kg/s] constant hydrogen output based on the total production
                     
-            if tech_name == 'hydrogen compressor':   #!!! WIP to be modified by Andrea
+            if tech_name == 'mhhc compressor':   #!!! WIP to be modified by Andrea
                 if self.power_balance['hydrogen']['electrolyzer'][step] > 0:
                     if "hydrogen grid" in self.system and self.system["hydrogen grid"]["feed"]: # hydrogen can be fed into an hydrogen grid
                         storable_hyd = 9999999999999999999 
                     elif 'H tank' in self.system:   # hydrogen can only be stored into an H tank 
                         storable_hydrogen = self.technologies['H tank'].max_capacity-self.technologies['H tank'].LOC[step] # the tank can't be full
                     if storable_hydrogen>self.technologies['H tank'].max_capacity*0.00001:
-                        self.power_balance['hydrogen']['hydrogen compressor'][step], self.power_balance['gas']['hydrogen compressor'][step] = self.technologies['hydrogen compressor'].use(step,c.timestep,self.power_balance['hydrogen']['electrolyzer'][step],storable_hydrogen) # hydrogen compressed by the compressor (+) and heat requested to make it work expressed as heating water need (-) 
-                        #pb['gas'] += self.power_balance['gas']['hydrogen compressor'][step]
-                        #pb['hydrogen']=...self.power_balance['hydrogen']['hydrogen compressor'][step]?? come ne tengo conto di quanto comprimo? in linea teorica ne dovrei sempre comprimere esattamente quanto me ne entra perchè il controllo sullo sotrable hydrogen lho gia fatto nell'elettrolizzatore'
+                        self.power_balance['hydrogen']['mhhc compressor'][step], self.power_balance['gas']['mhhc compressor'][step] = self.technologies['mhhc compressor'].use(step,self.power_balance['hydrogen']['electrolyzer'][step],storable_hydrogen) # hydrogen compressed by the compressor (+) and heat requested to make it work expressed as heating water need (-) 
+                        pb['gas'] += self.power_balance['gas']['mhhc compressor'][step]
+                        #pb['hydrogen']=...self.power_balance['hydrogen']['mhhc compressor'][step]?? come ne tengo conto di quanto comprimo? in linea teorica ne dovrei sempre comprimere esattamente quanto me ne entra perchè il controllo sullo sotrable hydrogen lho gia fatto nell'elettrolizzatore'
             
             if tech_name == 'mechanical compressor':   
                 if 'HPH tank' not in self.system:

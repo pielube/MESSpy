@@ -20,15 +20,17 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(os.getcwd(),os.path.pardir)))   # temporarily adding constants module path
 from core import constants as c
 
-class hydrogen_compressor:
+class mhhc_compressor:
 
-    def __init__(self,parameters, simulation_hours):
+    def __init__(self,parameters, timestep_number,timestep=False):
 
         """
         Create a Hydride Hydrogen Compressor object
 
         parameters : dictionary
             'Beta': float compression ratio [-]
+            
+            timestep_number : int number of timesteps considered in the simulation
 
         output : Hydride Hydrogen Compressor able to:
             absosrb hydrogen at a certain level of pressure and temperature
@@ -85,9 +87,15 @@ class hydrogen_compressor:
         coeff = 0.02                                # correction coefficient added to make the representation of the curve smoother, near the points where the phase changes the model does not perform well and needs this experimental coefficient.
         self.H2MolMass  = 2.01588e-3                # [kg/mol] hydrogen molar mass
         
+        if __name__ == "__main__":                  # if code is being executed from chp_gt.py script
+            self.timestep   = timestep            # [min]       simulation timestep if launched from main
+        else:
+            self.timestep   = c.timestep              # [min]       simulation timestep if launched from fuelcell.py
+        
         self.n_compressor = parameters['compressor number']   #[-] number of compressors working at the same time
         self.Q         = 3                                    #[kWh] Heat requested at design point--->equivalent to kW at the equivalent timestep
-        self.n_compressors_used = np.zeros(simulation_hours)
+        self.n_compressors_used = np.zeros(timestep_number)
+        self.ETA_Polytropic = np.zeros(timestep_number)
         
         'abs and des curves are divided into three parts to represent the absorption, transition and desorption phases'
 
@@ -452,7 +460,7 @@ class hydrogen_compressor:
         plt.show()
 
 
-    def use(self,h,hyd,storable_hydrogen):
+    def use(self,step,hyd,storable_hydrogen):
 
         p_in=45
 
@@ -468,6 +476,7 @@ class hydrogen_compressor:
         # print(Work_Polytropic)
         ETA_Polytropic = Work_Polytropic/Q_requested #[-] compressor efficiency
         # print(ETA_Polytropic)
+        self.ETA_Polytropic[step] = ETA_Polytropic
 
         self.H2_kg = H2percycle_h*c.H2SDENSITY
        
@@ -477,15 +486,17 @@ class hydrogen_compressor:
             n_compressor_used = hyd/self.H2_kg
         if n_compressor_used > self.n_compressor:
             print('Warning: The number of Methal Hydride Hydrogen Compressors is not sufficient \n')
-            self.n_compressors_used[h] = self.n_compressor
+            self.n_compressors_used[step] = self.n_compressor
             hyd_compressed = self.H2_kg*self.n_compressor
             Q_requested = Q_requested*self.n_compressor
+            Sm3_requested = Q_requested / (c.LHV_H2*3600)
         else:
-            self.n_compressors_used[h] = int(n_compressor_used)+1
+            self.n_compressors_used[step] = int(n_compressor_used)+1
             hyd_compressed = hyd
             Q_requested = Q_requested*n_compressor_used
+            Sm3_requested = Q_requested / (c.LHV_H2*3600)
 
-        return (hyd_compressed,-Q_requested,ETA_Polytropic)
+        return (hyd_compressed,-Sm3_requested)
 
 ##########################################################################################
 
@@ -501,7 +512,7 @@ if __name__ == "__main__":
 
     sim_hours=36                             # [h] simulated period of time - usually it's 8760 hours
 
-    mhhc=hydrogen_compressor(inp_test, sim_hours)
+    mhhc=mhhc_compressor(inp_test, sim_hours)
     mhhc.plot_absdesplot()                     # mhhc abs-des curve
     # mhhc.plot_performancemhhc()                # mhhc performance curve
     mhhc.abs_validationplot()                  # mhhc absorption validation curve
