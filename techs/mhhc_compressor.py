@@ -194,7 +194,7 @@ class mhhc_compressor:
         plt.text(0.25, 2, r'$\mathit{\alpha}$', fontsize=18)
         plt.text(0.85, 2, r'$\mathit{\alpha + \beta}$', fontsize=18)
         plt.text(1.65, 2, r'$\mathit{\beta}$', fontsize=18)
-        plt.savefig('AbsorptionValidation.png')
+        # plt.savefig('AbsorptionValidation.png')
         plt.show()
 
         MSE = np.zeros(self.Npoints)                    # mean square error
@@ -218,15 +218,15 @@ class mhhc_compressor:
         R2=1-SS_res/SS_tot
 
 
-        print('Errore quadratico medio_ABS:', MSE)
-        print('Deviazione standard MSE_ABS:', DEVST)
+        print('\nMean Square Error_ABS:', MSE)
+        print('Standard Deviation MSE_ABS:', DEVST)
         print('Root Mean Square Error_ABS:', RMSE)
         print('Coefficient of Determination_ABS:', R2)
-        print('--------------------------end of absorption process validation----------------------------')
+        print('\n---------------end of absorption process validation----------------')
 
     def des_validationplot(self):
 
-        print('--------------validazione desorbimento-------------')
+        print('\n--------------desorption process validation-------------')
 
         plt.figure(dpi=1000, figsize = (6,5))
         plt.plot(self.conc_des_data, self.pressione_des_data, label='Experimental', linewidth=1.9,color = '#eb4034', linestyle = '--', zorder =2)
@@ -246,7 +246,7 @@ class mhhc_compressor:
         plt.ylabel('P$_{des}$ [bar]')
         plt.yscale('log')
         # plt.title('DESORPTION CURVE')
-        plt.savefig('DesorptionValidation.png')
+        # plt.savefig('DesorptionValidation.png')
         plt.show()
 
         MSE = np.zeros(self.Npoints)                     # mean square error
@@ -270,12 +270,12 @@ class mhhc_compressor:
         R2=1-SS_res/SS_tot
 
 
-        print('Errore quadratico medio_DES:', MSE)
-        print('Deviazione standard MSE_DES:', DEVST)
+        print('\nMean Square Error_DES:', MSE)
+        print('Standard Deviation MSE_DES:', DEVST)
         print('Root Mean Square Error_DES:', RMSE)
         print('Coefficient of Determination_DES:', R2)
-        print('-------------------fine validazione desorbimento--------------------------')
-
+        print('\n----------------end desorption process validation-----------------')
+        
     def plot_absdesplot(self):
 
         'Absorption'
@@ -456,7 +456,7 @@ class mhhc_compressor:
         h2, l2 = ax2.get_legend_handles_labels()
         h3, l3 = ax3.get_legend_handles_labels()
         ax.legend(h1+h2+h3, l1+l2+l3, loc='upper center', ncols= 3)
-        plt.savefig('PerformancePlot1.png')
+        # plt.savefig('PerformancePlot1.png')
         plt.show()
 
 
@@ -521,14 +521,16 @@ if __name__ == "__main__":
 
     hyd_to_be_compressed = np.linspace(0.5,2.5,sim_hours)                   # Hydrogen to be compressed by the MHHC
     hyd_compressed = np.zeros(sim_hours)
+    Sm3_requested = np.zeros(sim_hours)
     Q_requested = np.zeros(sim_hours)
     # n_compressors_used = []
     eff = np.zeros(sim_hours)
     for i in range (len(hyd_to_be_compressed)):
-        hyd_compressed[i],Q_requested[i], eff[i] = mhhc.use(i,hyd_to_be_compressed[i], storable_hydrogen)
+        hyd_compressed[i],Sm3_requested[i] = mhhc.use(i,hyd_to_be_compressed[i], storable_hydrogen)
+        Q_requested[i] = Sm3_requested[i] * c.LHV_H2*3600
         n_compressors_used = mhhc.n_compressors_used
     
-    '-------Figura paper!-----'
+    '-------Plots-----'
     fig,ax = plt.subplots(dpi=1000, figsize = (6,5))
     ax2 = ax.twinx()
     # ax2.plot(hyd_compressed, eff, label=r'$\eta$', c='#3BBDD4' )
@@ -542,8 +544,8 @@ if __name__ == "__main__":
     ax.grid(alpha= 0.3)
     h1, l1 = ax.get_legend_handles_labels()
     h2, l2 = ax2.get_legend_handles_labels()
-    ax.legend(h1+h2, l1+l2, loc='upper center', ncols= 2)
-    plt.savefig('PerformancePlot2.png')
+    ax.legend(h1+h2, l1+l2, loc='upper center', ncol=2)
+    # plt.savefig('PerformancePlot2.png')
     # plt.show()
     
 
