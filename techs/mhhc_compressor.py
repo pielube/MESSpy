@@ -20,15 +20,17 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(os.getcwd(),os.path.pardir)))   # temporarily adding constants module path
 from core import constants as c
 
-class hydrogen_compressor:
+class mhhc_compressor:
 
-    def __init__(self,parameters, simulation_hours):
+    def __init__(self,parameters, timestep_number,timestep=False):
 
         """
         Create a Hydride Hydrogen Compressor object
 
         parameters : dictionary
             'Beta': float compression ratio [-]
+            
+            timestep_number : int number of timesteps considered in the simulation
 
         output : Hydride Hydrogen Compressor able to:
             absosrb hydrogen at a certain level of pressure and temperature
@@ -85,9 +87,15 @@ class hydrogen_compressor:
         coeff = 0.02                                # correction coefficient added to make the representation of the curve smoother, near the points where the phase changes the model does not perform well and needs this experimental coefficient.
         self.H2MolMass  = 2.01588e-3                # [kg/mol] hydrogen molar mass
         
+        if __name__ == "__main__":                  # if code is being executed from chp_gt.py script
+            self.timestep   = timestep            # [min]       simulation timestep if launched from main
+        else:
+            self.timestep   = c.timestep              # [min]       simulation timestep if launched from fuelcell.py
+        
         self.n_compressor = parameters['compressor number']   #[-] number of compressors working at the same time
         self.Q         = 3                                    #[kWh] Heat requested at design point--->equivalent to kW at the equivalent timestep
-        self.n_compressors_used = np.zeros(simulation_hours)
+        self.n_compressors_used = np.zeros(timestep_number)
+        self.ETA_Polytropic = np.zeros(timestep_number)
         
         'abs and des curves are divided into three parts to represent the absorption, transition and desorption phases'
 
@@ -186,7 +194,7 @@ class hydrogen_compressor:
         plt.text(0.25, 2, r'$\mathit{\alpha}$', fontsize=18)
         plt.text(0.85, 2, r'$\mathit{\alpha + \beta}$', fontsize=18)
         plt.text(1.65, 2, r'$\mathit{\beta}$', fontsize=18)
-        plt.savefig('AbsorptionValidation.png')
+        # plt.savefig('AbsorptionValidation.png')
         plt.show()
 
         MSE = np.zeros(self.Npoints)                    # mean square error
@@ -210,15 +218,15 @@ class hydrogen_compressor:
         R2=1-SS_res/SS_tot
 
 
-        print('Errore quadratico medio_ABS:', MSE)
-        print('Deviazione standard MSE_ABS:', DEVST)
+        print('\nMean Square Error_ABS:', MSE)
+        print('Standard Deviation MSE_ABS:', DEVST)
         print('Root Mean Square Error_ABS:', RMSE)
         print('Coefficient of Determination_ABS:', R2)
-        print('--------------------------end of absorption process validation----------------------------')
+        print('\n---------------end of absorption process validation----------------')
 
     def des_validationplot(self):
 
-        print('--------------validazione desorbimento-------------')
+        print('\n--------------desorption process validation-------------')
 
         plt.figure(dpi=1000, figsize = (6,5))
         plt.plot(self.conc_des_data, self.pressione_des_data, label='Experimental', linewidth=1.9,color = '#eb4034', linestyle = '--', zorder =2)
@@ -238,7 +246,7 @@ class hydrogen_compressor:
         plt.ylabel('P$_{des}$ [bar]')
         plt.yscale('log')
         # plt.title('DESORPTION CURVE')
-        plt.savefig('DesorptionValidation.png')
+        # plt.savefig('DesorptionValidation.png')
         plt.show()
 
         MSE = np.zeros(self.Npoints)                     # mean square error
@@ -262,12 +270,12 @@ class hydrogen_compressor:
         R2=1-SS_res/SS_tot
 
 
-        print('Errore quadratico medio_DES:', MSE)
-        print('Deviazione standard MSE_DES:', DEVST)
+        print('\nMean Square Error_DES:', MSE)
+        print('Standard Deviation MSE_DES:', DEVST)
         print('Root Mean Square Error_DES:', RMSE)
         print('Coefficient of Determination_DES:', R2)
-        print('-------------------fine validazione desorbimento--------------------------')
-
+        print('\n----------------end desorption process validation-----------------')
+        
     def plot_absdesplot(self):
 
         'Absorption'
@@ -448,11 +456,11 @@ class hydrogen_compressor:
         h2, l2 = ax2.get_legend_handles_labels()
         h3, l3 = ax3.get_legend_handles_labels()
         ax.legend(h1+h2+h3, l1+l2+l3, loc='upper center', ncols= 3)
-        plt.savefig('PerformancePlot1.png')
+        # plt.savefig('PerformancePlot1.png')
         plt.show()
 
 
-    def use(self,h,hyd,storable_hydrogen):
+    def use(self,step,hyd,storable_hydrogen):
 
         p_in=45
 
@@ -468,6 +476,7 @@ class hydrogen_compressor:
         # print(Work_Polytropic)
         ETA_Polytropic = Work_Polytropic/Q_requested #[-] compressor efficiency
         # print(ETA_Polytropic)
+        self.ETA_Polytropic[step] = ETA_Polytropic
 
         self.H2_kg = H2percycle_h*c.H2SDENSITY
        
@@ -477,15 +486,17 @@ class hydrogen_compressor:
             n_compressor_used = hyd/self.H2_kg
         if n_compressor_used > self.n_compressor:
             print('Warning: The number of Methal Hydride Hydrogen Compressors is not sufficient \n')
-            self.n_compressors_used[h] = self.n_compressor
+            self.n_compressors_used[step] = self.n_compressor
             hyd_compressed = self.H2_kg*self.n_compressor
             Q_requested = Q_requested*self.n_compressor
+            Sm3_requested = Q_requested / (c.LHV_H2*3600)
         else:
-            self.n_compressors_used[h] = int(n_compressor_used)+1
+            self.n_compressors_used[step] = int(n_compressor_used)+1
             hyd_compressed = hyd
             Q_requested = Q_requested*n_compressor_used
+            Sm3_requested = Q_requested / (c.LHV_H2*3600)
 
-        return (hyd_compressed,-Q_requested,ETA_Polytropic)
+        return (hyd_compressed,-Sm3_requested)
 
 ##########################################################################################
 
@@ -501,7 +512,7 @@ if __name__ == "__main__":
 
     sim_hours=36                             # [h] simulated period of time - usually it's 8760 hours
 
-    mhhc=hydrogen_compressor(inp_test, sim_hours)
+    mhhc=mhhc_compressor(inp_test, sim_hours)
     mhhc.plot_absdesplot()                     # mhhc abs-des curve
     # mhhc.plot_performancemhhc()                # mhhc performance curve
     mhhc.abs_validationplot()                  # mhhc absorption validation curve
@@ -510,14 +521,16 @@ if __name__ == "__main__":
 
     hyd_to_be_compressed = np.linspace(0.5,2.5,sim_hours)                   # Hydrogen to be compressed by the MHHC
     hyd_compressed = np.zeros(sim_hours)
+    Sm3_requested = np.zeros(sim_hours)
     Q_requested = np.zeros(sim_hours)
     # n_compressors_used = []
     eff = np.zeros(sim_hours)
     for i in range (len(hyd_to_be_compressed)):
-        hyd_compressed[i],Q_requested[i], eff[i] = mhhc.use(i,hyd_to_be_compressed[i], storable_hydrogen)
+        hyd_compressed[i],Sm3_requested[i] = mhhc.use(i,hyd_to_be_compressed[i], storable_hydrogen)
+        Q_requested[i] = Sm3_requested[i] * c.LHV_H2*3600
         n_compressors_used = mhhc.n_compressors_used
     
-    '-------Figura paper!-----'
+    '-------Plots-----'
     fig,ax = plt.subplots(dpi=1000, figsize = (6,5))
     ax2 = ax.twinx()
     # ax2.plot(hyd_compressed, eff, label=r'$\eta$', c='#3BBDD4' )
@@ -531,8 +544,8 @@ if __name__ == "__main__":
     ax.grid(alpha= 0.3)
     h1, l1 = ax.get_legend_handles_labels()
     h2, l2 = ax2.get_legend_handles_labels()
-    ax.legend(h1+h2, l1+l2, loc='upper center', ncols= 2)
-    plt.savefig('PerformancePlot2.png')
+    ax.legend(h1+h2, l1+l2, loc='upper center', ncol=2)
+    # plt.savefig('PerformancePlot2.png')
     # plt.show()
     
 
