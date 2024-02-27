@@ -28,8 +28,8 @@ Models of different technologies are avialable and still under development to in
 ### MESS needs the load profiles as input as a .csv file
 Depending on the type of meter installed, these data is in some cases made available by the electricity/gas supplier, in others it must be requested, while sometimes it cannot be obtained. In the latter case, specific programmes are required to generate such profiles in the specific .csv format needed as one of the program inputs. There are many programmes available online, the authors recommend the following:\
 bottom-up model: https://github.com/RAMP-project/RAMP \
-bottom-up model: https://github.com/open-ideas/StROBe
-top-down model: https://github.com/PasquinoFI/LoBi
+bottom-up model: https://github.com/open-ideas/StROBe \
+top-down model: https://github.com/PasquinoFI/LoBi \
 top-down model: https://github.com/PasquinoFI/LoBi_residenziale_GSE
 
 ### Timestep
