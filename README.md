@@ -30,6 +30,7 @@ Depending on the type of meter installed, these data is in some cases made avail
 bottom-up model: https://github.com/RAMP-project/RAMP \
 bottom-up model: https://github.com/open-ideas/StROBe
 top-down model: https://github.com/PasquinoFI/LoBi
+top-down model: https://github.com/PasquinoFI/LoBi_residenziale_GSE
 
 ### Timestep
 Simulation timestep can vary from 1 to 60 minutes. The time horizon from 1 year to as many years as you want.
