@@ -86,6 +86,8 @@ https://www.sciencedirect.com/science/article/pii/S2352467723000516
 https://doi.org/10.54337/ijsepm.7625
 - "Assessment of paper industry decarbonization potential via hydrogen in a multi-energy system scenario: A case study"
 https://doi.org/10.1016/j.segy.2023.100114
+- "Community Battery for Collective-Self-Consumption and Energy Arbitrage: Techno-Economic Simulations Assessing Energy Balances, Battery Ageing and Different Market Scenarios"
+https://www.preprints.org/manuscript/202403.0033/v1
 
 ## Citing
 Please cite previous works if you use MESSpy in your research.
