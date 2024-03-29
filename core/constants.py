@@ -35,6 +35,7 @@ kWh2kJ      =  3600                        # [kJ/kWh]    Conversion factor from 
 H2MOLMASS   =  2.01588e-3                 # [kg/mol]     Hydrogen molar mass
 H2NDENSITY  =  0.08988237638480538        # [kg/Nm^3]    Hydrogen density at Normal conditions (T = 0°C, P = 101325 Pa) -> PropsSI('D', 'T', 273.15, 'P', 101325, 'H2') 
 H2SDENSITY  =  0.08520493577522305        # [kg/Sm^3]    Hydrogen density at Standard conditions (T = 15°C, P = 101325 Pa) -> PropsSI('D', 'T', 288.15, 'P', 101325, 'H2') 
+H2NMOLVOL   =  H2MOLMASS/H2NDENSITY       # [Nm^3/mol]   Hydrogen molar volume at Normal conditions (T = 0°C, P = 101325 Pa)
 LHVH2       =  119.96                     # [MJ/kg]      Hydrogen Lower Heating Value              - https://www.eniscuola.net/mediateca/caratteristiche-dellidrogeno/
 LHVH2VOL    =  LHVH2*H2NDENSITY           # [MJ/Nm^3]    Hydrogen Lower Heating Value - Volumetric
 LHVH2MOL    =  H2MOLMASS*LHVH2*1e3        # [kJ/mol]     Hydrogen Lower Heating Value - Molar
