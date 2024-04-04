@@ -42,6 +42,7 @@ class electrolyzer:
         self.only_renewables    = parameters['only_renewables']
         self.min_load           = parameters.get('minimum_load', 0) # if 'minimum load' is not specified as model input, the default value of 0 is selected by default
         self.ageing             = parameters.get('ageing', False)   # if 'ageing' is not specified as model input, the default value is set to False 
+        self.min_year   = c.MINUTES_YEAR                    # [min/year]    number of minutes in one year
         self.rhoNrh2    = c.H2NDENSITY                      # [kg/m^3]      hydrogen density under normal conditions
         self.rhoStdh2   = c.H2SDENSITY                      # [kg/m^3]      hydrogen density under standard conditions
         self.H2MolMass  = c.H2MOLMASS                       # [kg/mol]      Hydrogen molar mass
@@ -56,11 +57,16 @@ class electrolyzer:
         self.cost = False # will be updated with tec_cost()
         
         if timestep == False: 
-            self.timestep   = c.timestep              # [min]       simulation timestep if code is launched from main
+            self.timestep           = c.timestep            # [min] simulation timestep if code is launched from main
+            self.timestep_number    = c.timestep_number     # [-]   number of timestep if code is launched from main  
         else:
-            self.timestep   = timestep                # [min]       simulation timestep if code is launched from electrolyzer.py
-
-        "2H2O --> 2H2 + O2"                             # Electorlysis chemical reaction
+            self.timestep           = timestep              # [min] simulation timestep if code is launched from electrolyzer.py
+            self.timestep_number    = timestep_number       # [-]   number of timestep if code is launched from electrolyzer.py
+        
+        self.timesteps_year =  self.min_year/self.timestep  # [-] number of simulation steps in one year for the given simulaiton inputs
+        
+        
+        "2H2O --> 2H2 + O2"                             # Electorlysis chemical reaction general
         
         self.oxy = self.O2MolMass/(2*self.H2MolMass)    # [gO2/gH2] g O2 produced every g H2 
 
@@ -157,7 +163,7 @@ class electrolyzer:
             
             'POLARIZATION CURVE'
             
-            Ndatapoints = 3000                     # Number of points used to compute the polarization curve 
+            Ndatapoints = 1000                     # Number of points used to compute the polarization curve 
     
             self.CurrDensityMax_id = self.CurrDensityMax+1    # Calculations done with a higher CurrDensMax because the cell mass transport isn't valid in correspondence of CurrDensMax
             self.CellCurrDensity   = np.linspace(self.CurrDensityMin,self.CurrDensityMax_id,Ndatapoints)  # [A/cm^2]
@@ -281,9 +287,13 @@ class electrolyzer:
             self.AmbTemp                = c.AMBTEMP                     # [K]         Standard ambient temperature - 15 °C
             if self.ageing:             # if ageing effects are being considered
                 self.stack              = {}                            # initialize an empty dictionary to track operations for each module
-                for i in range(self.n_modules):                         # iterate over the number of modules specified in the parameters
-                    self.stack[f"module_{i+1}"] = {'T[°C]'      : np.zeros(timestep_number),    # for each module, an empty array is created to track parameter behaviour for every timestep of the simulation
-                                                   'Activation' : np.zeros(timestep_number)}  
+                self.stack['T[°C]']             = np.zeros(timestep_number)
+                self.stack['Activation']        = np.zeros(timestep_number)
+                self.stack['Pol_curve_history'] = [] # empty list to keep track of the polarization curve shift during utilization
+                
+                # for i in range(self.n_modules):                         # iterate over the number of modules specified in the parameters
+                    # self.stack[f"module_{i+1}"] = {'T[°C]'      : np.zeros(timestep_number),    # for each module, an empty array is created to track parameter behaviour for every timestep of the simulation
+                    #                                'Activation' : np.zeros(timestep_number)}  
                 
             """
             Anode: 2OH- --> 1/2 O2 + H2O + 2e-
@@ -349,8 +359,9 @@ class electrolyzer:
             
             Ndatapoints = 3000      # [-] number of points used to compute the polarization curve 
     
-            self.CellCurrDensity   = np.linspace(0,self.CurrDensityMax_Am2,Ndatapoints)  # [A/m^2]
-            self.CellVoltage       = np.zeros(Ndatapoints)    # [V]
+            self.CellCurrDensity        = np.linspace(0,self.CurrDensityMax_Am2,Ndatapoints)    # [A/m^2]
+            self.CellCurrDensity_Acm2   = self.CellCurrDensity/1e4                              # [A/cm^2]
+            self.CellVoltage            = np.zeros(Ndatapoints)                                 # [V]
         
             'Polarization (V-i) curve calculation'
             
@@ -377,13 +388,16 @@ class electrolyzer:
             self.Voltage = self.nc*self.CellVoltage             # [V] - module voltage
             self.Current = self.CellCurrDensity*self.CellArea   # [A] - module current
             self.Current = np.round(self.Current)               # [A] - module current rounded
+            if self.ageing:             # if ageing effects are being considered
+                self.stack['Pol_curve_history'].append(self.Voltage) # saving ideal polarization curve as first element to keep track og ageing effects
 
             # Interpolation of calculated functioning points to detect the best fit-function for i-V curve'
             self.num    = Ndatapoints                           # [-] number of intervals to be considered for the interpolation
             self.x2     = np.linspace(0,max(self.CellCurrDensity),self.num)# setting xlim for range of validity of LinRegression Calculation - Only for plot-related reasons 
 
             # Interpolation
-            self.iV1    = interp1d(self.CellCurrDensity,self.Voltage,bounds_error=False)                # Linear spline 1-D interpolation                                                                                                                                                                                                                                                
+            self.iV1    = interp1d(self.CellCurrDensity,self.Voltage,bounds_error=False)    # Linear spline 1-D interpolation CurrDensity-Voltage                                                                                                                                                                                                                                        
+            self.IV     = interp1d(self.Current,self.Voltage,bounds_error=False)            # Linear spline 1-D interpolation Current-Voltage                                                                                                                                                                                                                                                
            
             # Defining Electrolyzer Max Power Consumption
             Power_inp = []                                      # [kW] Initializing power input series
@@ -393,7 +407,8 @@ class electrolyzer:
                 Power_inp.append(pot)
                         
             # Interpolation
-            self.PI = interp1d(Power_inp,self.Current,bounds_error=False,fill_value='extrapolate')        # Linear spline 1-D interpolation
+            self.PI = interp1d(Power_inp,self.Current,bounds_error=False,fill_value='extrapolate')        # Linear spline 1-D interpolation - Power-Current
+            self.PV = interp1d(Power_inp,self.Voltage,bounds_error=False,fill_value='extrapolate')        # Linear spline 1-D interpolation - Power-Voltage
             
             self.MaxPowerModule = round(max(Power_inp),2)                       # [kW] max power input for the considered module
             self.MinInputPower  = self.MaxPowerModule*self.min_load             # [kW] min power input for the considered module based on specified constraints
@@ -454,11 +469,11 @@ class electrolyzer:
             
             'Functions for predicting the operating behaviour'
             # interpolating functions
-            self.etaF       = interp1d(h2_prodmodulemass,self.eta_F,bounds_error=False,fill_value='extrapolate')            # Linear spline 1-D interpolation -> produced H2 - Faraday efficiency
+            self.etaF       = interp1d(h2_prodmodulemass,self.eta_F,bounds_error=False,fill_value='extrapolate')        # Linear spline 1-D interpolation -> produced H2 - Faraday efficiency
             self.etaEle     = interp1d(h2_prodmodulemass,self.eta_module,bounds_error=False,fill_value='extrapolate')   # Linear spline 1-D interpolation -> produced H2 - Electric efficiency
             self.h2P        = interp1d(h2_prodmodulemass,Power_inp,bounds_error=False,fill_value='extrapolate')         # Linear spline 1-D interpolation -> produced H2 - Power consumption 
             self.P2h        = interp1d(Power_inp,h2_prodmodulemass,bounds_error=False,fill_value='extrapolate')         # Linear spline 1-D interpolation -> Power consumption - Produced H2
-            self.PetaEle    = interp1d(Power_inp,self.eta_module,bounds_error=False,fill_value='extrapolate')               # Linear spline 1-D interpolation -> Power consumption - Electric efficiency
+            self.PetaEle    = interp1d(Power_inp,self.eta_module,bounds_error=False,fill_value='extrapolate')           # Linear spline 1-D interpolation -> Power consumption - Electric efficiency
 
             
     def h2power(self,h2):
@@ -578,7 +593,7 @@ class electrolyzer:
         else: 
             print('Polarization curve not available')            
     
-    def ageing(self,step,temp,hyd,module_id):
+    def ageing(self,step,power):#,module_id,temp):
         """
         Function calculating degradation occurring to the electrolyzer due to time and thermal phenomena.
         It computes the effects of operations on the polarization curve, lead to a shift upwords at every cycle
@@ -606,14 +621,114 @@ class electrolyzer:
         # T           = [] # [°C]  electorlyzer temperature
         # operation   = [] # [0/1] 1 if the electorlyzer was swithced on in the considered timestep, 0 if it didn't activate.
         
+        # contatore tempo utilizzo
+        self.stack['Activation'][step] = 1
+        operation_time = sum(self.stack['Activation'])
         
         # updating polarization curve
-        polarization_curve = self.Voltage + V_time*operation + V_incTemp*(self.design_T-temp) # [V] self.Voltage is the design polarization curve
+        polarization_curve_new = self.Voltage + V_time*operation_time #+ V_incTemp*(self.design_T-temp) # [V] self.Voltage is the design polarization curve
         
+        # #limit on the time degradation for cell voltage - SI CONSIDERA SOLO LA DEGRADAZIONE DOVUTA AL TEMPO DI UTILIZZO QUI E NON QUELLA DOVUTA ALLA VARIAZIONE DI TEMPERATURA
+        # if max(V_array - V_T * (T_operation-T_el)) > 2.3:
+        #     print('High voltage, new electrolyzer is needed')
+        Iop_id    = self.PI(power)    # [A] module operating ideal current based on system power input
+        Vop_id    = self.PV(power)    # [V] module operating ideal voltage based on system power input 
+        H2op_id   = self.P2h(power)   # [kg/s] module oprating ideal hydrogen production based on system power input 
+        
+        #link between cell current (= stack current) and cell voltage: polarization curve
+        IV_new   = interp1d(self.Current,polarization_curve_new) # Linear spline 1-D interpolation - updating I-V function for ageing effect
+        V_op     = IV_new(Iop_id)
+        
+        ageing_factor = Vop_id/V_op
+        
+        hyd_produced = H2op_id*ageing_factor # [kg/s] hydrogen produced in operative conditions accounting for ageing effect 
+        #conversion factor calculation: H2 stack production / P stack consumption
+        # conv_factor = max(H2_array)/ (max(I_array) * max(V_array) * n_cells)      # [kg/kWh]    
+        
+        if step % self.timesteps_year == 0:
+            self.stack['Pol_curve_history'].append(polarization_curve_new)
+            print(f'Year {int(step/self.timesteps_year)}')
+
+        return hyd_produced
         # self.modules_operation[f"module_{i+1}"] = {'conv_factor':np.zeros(timestep_number)}  # for each module, an empty array is created to track parameter behaviour for every timestep of the simulation
     
     # def thermal_effects (self,)
-    
+    # def EL_transit(H2_prod,f_i_V, f_H2_i, T_el, n_cells, T_ext, kWh_factor):
+        
+    #     '''
+    #     Themal model: exothermic reaction (heat production from thermal lossess DeltaV = V-Vtn)  
+    #     T_el : electrolyzer temperature
+    #     '''
+        
+    #     n_cells_design = 106               # number of cells in the 1MW module
+    #     L_design = 3                       # [m] design length of the gas-liquid separator
+    #     r1_design = 0.3                    # [m] internal radius
+        
+    #     SF = n_cells/n_cells_design        # scale factor della configurazione, lo applico al volume
+        
+    #     L = L_design * SF**(1/3)           # scale of the geometry accoring to the SF
+        
+    #     pi = math.pi
+    #     op_time = (60*60)/(kWh_factor)       # [s]  simulation time in seconds
+    #     T_op = 71                            # [°C] operating temperature
+    #     # T_ext = 25                         # [°C] external temperature, activate in case 
+            
+    #     V_tn = 1.48                        # [V]  thermoneutral voltage
+        
+    #     'geometry'
+    #     r1 = r1_design * SF**(1/3)          
+    #     s1 = 0.004                          # [m] thickness of the electrolyzer container
+        
+    #     r3 = 1             # [m]  container internal radius
+    #     s2 = 0.005         # [m] container thickness
+        
+    #     'heat coefficeints'
+    #     h1 = 100          # [W/ m^2K]   internal convection between water (H2O + 30% KOH) - tank
+    #     h2 = 10           # [W/ m^2K]   convection tank-container
+    #     h3 = 20           # [W/ m^2K]   external convection container-air
+        
+    #     k1 = 52           # [W/ mK] steel tank conduction 
+    #     k2 = 52           # [W/ mK] steel container conduction     
+        
+    #     'instulated container'
+    #     insulation = True
+    #     if insulation == True:
+    #         s2 = 0.2     # [m]     insulation layer thickness
+
+    #         k2 = 0.05    # [W/ mK] insulation layer conduction
+            
+        
+    #     'electrolyte'
+    #     m_elect = L * r1 * r1 * pi * 1000 / 2 # [kg] of H2O in gas-liquid separator (half water, half gas)
+    #     c_elect = 4190                        # [J/kg*K]   water specific heat
+
+    #     a = h1*2*pi*r1*L
+    #     b = k1*2*pi*L/np.log((r1 + s1)/r1)   
+    #     c = h2*2*pi*(r1 + s1)*L
+    #     d = h2*2*pi*r3*L
+    #     e = k2*2*pi*L/np.log((r3 + s2)/r3)
+    #     f = h3*2*pi*(r3 + s2)*L
+        
+    #     q_lost = (T_el - T_ext) / (1/a + 1/b + 1/c + 1/d + 1/e + 1/f) # [W] thermal power lost to the environment
+
+    #     if H2_prod > 0:  
+    #         #stack current from H2 production
+    #         I_op = f_H2_i(H2_prod)
+    #         #cell voltage from cell current (= stack current)
+    #         V_op = f_i_V(I_op)
+            
+    #         #thermal power generated form the stack
+    #         q_gain = n_cells * (V_op-V_tn)*I_op*1000     # [V]*[kA]*1000 = [V]*[A] = [W] produce thermal power
+                    
+    #         Tx = T_el + (op_time / (m_elect * c_elect)) * (q_gain - q_lost)
+        
+    #         if Tx > T_op:
+    #             Tx = T_op
+
+    #     else:
+    #         Tx = T_el - (op_time / (m_elect * c_elect)) * q_lost
+        
+    #     return Tx 
     
     # Computing Electrolyzers performances via Spline Interpolation  
     def use(self,step,storable_hydrogen=False,p=False,hydrog=False):
@@ -630,7 +745,7 @@ class electrolyzer:
         P_absorbed: float electricity absorbed [kW]
         
         """
-        if self.strategy == 'hydrogen-first' and hydrog == False:       # defined strategy is either to work only with renewable energy or to prioritize its consumption while interacting also with electricity grid
+        if self.strategy == 'hydrogen-first' and hydrog == False:       # defined strategy is either to work only with renewable energy or to prioritize its consumption while interacting also with the electricity grid
             
             if self.model not in ['PEM General','Alkaline']:
                 
@@ -668,7 +783,7 @@ class electrolyzer:
                 if p <= self.Npower:                      # if available power is lower than single module nominal power
                     
                     P_absorbed = p
-                    hyd,P_absorbed,etaElectr,watCons,CellCurrden,hydrogen = electrolyzer.use1(self,p,max_hyd_storable)
+                    hyd,P_absorbed,etaElectr,watCons,CellCurrden,hydrogen = electrolyzer.use1(self,step,p,max_hyd_storable)
                     oxygen = hyd*self.oxy                 # [kg/s] Oxygen produced as electorlysis by-product 
                     if hyd > 0:
                         self.n_modules_used[step] = 1
@@ -683,7 +798,7 @@ class electrolyzer:
       
                     n_modules_used = min(self.n_modules,int(p/self.Npower))
                     P_absorbed     = self.Npower                 # power absorbed by the single module          
-                    hyd,P_absorbed,etaElectr,watCons,CellCurrden,hydrogen = electrolyzer.use1(self,P_absorbed,max_hyd_storable) 
+                    hyd,P_absorbed,etaElectr,watCons,CellCurrden,hydrogen = electrolyzer.use1(self,step,P_absorbed,max_hyd_storable) 
                     oxygen = hyd*self.oxy                        # [kg/s] Oxygen produced as electorlysis by-product 
                     if hydrogen == hyd:                          # if produced hydrogen is equal to the maximum producible one, i.e., if the produced hydrogen is lower than the storable one. Otherwise it means that only one module can be used
                         hyd_11 = np.zeros(n_modules_used+1)      # creating the array where index represents nr of modules and value is the produced hydrogen summing all the modules production
@@ -720,7 +835,7 @@ class electrolyzer:
                             if p <= self.MaxPowerStack:                      # if available power is lower than total installed power
                                 P_remained = p-self.Npower*n_modules_used    # remaining power after considering modules at full load
                                 remained_storable_hydrogen = max_hyd_storable-hyd_1 #[kg/s]
-                                hyd,P_absorbed,etaElectr,watCons,CellCurrden,hydrogen = electrolyzer.use1(self,P_remained,remained_storable_hydrogen)
+                                hyd,P_absorbed,etaElectr,watCons,CellCurrden,hydrogen = electrolyzer.use1(self,step,P_remained,remained_storable_hydrogen)
                                 if P_absorbed > 0:                           # if remaining power is higher than 10% of Npower, last module working at partial load is activated
                                     n_modules_used = n_modules_used+1        # considering the module working at partial load
                                     self.EFF_last_module[step] = etaElectr      # work efficiency of the last module working with the remaining power
@@ -821,7 +936,7 @@ class electrolyzer:
             elif self.model == 'PEM General':
                 max_hyd_storable = storable_hydrogen/(self.timestep*60)                           # Maximum storable hydrogen flow rate considering the chosen timestep [kg/s]
                 P_absorbed = self.Npower
-                hyd,P_absorbed,etaElectr,watCons,CellCurrden,hydrogen = electrolyzer.use1(self,P_absorbed,max_hyd_storable)
+                hyd,P_absorbed,etaElectr,watCons,CellCurrden,hydrogen = electrolyzer.use1(self,step,P_absorbed,max_hyd_storable)
                 P_absorbed = P_absorbed*self.n_modules
                 hyd = hyd*self.n_modules
                 watCons = watCons*self.n_modules
@@ -835,14 +950,13 @@ class electrolyzer:
         return (hyd,-P_absorbed,oxygen,-watCons)
         
                
-    def use1(self,p,max_hyd_storable):
+    def use1(self,step,p,max_hyd_storable):
         """
         This function calculates the performances of a single electrolyzer module.
         
-
         Parameters
         ----------
-        p : float > 0 electricity provided to the electrolyzer in one hour [kW]
+        p : float > 0 electricity provided to the electrolyzer in the timestep [kW]
         max_hyd_storable : float maximum hydrogen flow rate (H tank max_capacity - SOC[h-1])/(timestep*60) [kg/s] or maximum absorbable production if there is no tank
 
         Returns
@@ -855,13 +969,12 @@ class electrolyzer:
 
         """
         
-        P_absorbed        = p                             # [kW]
+        P_absorbed        = p                                   # [kW]
         CellCurrDensity1  = self.PI(P_absorbed)/self.CellArea   # [A/cm^2]
 
         # Checking if resulting current density is high enough for the electrolyzer to start, otherwise hydrogen prod = 0
     
         if CellCurrDensity1 < self.CurrDensityMin or P_absorbed < self.MinInputPower:      # condition for operability set for current density and input power 
-                                                                                      
             etaElectr        = 0      # [-] electrolyzer efficiency
             hyd              = 0      # [kg/s] hydrogen produced in the considered timestep
             P_absorbed       = 0      # [kW] absorbed power
@@ -870,20 +983,30 @@ class electrolyzer:
             hydrogen         = hyd
         
         else:
-                    
-            'Electrolyzer efficiency'                      
-            etaElectr   = self.PetaEle(P_absorbed)
-
-            'Hydrogen Production'
-            hyd         = self.P2h(P_absorbed)                                         # [kg/s] hydrogen produced       
-            hydrogen    = hyd
-            
-            'Water consumption' 
-            # watCons = hyd_vol*self.rhoStdh2*self.h2oMolMass/self.H2MolMass/etaElectr/self.rhoStdh2o   # [m^3/s] water used by the electrolyzer - volume calculated @ 15°C & Pamb
-                                                                                                        # Useful references for water consumption in electrolysis
-                                                                                                        # 1) - 15 l of H2O per kg of H2. https://doi.org/10.1016/j.rset.2021.100005
-                                                                                                        # 2) - 9 kg of H2O per kg of H2 minimum/18-24 kg of H2O per kg of H2 considering de-mineralization/ up to 32. https://energypost.eu/hydrogen-production-in-2050-how-much-water-will-74ej-need/
-            watCons  = hyd*self.watercons                                                               # [m^3/s] water used by the electrolyzer - volume calculated @ 15°C & Pamb                                        
+            if self.ageing:
+                'Electrolyzer efficiency'                      
+                etaElectr   = self.PetaEle(P_absorbed)
+                'Hydrogen Production'
+                hyd         = electrolyzer.ageing(self,step,P_absorbed)                                         # [kg/s] hydrogen produced       
+                hydrogen    = hyd
+                'Water consumption' 
+                # watCons = hyd_vol*self.rhoStdh2*self.h2oMolMass/self.H2MolMass/etaElectr/self.rhoStdh2o   # [m^3/s] water used by the electrolyzer - volume calculated @ 15°C & Pamb
+                                                                                                            # Useful references for water consumption in electrolysis
+                                                                                                            # 1) - 15 l of H2O per kg of H2. https://doi.org/10.1016/j.rset.2021.100005
+                                                                                                            # 2) - 9 kg of H2O per kg of H2 minimum/18-24 kg of H2O per kg of H2 considering de-mineralization/ up to 32. https://energypost.eu/hydrogen-production-in-2050-how-much-water-will-74ej-need/
+                watCons  = hyd*self.watercons                                                               # [m^3/s] water used by the electrolyzer - volume calculated @ 15°C & Pamb                   
+            else:
+                'Electrolyzer efficiency'                      
+                etaElectr   = self.PetaEle(P_absorbed)
+                'Hydrogen Production'
+                hyd         = self.P2h(P_absorbed)                                         # [kg/s] hydrogen produced       
+                hydrogen    = hyd
+                'Water consumption' 
+                # watCons = hyd_vol*self.rhoStdh2*self.h2oMolMass/self.H2MolMass/etaElectr/self.rhoStdh2o   # [m^3/s] water used by the electrolyzer - volume calculated @ 15°C & Pamb
+                                                                                                            # Useful references for water consumption in electrolysis
+                                                                                                            # 1) - 15 l of H2O per kg of H2. https://doi.org/10.1016/j.rset.2021.100005
+                                                                                                            # 2) - 9 kg of H2O per kg of H2 minimum/18-24 kg of H2O per kg of H2 considering de-mineralization/ up to 32. https://energypost.eu/hydrogen-production-in-2050-how-much-water-will-74ej-need/
+                watCons  = hyd*self.watercons                                                               # [m^3/s] water used by the electrolyzer - volume calculated @ 15°C & Pamb                                        
         
         if hyd > max_hyd_storable:           # if there is not enough space in the H tank to store the hydrogen (H tank is nearly full)
         
@@ -951,39 +1074,38 @@ if __name__ == "__main__":
     """
     inp_test = {  
                   "Npower": 1000,
-                  "number of modules": 5,
+                  "number of modules": 1,
                   "stack model": 'Alkaline',
-                  "minimum_load": 0,
-                  "ageing": False,
+                  "minimum_load": 0.1,
+                  "ageing": True,
                   "strategy": 'hydrogen-first',
                   "only_renewables":True
                 }
     
     
-    sim_steps = 100                               # [step] simulated period of time - usually it's 1 year minimum
-    timestep = 60                                 # Given in minutes [min]
+    sim_steps = 8760*3         # [step] simulated period of time - usually it's 1 year minimum
+    timestep = 60               # Given in minutes [min]
 
     el = electrolyzer(inp_test,sim_steps,timestep=timestep)        # creating electrolyzer object
-    el.plot_polarizationpts()                    # plot example
+    # el.plot_polarizationpts()                    # plot example
 
-    # el.ageing()
+    storable_hydrogen = 10000                      # [kg] Available capacity in tank for H2 storage at timestep 'step'
+    
+    'Test 1 - Tailored ascending power input'
+
+    flow  = np.linspace(0,el.Npower*6,sim_steps)  # [kW] power input - ascending series
+    flow1 = np.linspace(0,el.Npower,sim_steps)  # [kW] power input - ascending series
+
+    hyd         = np.zeros(len(flow))           # [kg] produced hydrogen
+    p_absorbed  = np.zeros(len(flow))           # [kW] absorbed power
+    oxygen      = np.zeros(len(flow))           # [kg] produced oxygen
+    water       = np.zeros(len(flow))           # [m3] consumed water
+    
+    for i in range(len(flow)):
+        
+        hyd[i],p_absorbed[i],oxygen[i],water[i] = el.use(i,storable_hydrogen=storable_hydrogen,p=flow[i])
+    
 # =============================================================================
-#     storable_hydrogen = 1000                      # [kg] Available capacity in tank for H2 storage at timestep 'step'
-#     
-#     'Test 1 - Tailored ascending power input'
-# 
-#     flow  = np.linspace(0,el.Npower*6,sim_steps)  # [kW] power input - ascending series
-#     flow1 = np.linspace(0,el.Npower,sim_steps)  # [kW] power input - ascending series
-# 
-#     hyd          = np.zeros(len(flow))           # [kg] produced hydrogen
-#     p_absorbed    = np.zeros(len(flow))           # [kW] absorbed power
-#     oxygen       = np.zeros(len(flow))           # [kg] produced oxygen
-#     water        = np.zeros(len(flow))           # [m3] consumed water
-#     
-#     for i in range(len(flow)):
-#         
-#         hyd[i],p_absorbed[i],oxygen[i],water[i] = el.use(i,storable_hydrogen=storable_hydrogen,p=flow[i])
-#     
 #     fig, ax = plt.subplots(dpi=600)
 #     ax.plot(-p_absorbed,el.n_modules_used,color='tab:green',zorder=3)
 #     ax.set_xlabel('Absorbed Power [kW]')
@@ -1105,5 +1227,15 @@ if __name__ == "__main__":
 # timestep = 60                                 # Given in minutes [min]
 
 # el = electrolyzer(inp_test,sim_steps,timestep=timestep)        # creating electrolyzer object
-
-# # el.ageing()
+    
+#%% 
+    fig, ax = plt.subplots(dpi=1000) 
+    
+    for index,item in enumerate(el.stack['Pol_curve_history']):
+        ax.plot(el.CellCurrDensity_Acm2,item,label=f'{index}')
+    
+    ax.legend(title='Year',fontsize='small')
+    ax.set_xlabel('Current density [A/cm$^{2}$]')
+    ax.set_ylabel('Stack Voltage [V]')
+    ax.grid(alpha=0.5,zorder=-1)    
+    plt.show()
