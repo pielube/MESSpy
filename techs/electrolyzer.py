@@ -3,6 +3,7 @@ from scipy.interpolate import interp1d
 import numpy as np
 from sklearn.linear_model import LinearRegression
 from numpy import log as ln
+import math
 import os
 import sys 
 sys.path.append(os.path.abspath(os.path.join(os.getcwd(),os.path.pardir)))   # temorarily adding constants module path 
@@ -43,6 +44,8 @@ class electrolyzer:
         self.min_load           = parameters.get('minimum_load', 0) # if 'minimum load' is not specified as model input, the default value of 0 is selected by default
         self.ageing             = parameters.get('ageing', False)   # if 'ageing' is not specified as model input, the default value is set to False 
         self.min_year   = c.MINUTES_YEAR                    # [min/year]    number of minutes in one year
+        self.min_week   = c.MINUTES_WEEK                    # [min/week]    number of minutes in one week
+        self.min_month  = c.MINUTES_MONTH                   # [min/month]   number of minutes in one month
         self.rhoNrh2    = c.H2NDENSITY                      # [kg/m^3]      hydrogen density under normal conditions
         self.rhoStdh2   = c.H2SDENSITY                      # [kg/m^3]      hydrogen density under standard conditions
         self.H2MolMass  = c.H2MOLMASS                       # [kg/mol]      Hydrogen molar mass
@@ -53,6 +56,7 @@ class electrolyzer:
         self.H2_lhv     = c.LHVH2                           # [MJ/kg]       Hydrogen Lower Heating Value
         self.lhv_nvol   = c.LHV_H2NVOL                      # [kWh/Nm3]     Hydrogen volumetric LHV under normal conditions
         self.watercons  = 0.015                             # [m^3/kgH2]    cubic meters of water consumed per kg of produced H2. Fixed value of 15 l of H2O per kg of H2. https://doi.org/10.1016/j.rset.2021.100005
+        self.cp_water   = c.CP_WATER*1000                   # [J/kgK]      Water Mass specific constant pressure specific heat
         # self.CF         = np.zeros(timestep_number)      # [%] electrolyer stack Capacity Factor
         self.cost = False # will be updated with tec_cost()
         
@@ -64,6 +68,7 @@ class electrolyzer:
             self.timestep_number    = timestep_number       # [-]   number of timestep if code is launched from electrolyzer.py
         
         self.timesteps_year =  self.min_year/self.timestep  # [-] number of simulation steps in one year for the given simulaiton inputs
+        self.timesteps_week =  self.min_week/self.timestep  # [-] number of simulation steps in one year for the given simulaiton inputs
         
         
         "2H2O --> 2H2 + O2"                             # Electorlysis chemical reaction general
@@ -286,10 +291,16 @@ class electrolyzer:
             self.cell_currdens          = np.zeros(timestep_number)     # cell current density at every hour
             self.AmbTemp                = c.AMBTEMP                     # [K]         Standard ambient temperature - 15 °C
             if self.ageing:             # if ageing effects are being considered
-                self.stack              = {}                            # initialize an empty dictionary to track operations for each module
-                self.stack['T[°C]']             = np.zeros(timestep_number)
-                self.stack['Activation']        = np.zeros(timestep_number)
-                self.stack['Pol_curve_history'] = [] # empty list to keep track of the polarization curve shift during utilization
+                self.stack = {
+                                'T[°C]': [],                                                   # Initialize empty list to track module temperature for each timestep 
+                                'Activation[-]': np.zeros(timestep_number),                    # Initialize an array to track module activation (1 for on, 0 for off) for each timestep
+                                'Pol_curve_history': [],                                       # Initialize an empty list to keep track of polarization curve shifts during utilization
+                                'Module_efficiency[-]': [],                                    # Initialize an empty list to keep track of module efficiency over time
+                                'Conversion_factor[kg/MWh]': np.zeros(timestep_number),        # Initialize an array to keep track of performance evolution
+                                'hydrogen_production[kg/s]': np.zeros(timestep_number),        # Initialize an array to keep track of hydrogen production
+                                'I_op[A]': np.zeros(timestep_number),                          # Initialize an array to keep track of operating current
+                                'V_op[V]': np.zeros(timestep_number)                           # Initialize an array to keep track of operating voltage
+                                }
                 
                 # for i in range(self.n_modules):                         # iterate over the number of modules specified in the parameters
                     # self.stack[f"module_{i+1}"] = {'T[°C]'      : np.zeros(timestep_number),    # for each module, an empty array is created to track parameter behaviour for every timestep of the simulation
@@ -388,9 +399,6 @@ class electrolyzer:
             self.Voltage = self.nc*self.CellVoltage             # [V] - module voltage
             self.Current = self.CellCurrDensity*self.CellArea   # [A] - module current
             self.Current = np.round(self.Current)               # [A] - module current rounded
-            if self.ageing:             # if ageing effects are being considered
-                self.stack['Pol_curve_history'].append(self.Voltage) # saving ideal polarization curve as first element to keep track og ageing effects
-
             # Interpolation of calculated functioning points to detect the best fit-function for i-V curve'
             self.num    = Ndatapoints                           # [-] number of intervals to be considered for the interpolation
             self.x2     = np.linspace(0,max(self.CellCurrDensity),self.num)# setting xlim for range of validity of LinRegression Calculation - Only for plot-related reasons 
@@ -402,7 +410,6 @@ class electrolyzer:
             # Defining Electrolyzer Max Power Consumption
             Power_inp = []                                      # [kW] Initializing power input series
             for i in range(len(self.Current)):
-                
                 pot = (self.Current[i]*self.Voltage[i])/1000    # [kW]
                 Power_inp.append(pot)
                         
@@ -466,6 +473,13 @@ class electrolyzer:
             
             self.maxh2prod          = round(max(h2_prodmodulemass),8)   # [kg/s] maximum amount of produced hydrogen for the considered module
             self.maxh2prod_stack    = self.maxh2prod*self.n_modules     # [kg/s] maximum amount of produced hydrogen for the considered stack 
+            self.Σ                  = (max(h2_prodmodulemass)*3600)/(self.Npower/1000)   # [kg/MWh] ideal converison factor
+            self.eta_module         = np.array(self.eta_module)
+
+            if self.ageing:             # if ageing effects are being considered
+                self.stack['Pol_curve_history'].append(self.Voltage) # saving ideal polarization curve as first element to keep track og ageing effects
+                self.stack['Module_efficiency[-]'].append(self.eta_module) # saving ideal efficiency curve
+                self.stack['T[°C]'].append(self.design_T -273.15)     # [°C]
             
             'Functions for predicting the operating behaviour'
             # interpolating functions
@@ -610,125 +624,134 @@ class electrolyzer:
         P_absorbed : float electricity absorbed [kW]
 
         """
-        V_inctime  = (3*1e-6)/60    # [V/min] voltage increase - time degradation in μV
-        V_incTemp  = 5*1e-3         # [5mV/°C] voltage increase - thermal degradation
+        V_inctime   = (3*1e-6)/60    # [V/min]   voltage increase - time degradation in μV
+        V_incTemp   = 5*1e-3         # [5mV/°C]  voltage increase - thermal degradation
         
-        V_time      = V_inctime*self.timestep # [V] voltge time degradation tha may occur for the considered step in the simulation if the electorlyzer is turned on
+        'Ideal behaviour'
+        Iop_id    = self.PI(power)      # [A] module operating ideal current based on system power input
+        Vop_id    = self.PV(power)      # [V] module operating ideal voltage based on system power input 
+        H2op_id   = self.P2h(power)     # [kg/s] module oprating ideal hydrogen production based on system power input 
+        
+# =============================================================================
+#         if step == 0:
+#             hydprod_prev = 0    # [kg/s] effect on therma degradation of hydrogen produced at step 0 are neglected
+#             Iop_prev     = 0    # [A]                  
+#             Vop_prev     = 0    # [V]
+#             Tel_prev     = 71    # [°C]
+#         else:
+#             hydprod_prev = self.stack['hydrogen_production[kg/s]'][step-1] # [kg/s] hydrogen prod. Effects of production at step-1 manifesting on polarization curve at current step
+#             Iop_prev     = self.stack['I_op[A]'][step-1]    # [A]                  
+#             Vop_prev     = self.stack['V_op[V]'][step-1]    # [V]
+#             Tel_prev     = self.stack['T[°C]'][step-1]      # [°C]
+#             
+#             
+#         temp = el.thermal_effects(Tel_prev,hydprod_prev,Iop_prev,Vop_prev)     # [°C] module temperature at current timestep
+#         self.stack['T[°C]'].append(temp) # [°C]      module temperature
+# =============================================================================
         
         'Computing ageing phenomena' 
+        V_time      = V_inctime*self.timestep           # [V] voltge time degradation tha may occur for the considered step in the simulation if the electorlyzer is turned on
         
-        # # initialising empty lists to save the parameters ofinterest
-        # T           = [] # [°C]  electorlyzer temperature
-        # operation   = [] # [0/1] 1 if the electorlyzer was swithced on in the considered timestep, 0 if it didn't activate.
+        # operating time counter
+        self.stack['Activation[-]'][step] = 1
+        operation_time = sum(self.stack['Activation[-]'])        
         
-        # contatore tempo utilizzo
-        self.stack['Activation'][step] = 1
-        operation_time = sum(self.stack['Activation'])
+        # V_thermal   = V_incTemp*(self.design_T-temp)    # [V] voltage thermal degradation
         
         # updating polarization curve
-        polarization_curve_new = self.Voltage + V_time*operation_time #+ V_incTemp*(self.design_T-temp) # [V] self.Voltage is the design polarization curve
+        polarization_curve_new = self.Voltage + V_time*operation_time #+ V_thermal # [V] self.Voltage represents the design polarization curve
         
-        # #limit on the time degradation for cell voltage - SI CONSIDERA SOLO LA DEGRADAZIONE DOVUTA AL TEMPO DI UTILIZZO QUI E NON QUELLA DOVUTA ALLA VARIAZIONE DI TEMPERATURA
+        # #limit on the time degradation for cell voltage
         # if max(V_array - V_T * (T_operation-T_el)) > 2.3:
         #     print('High voltage, new electrolyzer is needed')
-        Iop_id    = self.PI(power)    # [A] module operating ideal current based on system power input
-        Vop_id    = self.PV(power)    # [V] module operating ideal voltage based on system power input 
-        H2op_id   = self.P2h(power)   # [kg/s] module oprating ideal hydrogen production based on system power input 
         
         #link between cell current (= stack current) and cell voltage: polarization curve
         IV_new   = interp1d(self.Current,polarization_curve_new) # Linear spline 1-D interpolation - updating I-V function for ageing effect
-        V_op     = IV_new(Iop_id)
+        V_op     = IV_new(Iop_id)       # [V] operational voltage accounting for ageing effect 
         
-        ageing_factor = Vop_id/V_op
+        ageing_factor       = Vop_id/V_op     # [-] ageing factor expressed as the ratio between operational and ideal voltage for the considered current. Denominator increases over time
+        ageing_factor_rated = max(self.Voltage)/max(polarization_curve_new) # [-] ageing factor for functioning at rated power
+        hyd_produced        = H2op_id*ageing_factor # [kg/s] hydrogen produced in operative conditions accounting for ageing effect 
         
-        hyd_produced = H2op_id*ageing_factor # [kg/s] hydrogen produced in operative conditions accounting for ageing effect 
-        #conversion factor calculation: H2 stack production / P stack consumption
-        # conv_factor = max(H2_array)/ (max(I_array) * max(V_array) * n_cells)      # [kg/kWh]    
+        self.stack['Conversion_factor[kg/MWh]'][step]   = self.Σ*ageing_factor  # [kg/MWh]  ideal converison factor
+        self.stack['hydrogen_production[kg/s]'][step]   = hyd_produced          # [kg/s]    hydrogen produced in the timestep
+        self.stack['I_op[A]'][step]                     = Iop_id                # [A]       operating current
+        self.stack['V_op[V]'][step]                     = V_op                  # [V]       operating voltage
         
+        if step % 200 == 0: 
+            print(step)
         if step % self.timesteps_year == 0:
             self.stack['Pol_curve_history'].append(polarization_curve_new)
+            self.stack['Module_efficiency[-]'].append(self.eta_module*(self.Voltage/polarization_curve_new))         # [kg/MWh] ideal converison factor
             print(f'Year {int(step/self.timesteps_year)}')
 
         return hyd_produced
-        # self.modules_operation[f"module_{i+1}"] = {'conv_factor':np.zeros(timestep_number)}  # for each module, an empty array is created to track parameter behaviour for every timestep of the simulation
     
-    # def thermal_effects (self,)
-    # def EL_transit(H2_prod,f_i_V, f_H2_i, T_el, n_cells, T_ext, kWh_factor):
+    def thermal_effects (self,T_el,hydrogen,Iop,Vop):
+        '''
+        Themal model: exothermic reaction (heat production from thermal lossess DeltaV = V-Vtn)  
+        T_el : electrolyzer temperature
+        '''        
+        # 1 MW module - design dimensions
+        L_design    = 3                 # [m] design length of the gas-liquid separator
+        r1_design   = 0.3               # [m] internal radius
+        ncells_des  = 100               # [-] number of cells for 1 MW module
         
-    #     '''
-    #     Themal model: exothermic reaction (heat production from thermal lossess DeltaV = V-Vtn)  
-    #     T_el : electrolyzer temperature
-    #     '''
+        SF  = ncells_des/self.nc         # scale factor della configurazione, lo applico al volume
         
-    #     n_cells_design = 106               # number of cells in the 1MW module
-    #     L_design = 3                       # [m] design length of the gas-liquid separator
-    #     r1_design = 0.3                    # [m] internal radius
+        L   = L_design*SF**(1/3)        # scale of the geometry accoring to the SF
         
-    #     SF = n_cells/n_cells_design        # scale factor della configurazione, lo applico al volume
-        
-    #     L = L_design * SF**(1/3)           # scale of the geometry accoring to the SF
-        
-    #     pi = math.pi
-    #     op_time = (60*60)/(kWh_factor)       # [s]  simulation time in seconds
-    #     T_op = 71                            # [°C] operating temperature
-    #     # T_ext = 25                         # [°C] external temperature, activate in case 
+        π = math.pi
+        op_time = self.timestep*60      # [s]  simulation time in seconds
+        T_op = self.design_T            # [°C] operating temperature
+        T_ext = 25                         # [°C] external temperature, activate in case 
             
-    #     V_tn = 1.48                        # [V]  thermoneutral voltage
+        V_tn = 1.48                        # [V]  thermoneutral voltage https://www.scopus.com/record/display.uri?eid=2-s2.0-77958033092&origin=inward
         
-    #     'geometry'
-    #     r1 = r1_design * SF**(1/3)          
-    #     s1 = 0.004                          # [m] thickness of the electrolyzer container
+        'geometry'
+        r1 = r1_design * SF**(1/3)          
+        s1 = 0.004          # [m] thickness of the electrolyzer container
         
-    #     r3 = 1             # [m]  container internal radius
-    #     s2 = 0.005         # [m] container thickness
+        r3 = 1             # [m]  container internal radius
+        s2 = 0.005         # [m] container thickness
         
-    #     'heat coefficeints'
-    #     h1 = 100          # [W/ m^2K]   internal convection between water (H2O + 30% KOH) - tank
-    #     h2 = 10           # [W/ m^2K]   convection tank-container
-    #     h3 = 20           # [W/ m^2K]   external convection container-air
+        'heat coefficeints'
+        h1 = 100          # [W/ m^2K]   internal convection between water (H2O + 30% KOH) - tank
+        h2 = 10           # [W/ m^2K]   convection tank-container
+        h3 = 20           # [W/ m^2K]   external convection container-air
         
-    #     k1 = 52           # [W/ mK] steel tank conduction 
-    #     k2 = 52           # [W/ mK] steel container conduction     
+        k1 = 52           # [W/ mK] steel tank conduction 
+        k2 = 52           # [W/ mK] steel container conduction     
         
-    #     'instulated container'
-    #     insulation = True
-    #     if insulation == True:
-    #         s2 = 0.2     # [m]     insulation layer thickness
-
-    #         k2 = 0.05    # [W/ mK] insulation layer conduction
+        'instulated container'
+        insulation = True
+        if insulation == True:
+            s2 = 0.2     # [m]     insulation layer thickness
+            k2 = 0.05    # [W/ mK] insulation layer conduction
             
-        
-    #     'electrolyte'
-    #     m_elect = L * r1 * r1 * pi * 1000 / 2 # [kg] of H2O in gas-liquid separator (half water, half gas)
-    #     c_elect = 4190                        # [J/kg*K]   water specific heat
+        'electrolyte'
+        m_elect = L*r1*r1*π*1000/2 # [kg] of H2O in gas-liquid separator (half water, half gas)
+        c_elect = self.cp_water    # [J/kg*K]   water specific heat
 
-    #     a = h1*2*pi*r1*L
-    #     b = k1*2*pi*L/np.log((r1 + s1)/r1)   
-    #     c = h2*2*pi*(r1 + s1)*L
-    #     d = h2*2*pi*r3*L
-    #     e = k2*2*pi*L/np.log((r3 + s2)/r3)
-    #     f = h3*2*pi*(r3 + s2)*L
+        a = h1*2*π*r1*L
+        b = k1*2*π*L/np.log((r1 + s1)/r1)   
+        c = h2*2*π*(r1 + s1)*L
+        d = h2*2*π*r3*L
+        e = k2*2*π*L/np.log((r3 + s2)/r3)
+        f = h3*2*π*(r3 + s2)*L
         
-    #     q_lost = (T_el - T_ext) / (1/a + 1/b + 1/c + 1/d + 1/e + 1/f) # [W] thermal power lost to the environment
+        Qloss = (T_el-T_ext)/(1/a + 1/b + 1/c + 1/d + 1/e + 1/f) # [W] thermal power lost to the environment
 
-    #     if H2_prod > 0:  
-    #         #stack current from H2 production
-    #         I_op = f_H2_i(H2_prod)
-    #         #cell voltage from cell current (= stack current)
-    #         V_op = f_i_V(I_op)
-            
-    #         #thermal power generated form the stack
-    #         q_gain = n_cells * (V_op-V_tn)*I_op*1000     # [V]*[kA]*1000 = [V]*[A] = [W] produce thermal power
-                    
-    #         Tx = T_el + (op_time / (m_elect * c_elect)) * (q_gain - q_lost)
+        if hydrogen > 0:  
+            #thermal power generated form the stack
+            Qgain   = (Vop-V_tn)*(Iop*1000)     # [V]*[kA]*1000 = [V]*[A] = [W] produce thermal power
+            temp    = T_el + (op_time/(m_elect * c_elect))*(Qgain-Qloss) # [°C]
         
-    #         if Tx > T_op:
-    #             Tx = T_op
-
-    #     else:
-    #         Tx = T_el - (op_time / (m_elect * c_elect)) * q_lost
-        
-    #     return Tx 
+            if temp > T_op:
+                temp = T_op
+        else:
+            temp = T_el - (op_time/(m_elect*c_elect))*Qloss
+        return temp 
     
     # Computing Electrolyzers performances via Spline Interpolation  
     def use(self,step,storable_hydrogen=False,p=False,hydrog=False):
@@ -981,7 +1004,9 @@ class electrolyzer:
             watCons          = 0      # [m^3/s] water volumetric consumption
             CellCurrDensity1 = 0
             hydrogen         = hyd
-        
+            # if self.ageing:
+            #     hyd         = electrolyzer.ageing(self,step,P_absorbed)                                         # [kg/s] hydrogen produced       
+
         else:
             if self.ageing:
                 'Electrolyzer efficiency'                      
@@ -1076,15 +1101,15 @@ if __name__ == "__main__":
                   "Npower": 1000,
                   "number of modules": 1,
                   "stack model": 'Alkaline',
-                  "minimum_load": 0.1,
+                  "minimum_load": 0.3,
                   "ageing": True,
                   "strategy": 'hydrogen-first',
                   "only_renewables":True
                 }
     
     
-    sim_steps = 8760*3         # [step] simulated period of time - usually it's 1 year minimum
-    timestep = 60               # Given in minutes [min]
+    sim_steps = 8760*6         # [step] simulated period of time - usually it's 1 year minimum
+    timestep = 60              # [min] selected timestep
 
     el = electrolyzer(inp_test,sim_steps,timestep=timestep)        # creating electrolyzer object
     # el.plot_polarizationpts()                    # plot example
@@ -1229,6 +1254,7 @@ if __name__ == "__main__":
 # el = electrolyzer(inp_test,sim_steps,timestep=timestep)        # creating electrolyzer object
     
 #%% 
+    'Polarization Curve History'
     fig, ax = plt.subplots(dpi=1000) 
     
     for index,item in enumerate(el.stack['Pol_curve_history']):
@@ -1237,5 +1263,26 @@ if __name__ == "__main__":
     ax.legend(title='Year',fontsize='small')
     ax.set_xlabel('Current density [A/cm$^{2}$]')
     ax.set_ylabel('Stack Voltage [V]')
+    # ax.set_ylim(135.10,135.3)
+    ax.grid(alpha=0.5,zorder=-1)    
+    plt.show()
+    
+    'Efficiency History'
+    fig, ax = plt.subplots(dpi=1000) 
+    
+    for index,item in enumerate(el.stack['Module_efficiency[-]']):
+        ax.plot(el.CellCurrDensity_Acm2,item,label=f'{index}')
+    
+    ax.legend(title='Year',fontsize='small')
+    ax.set_xlabel('Current density [A/cm$^{2}$]')
+    ax.set_ylabel('Module efficiency [-]')
+    ax.grid(alpha=0.5,zorder=-1)    
+    plt.show()
+
+    'Conversion Factor Update'
+    fig, ax = plt.subplots(dpi=1000)     
+    ax.scatter(np.arange(sim_steps),el.stack['Conversion_factor[kg/MWh]'], s=0.1)
+    ax.set_ylabel('Σ [kg/MWh]')
+    ax.set_xlabel('Time [step]')
     ax.grid(alpha=0.5,zorder=-1)    
     plt.show()

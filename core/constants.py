@@ -100,6 +100,9 @@ H1_STEAM800  = 4159.9                     # [kJ/kg]      Steam mass specific ent
 'TIME UNITS'
 
 MINUTES_HOUR    = 60                      # [min/h]     Number of minutes in one hour 
+MINUTES_DAY     = 60*24                   # [min/day]   Number of minutes in one day 
+MINUTES_WEEK    = 60*24*7                 # [min/week]  Number of minutes in one week 
+MINUTES_MONTH   = 60*24*30                # [min/month] Number of minutes in one month
 HOURS_YEAR      = 8760                    # [h/year]    Number of hours in one year
 MINUTES_YEAR    = MINUTES_HOUR*HOURS_YEAR # [min/year]  Number of minutes in one year 
 
