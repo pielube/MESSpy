@@ -389,7 +389,7 @@ class location:
                             self.power_balance['hydrogen']['electrolyzer'][step],   \
                             self.power_balance['electricity']['electrolyzer'][step],\
                             self.power_balance['oxygen']['electrolyzer'][step],     \
-                            self.power_balance['water']['electrolyzer'][step]        = self.technologies['electrolyzer'].use(step,storable_hydrogen=producible_hyd,p=pb['electricity'])      # [:2] # hydrogen supplied by electrolyzer(+) # electricity absorbed by the electorlyzer(-) 
+                            self.power_balance['water']['electrolyzer'][step]        = self.technologies['electrolyzer'].use(step,storable_hydrogen=producible_hyd,p=pb['electricity'],Text=weather['temp_air'][step])      # [:2] # hydrogen supplied by electrolyzer(+) # electricity absorbed by the electorlyzer(-) 
                             
                             pb['hydrogen']      += self.power_balance['hydrogen']['electrolyzer'][step]
                             pb['electricity']   += self.power_balance['electricity']['electrolyzer'][step]
@@ -416,7 +416,7 @@ class location:
                         self.power_balance['hydrogen']['electrolyzer'][step],   \
                         self.power_balance['electricity']['electrolyzer'][step],\
                         self.power_balance['oxygen']['electrolyzer'][step],     \
-                        self.power_balance['water']['electrolyzer'][step]        = self.technologies['electrolyzer'].use(step,storable_hydrogen=producible_hyd,p=pb['electricity'])      # hydrogen [kg/s] and oxygen [kg/s] produced by the electrolyzer (+) electricity [kW] and water absorbed [m^3/s] (-) 
+                        self.power_balance['water']['electrolyzer'][step]        = self.technologies['electrolyzer'].use(step,storable_hydrogen=producible_hyd,p=pb['electricity'],Text=weather['temp_air'][step])      # hydrogen [kg/s] and oxygen [kg/s] produced by the electrolyzer (+) electricity [kW] and water absorbed [m^3/s] (-) 
                                                 
                     # avaliable hydrogen calculation
                     available_hyd = self.technologies['H tank'].LOC[step] + self.technologies['H tank'].max_capacity - self.technologies['H tank'].used_capacity    # [kg] hydrogen amount available in the storage system at the considered timestep. 
@@ -427,7 +427,7 @@ class location:
                         self.power_balance['hydrogen']['electrolyzer'][step],   \
                         self.power_balance['electricity']['electrolyzer'][step],\
                         self.power_balance['oxygen']['electrolyzer'][step],     \
-                        self.power_balance['water']['electrolyzer'][step]        = self.technologies['electrolyzer'].use(step,hydrog=hyd_from_ele)      # hydrogen [kg/s] and oxygen [kg/s] produced by the electrolyzer (+) electricity [kW] and water absorbed [m^3/s] (-) 
+                        self.power_balance['water']['electrolyzer'][step]        = self.technologies['electrolyzer'].use(step,hydrog=hyd_from_ele,Text=weather['temp_air'][step])      # hydrogen [kg/s] and oxygen [kg/s] produced by the electrolyzer (+) electricity [kW] and water absorbed [m^3/s] (-) 
                         
                         # pb['hydrogen']      += self.power_balance['hydrogen']['electrolyzer'][step]
                         # pb['electricity']   += self.power_balance['electricity']['electrolyzer'][step]
@@ -439,7 +439,7 @@ class location:
                         self.power_balance['hydrogen']['electrolyzer'][step],   \
                         self.power_balance['electricity']['electrolyzer'][step],\
                         self.power_balance['oxygen']['electrolyzer'][step],     \
-                        self.power_balance['water']['electrolyzer'][step]        = self.technologies['electrolyzer'].use(step,storable_hydrogen=producible_hyd,p=self.technologies['electrolyzer'].min_partial_load)      # [:2] # hydrogen supplied by electrolyzer(+) # electricity absorbed by the electorlyzer(-) 
+                        self.power_balance['water']['electrolyzer'][step]        = self.technologies['electrolyzer'].use(step,storable_hydrogen=producible_hyd,p=self.technologies['electrolyzer'].min_partial_load,Text=weather['temp_air'][step])      # [:2] # hydrogen supplied by electrolyzer(+) # electricity absorbed by the electorlyzer(-) 
                         
                         # pb['hydrogen']      += self.power_balance['hydrogen']['electrolyzer'][step]
                         # pb['electricity']   += self.power_balance['electricity']['electrolyzer'][step]
@@ -463,7 +463,7 @@ class location:
                         self.power_balance['hydrogen']['electrolyzer'][step],     \
                         self.power_balance['electricity']['electrolyzer'][step],  \
                         self.power_balance['oxygen']['electrolyzer'][step],       \
-                        self.power_balance['water']['electrolyzer'][step]         = self.technologies['electrolyzer'].use(step,storable_hydrogen=producible_hyd)      # [:2] # hydrogen supplied by electrolyzer(+) # electricity absorbed by the electorlyzer(-) 
+                        self.power_balance['water']['electrolyzer'][step]         = self.technologies['electrolyzer'].use(step,storable_hydrogen=producible_hyd,Text=weather['temp_air'][step])      # [:2] # hydrogen supplied by electrolyzer(+) # electricity absorbed by the electorlyzer(-) 
                     
                         pb['hydrogen']      += self.power_balance['hydrogen']['electrolyzer'][step]
                         pb['electricity']   += self.power_balance['electricity']['electrolyzer'][step]
