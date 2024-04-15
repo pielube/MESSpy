@@ -18,8 +18,9 @@ class electrolyzer:
         parameters : dictionary
             'Npower': float nominal power [kW]
             'number of modules': str  number of modules in the stack [-]
-            'stack model': str 'Enapter 2.1','McLyzer 800' are aviable or 'PEM General'
+            'stack model': str 'Enapter 2.1','McLyzer 800' or more detailed models like 'PEM General' and 'Alkaline'
             'minimum_load': 0-1 float [%], if specified, minimum load the electrolyser must operate at
+            'ageing':  bool, True enables ageing effects, impacting performance over time. False ignores them
             'strategy': str - 'full-time'. Electrolyzers operational 24/7, grid connection must be present. 
                             - 'hydrogen-first'. Electrolyzers working only when renewable power is available, 
                                prioritizing production of hydrogen over electricity production from RES
@@ -1016,7 +1017,7 @@ class electrolyzer:
         else:
             if self.ageing:
                 'Electrolyzer efficiency'                      
-                etaElectr   = self.PetaEle(P_absorbed)
+                etaElectr   = self.PetaEle(P_absorbed) # To be updated taking ageing into account. Now working with nominal performance curves. 
                 'Hydrogen Production'
                 hyd         = electrolyzer.ageing(self,step,P_absorbed,Text)                                         # [kg/s] hydrogen produced       
                 hydrogen    = hyd
@@ -1245,7 +1246,7 @@ if __name__ == "__main__":
         
         inp_test["ageing"] = True
         
-        sim_steps = 8760*15              # [step] simulated period of time - usually it's 1 year minimum
+        sim_steps = 8760*5              # [step] simulated period of time - usually it's 1 year minimum
         timestep = 60                   # [min] selected timestep
         
         el = electrolyzer(inp_test,sim_steps,timestep=timestep)        # creating electrolyzer object
