@@ -216,7 +216,7 @@ class fuel_cell:
 
             'RESULTING MODULE VOLTAGE'
          
-            self.Voltage = self.CellVolt*self.nc                                      # [V] MOdule Voltage
+            self.Voltage = self.CellVolt*self.nc                                      # [V] Module Voltage
 
             'Interpolation of  polarization curve: defining the fit-function for i-V curve'
             
@@ -290,7 +290,7 @@ class fuel_cell:
                 
                 'Water production'
                 # water_produced = (hyd*self.h2oMolMass/self.H2MolMass)/self.rhoStdh2o            # [Sm3/s] stoichiometric amount
-                water_produced = ((p_required*1000/(V_cell*2*self.FaradayConst))*self.h2oMolMass)/self.rhoStdh2o # [Sm3/s] of produced water https://onlinelibrary.wiley.com/doi/pdf/10.1002/9781118878330.app2
+                water_produced = (((p_required*1000/(V_cell*2*self.FaradayConst))*self.h2oMolMass)/self.rhoStdh2o)*self.nc # [Sm3/s] module produced water floe rate https://onlinelibrary.wiley.com/doi/pdf/10.1002/9781118878330.app2
                 
                 'Process heat, that can be recovered'
               
@@ -311,7 +311,8 @@ class fuel_cell:
             if self.ageing:             # if ageing effects are being considered
                 self.stack['Pol_curve_history'].append(self.Voltage) # saving ideal polarization curve as first element to keep track og ageing effects
                 self.stack['Module_efficiency[-]'].append(self.eta_module) # saving ideal efficiency curve
-            
+                self.polarization_curve_ageing = self.Voltage  # [V] initialising pol_curve. Considering design performances at first step (before starting degradation computing)
+
             self.etaFuelCell = interp1d(hydrogen,self.eta_module,bounds_error=False,fill_value='extrapolate')          # Linear spline 1-D interpolation -> H2 consumption - FC efficiency
             self.h2P         = interp1d(hydrogen,electricity_produced,bounds_error=False,fill_value='extrapolate')  # Linear spline 1-D interpolation -> H2 consumption - produced electricity
             self.FC_Heat     = interp1d(hydrogen,FC_Heat_produced,bounds_error=False,fill_value='extrapolate')      # Linear spline 1-D interpolation -> H2 consumption - produced heat
@@ -325,8 +326,6 @@ class fuel_cell:
             self.IHeat  = interp1d(self.Current,FC_Heat_produced,bounds_error=False,fill_value='extrapolate')   # Linear spline 1-D interpolation -> Operating current density - produced heat            
             self.iwater = interp1d(self.CellCurrDensity,water,bounds_error=False,fill_value='extrapolate')              # Linear spline 1-D interpolation -> Operating current density - produced water            
             self.Iwater = interp1d(self.Current,water,bounds_error=False,fill_value='extrapolate')              # Linear spline 1-D interpolation -> Operating current density - produced water            
-        
-        
         
         ####################################   
         if self.model == 'SOFC':
@@ -530,6 +529,7 @@ class fuel_cell:
             self.ihyd   = interp1d(self.CellCurrDensity,hydrogen,bounds_error=False,fill_value='extrapolate')           # Linear spline 1-D interpolation -> Operating current density - H2 consumption
             self.iHeat  = interp1d(self.CellCurrDensity,FC_Heat_produced,bounds_error=False,fill_value='extrapolate')   # Linear spline 1-D interpolation -> Operating current density - produced heat            
             self.iwater = interp1d(self.CellCurrDensity,water,bounds_error=False,fill_value='extrapolate')              # Linear spline 1-D interpolation -> Operating current density - produced water            
+
 #%%                     
     def plot_polarizationpts(self):
          
@@ -858,8 +858,8 @@ class fuel_cell:
             else:
                 if self.ageing:
                     
-                    etaFC,p_required,hyd,FC_Heat,water = fuel_cell.ageing(self,step,p_required)
-                    print('ciao')
+                    hyd,p_required,FC_Heat,etaFC,water = fuel_cell.ageing(self,step,p_required)
+                    # print('ciao')
                 else:
                     V_cell      = self.iV2(FC_CellCurrDensity)          #!!! PROBABILMENTE queste 4 righe da eliminare  [V] Single cell opertaing voltage 
                     FC_Vstack   = self.iV1(FC_CellCurrDensity)          # [V] Module operating voltage
@@ -944,19 +944,20 @@ class fuel_cell:
      
     def ageing(self,step,power):
         """
-        Calculates the impact of ageing on the electrolyzer, adjusting its performance over time.
-        Ageing effects are modeled as increases in operational voltage due to both time and temperature,
+        Calculates the impact of ageing on the electrolyzer, adjusting its performance over time.!!!!!!!!!!
+        Ageing effects are modeled as increases in operational voltage due to both time and temperature,!!!!!!!!!!1
         which in turn affect hydrogen production efficiency.
         -DARIFARE_______________________________________________________--------------------------
         Parameters:
-        - step (int): Current simulation step indicating the operational time.
+        - step (int): Current simulation step indicating the operational time.!!!!!!!!!
         - power (float): Electrical power input to the electrolyzer [kW].
-        - Text (float | None): External temperature [°C]; defaults to a standard value if None.
+        - Text (float | None): External temperature [°C]; defaults to a standard value if None.!!!!!!!!!!!!
     
-        Returns:
+        Returns:!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! darifareutto 
+        
         - hyd_produced (float): Adjusted hydrogen production [kg/s], accounting for ageing effects.
     
-        This function updates the electrolyzer's polarization curve to reflect degradation, then uses
+        This function updates the electrolyzer's polarization curve to reflect degradation, then uses!!!!!!!!
         this updated curve to determine the new operational parameters, including the hydrogen production rate.
         """
         
@@ -1043,24 +1044,26 @@ class fuel_cell:
         Iop_id    = self.PI(power)      # [A] module operating ideal current based on system power output
         vop_id    = self.Pv(power)      # [V] cell operating ideal voltage based on system power output 
         Vop_id    = self.PV(power)      # [V] module operating ideal voltage based on system power output 
-        H2op_id   = self.PV(power)      # [kg/s] module operating ideal hydrogen consumption based on system power output 
+        H2op_id   = self.Ihyd(Iop_id)   # [kg/s] module operating ideal hydrogen consumption based on system power output 
+        Pthop_id  = self.IHeat(Iop_id)  # [kW] module operating ideal by-produced heat based on system power output 
+        Etaop_id  = self.IEta(Iop_id)   # [-] module operating ideal efficiency based on system power output 
+        H2Oop_id  = self.Iwater(Iop_id) # [Sm3/s] module operating water production based on system power output 
         
         self.stack['i_op[A]'][step]     = iop_id        # [A]       operating current density
         self.stack['v_op[V]'][step]     = vop_id        # [V]       operating voltage
         
-        # capire che output far dare ad ageing allo step 0 e per tutto il periodo prima del primo aggiornamento della pol_curve (funzionamento ideale come in use1) 
         if power > 0: # if the fuel cell has been activated at current step
             self.stack['Activation[-]'][step] = 1
         
+        
         if step % self.timesteps_week == 0 and step != 0: # updating the polarization curve every week 
-            start_index = max(0,step-self.timesteps_week)        
+            start_index = int(max(0,step-self.timesteps_week))        
         
             load_i = self.stack['i_op[A]'][start_index:step]
             load_V = self.stack['v_op[V]'][start_index:step]
         
-        
-             # operating time counter
-            operation_time  = sum(self.stack['Activation[-]']) # number of timesteps the fuel cell has been operating
+            # operating time counter
+            operation_time  = sum(self.stack['Activation[-]'][start_index:step]) # number of timesteps the fuel cell has been operating
             
 # =============================================================================
 #         # h_utilizzo_year=len(load_i_pos[0])  #ore li avoro annuali
@@ -1208,22 +1211,25 @@ class fuel_cell:
             V_operation = V_deg*(operation_time*self.timestep)  # [V] voltage loss for the single fc cell due to operational conditions in the considered period
             
             # updating polarization curve
-            polarization_curve_new = self.Voltage - V_operation*self.nc  # [V] self.Voltage represents the design polarization curve
+            self.polarization_curve_ageing -= V_operation*self.nc  # [V] self.Voltage represents the design polarization curve
             
             # # limit on degradation for single cell voltage reached
             # if max(polarization_curve_new-V_thermal)/self.nc > self.CellVoltage_limit:
             #     print('Electorlyzer module voltage exceeds safe limits due to ageing. Module must be replaced')
             
-            # link between current and module voltage: polarization curve
-            IV_new   = interp1d(self.Current,polarization_curve_new) # Linear spline 1-D interpolation - updating I-V function for ageing effect
-            V_op     = IV_new(Iop_id)       # [V] operational voltage accounting for ageing effect 
-            
-            ageing_factor_op    = V_op/Vop_id     # [-] ageing factor expressed as the ratio between operational and ideal voltage for the considered current. Numerator decreases over time
-            ageing_factor_rated = max(self.Voltage)/max(polarization_curve_new) # [-] ageing factor for functioning at rated power
-            hyd_consumption     = H2op_id/ageing_factor_op # [kg/s] hydrogen consumption in operative conditions accounting for ageing effects
-            
-            self.stack['Conversion_ratio_op[MWh/kg]'][step] =   self.Γ       * ageing_factor_op                
-            self.stack['Conversion_ratio_rated[MWh/kg]']= self.Γ  *ageing_factor_rated  #     ----->> qui forse fare più un append (salvando alla stessa frequenza della polarization curve)                     
+        # link between current and module voltage: polarization curve
+        IV_new   = interp1d(self.Current,self.polarization_curve_ageing) # Linear spline 1-D interpolation - updating I-V function for ageing effect
+        V_op     = IV_new(Iop_id)       # [V] operational voltage accounting for ageing effect 
+        
+        ageing_factor_op    = V_op/Vop_id     # [-] ageing factor expressed as the ratio between operational and ideal voltage for the considered current. Numerator decreases over time
+        ageing_factor_rated = max(self.Voltage)/max(self.polarization_curve_ageing) # [-] ageing factor for functioning at rated power
+        hyd_consumption     = H2op_id/ageing_factor_op                      # [kg/s] hydrogen consumption in operative conditions accounting for ageing effects
+        P_th                = Pthop_id/ageing_factor_op             # [kW] thermal power output
+        eta                 = Etaop_id*ageing_factor_op             # [-] module operating efficiency corrected with ageing factor
+        water               = H2Oop_id//ageing_factor_op            # [Sm^3/s] water production
+
+        self.stack['Conversion_ratio_op[MWh/kg]'][step]     = self.Γ*ageing_factor_op                
+        self.stack['Conversion_ratio_rated[MWh/kg]'][step]  = self.Γ*ageing_factor_rated  #     ----->> qui forse fare più un append (salvando alla stessa frequenza della polarization curve)                     
 # =============================================================================
 #         ## Life time definition
 # 
@@ -1254,17 +1260,14 @@ class fuel_cell:
 #         self.stack['Conversion_factor_rated[kg/MWh]'][step]     = self.Σ*ageing_factor_rated    # [kg/MWh]  ideal converison factor
 #         self.stack['hydrogen_production[kg/s]'][step]           = hyd_produced                  # [kg/s]    hydrogen produced in the timestep
 # =============================================================================
-            # if step % self.timesteps_year == 0:
-            #     self.stack['Pol_curve_history'].append(polarization_curve_new)
-            #     self.stack['Module_efficiency[-]'].append(self.eta_module*(self.Voltage/polarization_curve_new))         # [kg/MWh] ideal converison factor
-            #     print(f'Year {int(step/self.timesteps_year)}')
+        if step % self.timesteps_year == 0 and step != 0:
+            self.stack['Pol_curve_history'].append(self.polarization_curve_ageing)
+            print('quiiiiiiii')
+            self.stack['Module_efficiency[-]'].append(self.eta_module*(self.Voltage/self.polarization_curve_ageing))         # [kg/MWh] ideal converison factor
+            print(f'Year {int(step/self.timesteps_year)}')
         
-        a=1
-        b=2
-        c=3
-        d=4
-        e=5
-        return a,b,c,d,e
+        
+        return hyd_consumption,power,P_th,eta,water
     
     def plot_corrected_polcurves(self,h):
         
@@ -1343,7 +1346,7 @@ if __name__ == "__main__":
                 'ageing': True
                 }
     
-    sim_steps   = 180                              # [-] number of steps to be considered for the simulation - usually a time horizon of 1 year minimum is considered
+    sim_steps   = 8760                             # [-] number of steps to be considered for the simulation - usually a time horizon of 1 year minimum is considered
     timestep    = 60                               # [min] selected timestep for the simulation
     time        = np.arange(sim_steps)
     
