@@ -1,6 +1,5 @@
 import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
-from scipy.stats import linregress
 import numpy as np
 import math
 from numpy import log as ln
@@ -9,7 +8,6 @@ import os
 import sys 
 sys.path.append(os.path.abspath(os.path.join(os.getcwd(),os.path.pardir)))   # temporarily adding constants module path 
 from core import constants as c
-import pickle
 import scipy.fft
 import scipy.optimize
 
@@ -124,17 +122,7 @@ class fuel_cell:
             self.CURR_DENS          = np.zeros(timestep_number)    # [A]  Keeping track of single cell working current - necessary for ageing calculations
             self.EFF_last_module    = np.zeros(timestep_number)    # [-]  Keeping track of the elecrolyzer last module efficiency over the simulation
             self.n_modules_used     = np.zeros(timestep_number)    # [-]  Number of modules active at each timestep 
-            if self.ageing:             # if ageing effects are being considered
-                self.stack = {
-                                'Activation[-]': np.zeros(timestep_number),                    # Initialize an array to track module activation (1 for on, 0 for off) for each timestep
-                                'Pol_curve_history': [],                                       # Initialize an empty list to keep track of polarization curve shifts during utilization
-                                'Module_efficiency[-]': [],                                    # Initialize an empty list to keep track of module efficiency over time
-                                'Conversion_ratio_op[MWh/kg]': np.zeros(timestep_number),        # Initialize an array to keep track of performance evolution
-                                'Conversion_ratio_rated[MWh/kg]': np.zeros(timestep_number),        # Initialize an array to keep track of performance evolution
-                                'hydrogen_consumption[kg/s]': np.zeros(timestep_number),        # Initialize an array to keep track of hydrogen production
-                                'i_op[A]': np.zeros(timestep_number),                          # Initialize an array to keep track of operating current
-                                'v_op[V]': np.zeros(timestep_number)                           # Initialize an array to keep track of operating voltage
-                                }
+            
             "H2 --> 2H+ + 2e" 
           
             # FuelCell  Parameters 
@@ -150,7 +138,8 @@ class fuel_cell:
             self.MembThickness       = 250                                 # [μm]     Fuel cell membrane thickness - if Nominal Power < 6 kW: MembThickness = 100 
                                                                            #                                    - if //   //   //  > 6 kW: MembThickness = 145 
             self.FC_MaxCurrent       = 230                                 # [A]      Value taken from datasheet. Current value at which maximum power is delivered
-            
+            self.MinOutputPower       = 0.1*self.Npower                    # [kW] minimum output power chosen as 10% of module nominal power 
+
             self.n_modules           = parameters['number of modules']     # [-]      Number of modules constituting the stack
             self.MaxPowerStack       = self.n_modules*self.Npower          # [kW]     Stack maximum power output
          
@@ -301,18 +290,12 @@ class fuel_cell:
                 electricity_produced.append(p_required)     # [kW]      output power
                 self.eta_module.append(etaFC)               # [-]       fc efficiency
                 FC_Heat_produced.append(FC_Heat)            # [kW]      co-product heat
-           
+            
             self.max_h2_module  = max(hydrogen)                         # [kg/s] maximum amount of exploitable hydrogen for the considered module
             self.max_h2_stack   = self.max_h2_module*self.n_modules     # [kg/s] maximum amount of exploitable hydrogen for the considered stack
-            self.Γ              = (self.Npower/1000)/(self.max_h2_module*3600) # [MWh/kg] ideal coversion ratio
             self.maxVolt_module = max(self.Voltage)                     # [V] maximum voltage of the considered module
             self.minVolt_module = min(self.Voltage)                     # [V] minimum voltage of the considered module
             
-            if self.ageing:             # if ageing effects are being considered
-                self.stack['Pol_curve_history'].append(self.Voltage) # saving ideal polarization curve as first element to keep track og ageing effects
-                self.stack['Module_efficiency[-]'].append(self.eta_module) # saving ideal efficiency curve
-                self.polarization_curve_ageing = self.Voltage  # [V] initialising pol_curve. Considering design performances at first step (before starting degradation computing)
-
             self.etaFuelCell = interp1d(hydrogen,self.eta_module,bounds_error=False,fill_value='extrapolate')          # Linear spline 1-D interpolation -> H2 consumption - FC efficiency
             self.h2P         = interp1d(hydrogen,electricity_produced,bounds_error=False,fill_value='extrapolate')  # Linear spline 1-D interpolation -> H2 consumption - produced electricity
             self.FC_Heat     = interp1d(hydrogen,FC_Heat_produced,bounds_error=False,fill_value='extrapolate')      # Linear spline 1-D interpolation -> H2 consumption - produced heat
@@ -326,6 +309,29 @@ class fuel_cell:
             self.IHeat  = interp1d(self.Current,FC_Heat_produced,bounds_error=False,fill_value='extrapolate')   # Linear spline 1-D interpolation -> Operating current density - produced heat            
             self.iwater = interp1d(self.CellCurrDensity,water,bounds_error=False,fill_value='extrapolate')              # Linear spline 1-D interpolation -> Operating current density - produced water            
             self.Iwater = interp1d(self.Current,water,bounds_error=False,fill_value='extrapolate')              # Linear spline 1-D interpolation -> Operating current density - produced water            
+        
+            if self.ageing:             # if ageing effects are being considered
+                self.stack = {
+                                'Activation[-]': np.zeros(timestep_number),                    # Initialize an array to track module activation (1 for on, 0 for off) for each timestep
+                                'Pol_curve_history': [],                                       # Initialize an empty list to keep track of polarization curve shifts during utilization
+                                'Module_efficiency[-]': [],                                    # Initialize an empty list to keep track of module efficiency over time
+                                'Conversion_ratio_op[kWh/kg]': np.zeros(timestep_number),        # Initialize an array to keep track of performance evolution
+                                'Conversion_ratio_rated[kWh/kg]': np.zeros(timestep_number),        # Initialize an array to keep track of performance evolution
+                                'hydrogen_consumption[kg/s]': np.zeros(timestep_number),        # Initialize an array to keep track of hydrogen production
+                                'i_op[A]': np.zeros(timestep_number),                          # Initialize an array to keep track of operating current
+                                'v_op[V]': np.zeros(timestep_number)                           # Initialize an array to keep track of operating voltage
+                                }
+                self.Γ              = (self.Npower)/(self.max_h2_module*3600) # [kWh/kg] ideal coversion ratio
+                # Defining the optimal operating range
+                self.v_0        = self.minVolt_module/self.nc    # [V] minimun voltge for the single cell
+                self.vol_max    = self.maxVolt_module/self.nc    # [V] maximum voltge for the single cell
+                self.v_L        = 0.6*self.vol_max               # [V] lower boundary of the optimal range 
+                self.v_U        = 0.8*self.vol_max               # [V] upper boundary of the optimal range      
+                admissile_loss  = 20                             # [%] admissible voltage values loss compared to rated performance
+                self.CellVoltage_limit = max(self.Voltage)*(admissile_loss) # [V] cell voltage value requiring replacement of the module at end of life
+                self.polarization_curve_ageing = self.Voltage.copy()  # [V] initialising pol_curve. Considering design performances at first step (before starting degradation computing)
+                self.hydP       = interp1d(hydrogen,self.P)
+                self.hydcons    = hydrogen
         
         ####################################   
         if self.model == 'SOFC':
@@ -840,9 +846,8 @@ class fuel_cell:
             p_required = -p                                             # [kW] 
             FC_CellCurrDensity = self.PI(p_required)/self.FC_CellArea   # [A/cm^2] current density value at which the fuel cell is working
             Current = FC_CellCurrDensity*self.FC_CellArea               # [A] Fuel Cell module operating current
-            
             # Checking if resulting current density is high enough for the fuel cell to start, otherwise hydrogen used = 0
-            if FC_CellCurrDensity < self.FC_MinCurrDens:      # condition for operability set for current density 
+            if FC_CellCurrDensity < self.FC_MinCurrDens or p_required < self.MinOutputPower:      # condition for operability set for current density 
                 etaFC               = 0     # [-] fuel cell efficiency
                 hyd                 = 0     # [kg/s] hydrogen used in the considered timestep
                 Current             = 0     # [A] Operational Current
@@ -850,18 +855,13 @@ class fuel_cell:
                 FC_Heat             = 0     # [kW] thermal energy produced
                 FC_CellCurrDensity  = 0     # [A/cm2] fuel cell current density
                 water               = 0     # [Sm3/s] water production
-# =============================================================================
-#                 if self.ageing:
-#                     hyd             = fuel_cell.ageing(self,step,p_required)
-#                     hydrogen        = hyd                                         # [kg/s] hydrogen produced  
-# =============================================================================
+                if self.ageing:
+                    hyd,p_required,FC_Heat,etaFC,water = fuel_cell.ageing(self,step,p_required)
             else:
                 if self.ageing:
-                    
                     hyd,p_required,FC_Heat,etaFC,water = fuel_cell.ageing(self,step,p_required)
-                    # print('ciao')
                 else:
-                    V_cell      = self.iV2(FC_CellCurrDensity)          #!!! PROBABILMENTE queste 4 righe da eliminare  [V] Single cell opertaing voltage 
+                    V_cell      = self.iV2(FC_CellCurrDensity)          # [V] Single cell opertaing voltage 
                     FC_Vstack   = self.iV1(FC_CellCurrDensity)          # [V] Module operating voltage
     
                     self.VOLT[step]      = V_cell                       # [V]      Cell voltage history
@@ -920,53 +920,56 @@ class fuel_cell:
         etaFC : module efficiency [-]
 
         """
-        
         if 0 <= hyd <= self.max_h2_module:     # if lower than maximum consumption capacity
-            p_required         = self.h2P(hyd)                          # [kW] coverable electric power
-            FC_CellCurrDensity = self.PI(p_required)/self.FC_CellArea   # [A/cm^2] current density value at which the fuel cell is working 
-    
-            if FC_CellCurrDensity < self.FC_MinCurrDens:      # condition for operability set for current density 
-                etaFC         = 0       # [-]      fuel cell efficiency
-                hyd           = 0       # [kg/s]     hydrogen used in the considered timestep
-                Current       = 0       # [A]      Operational Current
-                p_required    = 0       # [kW]    required energy - when timestep is kept at 1 h kW = kW
-                FC_Heat       = 0       # [kW]    thermal energy used
-                FC_CellCurrDensity = 0  # [A/cm^2] current density
-                water              = 0  # [m^3/s] water production 
             
-            else: 
-                etaFC       = float(self.etaFuelCell(hyd))  # [-]   FC efficiency
-                FC_Heat     = float(self.FC_Heat(hyd))      # [kW] FC produced heat
-                water       = float(self.water(hyd))        # [m^3/s] water production
+            if self.ageing:
+                p_required  = self.hydP(hyd)
+                FC_CellCurrDensity = self.PI(p_required)/self.FC_CellArea   # [A/cm^2] current density value at which the fuel cell is working  
+                if FC_CellCurrDensity < self.FC_MinCurrDens or p_required < self.MinOutputPower:
+                    p_required    = 0       # [kW]    required energy - when timestep is kept at 1 h kW = kW
+                hyd,p_required,FC_Heat,etaFC,water = fuel_cell.ageing(self,step,p_required)
+            
+            else:
+                p_required         = self.h2P(hyd)                          # [kW] coverable electric power
+                FC_CellCurrDensity = self.PI(p_required)/self.FC_CellArea   # [A/cm^2] current density value at which the fuel cell is working 
+    
+                if FC_CellCurrDensity < self.FC_MinCurrDens or p_required < self.MinOutputPower:      # condition for operability set for current density 
+                    etaFC         = 0       # [-]      fuel cell efficiency
+                    hyd           = 0       # [kg/s]     hydrogen used in the considered timestep
+                    Current       = 0       # [A]      Operational Current
+                    p_required    = 0       # [kW]    required energy - when timestep is kept at 1 h kW = kW
+                    FC_Heat       = 0       # [kW]    thermal energy used
+                    FC_CellCurrDensity = 0  # [A/cm^2] current density
+                    water              = 0  # [m^3/s] water production
+                else: 
+                    etaFC       = float(self.etaFuelCell(hyd))  # [-]   FC efficiency
+                    FC_Heat     = float(self.FC_Heat(hyd))      # [kW] FC produced heat
+                    water       = float(self.water(hyd))        # [m^3/s] water production
             
         return(hyd,p_required,FC_Heat,etaFC,water)
 
      
     def ageing(self,step,power):
         """
-        Calculates the impact of ageing on the electrolyzer, adjusting its performance over time.!!!!!!!!!!
-        Ageing effects are modeled as increases in operational voltage due to both time and temperature,!!!!!!!!!!1
-        which in turn affect hydrogen production efficiency.
-        -DARIFARE_______________________________________________________--------------------------
+        Computes the ageing effects on a fuel cell, adjusting performance by modeling voltage increases 
+        due to operational time and temperature changes, which in turn impact hydrogen production efficiency.
+    
         Parameters:
-        - step (int): Current simulation step indicating the operational time.!!!!!!!!!
-        - power (float): Electrical power input to the electrolyzer [kW].
-        - Text (float | None): External temperature [°C]; defaults to a standard value if None.!!!!!!!!!!!!
+            step (int): Current simulation step indicating operational time
+            power (float): Electrical power output to be provided by the fuel cell [kW]
     
-        Returns:!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! darifareutto 
+        Returns:
+            hyd_consumed (float): Adjusted hydrogen production rate in kg/s, accounting for ageing effects
+            power (float): The output power provided based on funciton calculations, reflecting the operational status of the fuel cell
+            P_th (float): Thermal power output in kW, adjusted for ageing
+            eta (float): Efficiency of the fuel cell, adjusted for the impact of ageing
+            water (float): Amount of water produced in standard cubic meters per second, adjusted for ageing
         
-        - hyd_produced (float): Adjusted hydrogen production [kg/s], accounting for ageing effects.
-    
-        This function updates the electrolyzer's polarization curve to reflect degradation, then uses!!!!!!!!
-        this updated curve to determine the new operational parameters, including the hydrogen production rate.
+        This function updates the fuel cell's polarization curve to reflect degradation and utilizes this curve 
+        to determine new operational parameters, including hydrogen production rate. It also performs degradation 
+        rate calculations using polynomial fitting on log-transformed data and updates internal tracking of 
+        module efficiency and polarization curve history.
         """
-        
-        # Defining the optimal operating range
-        self.v_0        = self.minVolt_module/self.nc    # [V] minimun voltge for the single cell
-        self.vol_max    = self.maxVolt_module/self.nc    # [V] maximum voltge for the single cell
-        self.v_L        = 0.6*self.vol_max               # [V] lower boundary of the optimal range 
-        self.v_U        = 0.8*self.vol_max               # [V] upper boundary of the optimal range  
-        
         def deg_rate(self,φ,plot=True):
             """
             Estimates the degradation rate of a FuelCell based on the load profile value (φ) using a polynomial fit on log-transformed data.
@@ -1006,9 +1009,9 @@ class fuel_cell:
                 return np.exp(polynomial(x))  # expanding result to return o the original scale
             
             φ_d     = exp_poly(φ)               # [μV/h] interpolated and transformed value
-            φ_dot   = exp_poly(φ)*(1e-6)/60     # [V/min] measure units conversion 
+            φ_dot   = φ_d*(1e-6)/60             # [V/min] measure units conversion 
             
-            if plot == True:
+            if plot == True and step == 0:
                 # test
                 phi_new = np.linspace(min(unique_phi), max(unique_phi), 1000)
                 phi_dot_pred = exp_poly(phi_new)
@@ -1030,7 +1033,7 @@ class fuel_cell:
 
             return φ_dot
         
-        # Parameters definition
+        'Parameters definition'
         # k1 and k2 are the constants to be used in the weight functions for voltage and current characteristic values.
         # It is recommended to use values of k1 >= 25 and k2 >= 5 for model accuracy.
 
@@ -1038,257 +1041,208 @@ class fuel_cell:
         k_1 = 25      # [-] wight function constant
         # Voltage
         k_2 = 6.5     # [-] wight function constant
- 
-        'Ideal behaviour'
-        iop_id    = self.Pi(power)      # [A] module operating ideal current density based on system power output
-        Iop_id    = self.PI(power)      # [A] module operating ideal current based on system power output
-        vop_id    = self.Pv(power)      # [V] cell operating ideal voltage based on system power output 
-        Vop_id    = self.PV(power)      # [V] module operating ideal voltage based on system power output 
-        H2op_id   = self.Ihyd(Iop_id)   # [kg/s] module operating ideal hydrogen consumption based on system power output 
-        Pthop_id  = self.IHeat(Iop_id)  # [kW] module operating ideal by-produced heat based on system power output 
-        Etaop_id  = self.IEta(Iop_id)   # [-] module operating ideal efficiency based on system power output 
-        H2Oop_id  = self.Iwater(Iop_id) # [Sm3/s] module operating water production based on system power output 
         
-        self.stack['i_op[A]'][step]     = iop_id        # [A]       operating current density
-        self.stack['v_op[V]'][step]     = vop_id        # [V]       operating voltage
-        
-        if power > 0: # if the fuel cell has been activated at current step
+        if power <= 0:  # fuel cell not working
+            iop_id      = 0
+            v_op        = 0
+            operation   = False
+        else:           # if the fuel cell has been activated at current step
             self.stack['Activation[-]'][step] = 1
+            
+            'Ideal behaviour' 
+            iop_id    = self.Pi(power)      # [A/cm^2] module operating ideal current density based on system power output
+            Iop_id    = self.PI(power)      # [A] module operating ideal current based on system power output
+            Vop_id    = self.PV(power)      # [V] module operating ideal voltage based on system power output 
+            H2op_id   = self.Ihyd(Iop_id)   # [kg/s] module operating ideal hydrogen consumption based on system power output 
+            Pthop_id  = self.IHeat(Iop_id)  # [kW] module operating ideal by-produced heat based on system power output 
+            Etaop_id  = self.IEta(Iop_id)   # [-] module operating ideal efficiency based on system power output 
+            H2Oop_id  = self.Iwater(Iop_id) # [Sm3/s] module operating water production based on system power output
+            operation = True
         
+        ageing_factor_rated = max(self.polarization_curve_ageing)/max(self.Voltage) # [-] ageing factor for functioning at rated power
+        self.stack['Conversion_ratio_rated[kWh/kg]'][step]  = self.Γ*ageing_factor_rated
+        # link between current and module voltage: polarization curve
+        if operation == True:  # if fuel cell is working in current step
+            IV_new   = interp1d(self.Current,self.polarization_curve_ageing) # Linear spline 1-D interpolation - updating I-V function for ageing effect
+            V_op                = IV_new(Iop_id)       # [V] operational voltage accounting for ageing effect 
+            v_op                = V_op/self.nc      # [V] operational cell voltage accountig for ageing
+            ageing_factor_op    = V_op/Vop_id     # [-] ageing factor expressed as the ratio between operational and ideal voltage for the considered current. Numerator decreases over time
+            hyd_consumption     = H2op_id/ageing_factor_op                      # [kg/s] hydrogen consumption in operative conditions accounting for ageing effects
+            P_th                = Pthop_id/ageing_factor_op             # [kW] thermal power output
+            eta                 = Etaop_id*ageing_factor_op             # [-] module operating efficiency corrected with ageing factor
+            water               = H2Oop_id//ageing_factor_op            # [Sm^3/s] water production
+            self.stack['Conversion_ratio_op[kWh/kg]'][step]     = self.Γ*ageing_factor_op                
+            hyd_cons            = self.hydcons/ageing_factor_op
+            self.hydP           = interp1d(hyd_cons,self.P)     # updating interpolation function used in h2power function
+        else:
+            hyd_consumption     = 0
+            power               = 0
+            P_th                = 0
+            eta                 = 0
+            water               = 0
         
+        self.stack['i_op[A]'][step]     = iop_id        # [A/cm^2]       operating current density
+        self.stack['v_op[V]'][step]     = v_op          # [V]   cell operating voltage accounting for ageing         
+        
+        'Weekly ageing phenomena computation'
         if step % self.timesteps_week == 0 and step != 0: # updating the polarization curve every week 
             start_index = int(max(0,step-self.timesteps_week))        
-        
+            
+            # considering operational current and voltage values for the period under consideration
             load_i = self.stack['i_op[A]'][start_index:step]
             load_V = self.stack['v_op[V]'][start_index:step]
         
             # operating time counter
             operation_time  = sum(self.stack['Activation[-]'][start_index:step]) # number of timesteps the fuel cell has been operating
             
-# =============================================================================
-#         # h_utilizzo_year=len(load_i_pos[0])  #ore li avoro annuali
-#         # self.replacements=[]
-#         
-#         #life time
-# 
-#         # self.v_rated=self.vol_max Blocco andrea
-# =============================================================================
+            if operation_time != 0:
 
-            'Load profile - current density'
-            # Discrete Fourier Transform - DFT
-    
-            DFT_i=scipy.fft.fft(load_i)     # Fast Fourier Transorm (Discretized)
-            # Determine the number of points in DFT and create an index array
-            N = len(DFT_i)
-            n = np.arange(N)
-            
-            # defining sampling frequency and calculating the total time
-            Fs      = 1/(60*self.timestep)    # [Hz] sampling frequency
-            T       = N/Fs
-            freq    = n/T # frequency bins for DFT
-            
-            # defining the maximum frequency to plot based on the Nyquist criterion
-            f_max = min(Fs, freq[-1])
-    
-            DFT_i_mag=np.abs(DFT_i)/N # normalizing DFT magnitude
-
-# =============================================================================
-#         def DFT_current():
-#             plt.figure(dpi=1000)      
-#             plt.plot(freq[0:int(N/2+1)],2*DFT_i_mag[0:int(N/2+1)])
-#             plt.grid()
-#             plt.xlim(0,f_max)
-#             plt.ylabel('|FFT_i(J)| [A/cm^2]')
-#             plt.xlabel('Frequency (Hz)')
-#             plt.title('Single-Sided Amplitude Spectrum of J(t)')
-#             plt.show() 
-# =============================================================================
-
-            w_curr = [k_1,1] # defining weight for current load analysis
-            # Fit a polynomial to the absolute value of the DFT over frequency
-            p_Cln = np.polyfit(freq, np.abs(DFT_i), 3)  # Third degree polynomial fitting
-            # Integrate the product of the polynomial fit and the current weight
-            prod = np.polyint(np.poly1d(p_Cln)*np.poly1d(w_curr))           #integro il prodotto tra F(omega) e w_curr indefinito
-            # Evaluate the definite integral between f_max and 0 to find the current modification factor
-            I = np.polyval(prod,f_max)-np.polyval(prod,0)    #rendo l'integrale definito tra f_max e 0
-            self.m_curr = 1/T*I+1
-            print(self.m_curr)
-
-            'Load profile - cell voltage'
-            # Voltage histogram
-            
-            # Define bins for the histogram. These bins cover the range from slightly below the minimum voltage (v_0)
-            # to slightly above the maximum voltage (vol_max), with intervals of 0.01 volts.
-            # capturing the distribution of voltage values
-            self.bins = np.arange(self.v_0 - 0.01, self.vol_max + 0.01, 0.01)  # [V] Voltage bins
-            self.v_round = np.around(load_V,3)  # [V] rounded voltage measurements
-            # indices where the voltage is greater than 0, to consider only positive voltage readings
-            self.v_pos = np.where(self.v_round > 0)[0]  # indices of positive voltages
-
-            # voltage load profile histogram
-            self.v_counts = np.histogram(self.v_round[self.v_pos], self.bins)[0]  # voltage counts in each bin
-
-            # normalizing the histogram by voltage measurements to get the frequency distribution
-            self.H_v = self.v_counts/len(self.v_pos)  # normalized histogram frequencies
-
-            # calculating the total of the normalized histogram frequencies
-            # ideally be close to 1 if all measurements are accounted for and correctly binned
-            self.H_v_tot = self.H_v.sum()  # Sum of normalized frequencies
-     
+                'Load profile - current density'
+                # Discrete Fourier Transform - DFT
         
-            # def v_count_plot():
-            #     """
-            #     Plots a histogram of voltage counts across specified bins to visualize the distribution of operation voltages. 
-            #     It highlights the lower (v_L) and upper (v_U) limits of the optimal voltage range with dashed red lines. 
-            #     This visualization helps in assessing the frequency of voltages within and outside the optimal operating conditions.
-            #     """
-            #     fig = plt.figure(dpi=600)    
-            #     ax = fig.add_subplot(111)  
-            #     self.v_counts = ax.hist(self.v_round, self.bins, density=False, facecolor='cornflowerblue', edgecolor='black', rwidth=0.6, zorder=3)
-            #     ax.vlines(x=self.v_L, ymin=0, ymax=max(self.v_counts[0])+1, linewidth=1.5, color="indianred", linestyle="dashed", zorder=4)
-            #     ax.vlines(x=self.v_U, ymin=0, ymax=max(self.v_counts[0])+1, linewidth=1.5, color="indianred", linestyle="dashed", zorder=4)
-            #     ax.text(self.v_L-0.06, max(self.v_counts[0]), "Voltage$_{min}$", fontsize=8, horizontalalignment='center', zorder=5)
-            #     ax.text(self.v_U+0.06, max(self.v_counts[0]), "Voltage$_{max}$", fontsize=8, horizontalalignment='center', zorder=5)
-            #     ax.set_xlim([self.v_0-0.1, self.vol_max+0.1])
-            #     ax.set_ylim([0,max(self.v_counts[0])+1])
-            #     ax.set_xlabel('Operation voltage range [V]')
-            #     ax.set_ylabel('Voltage counts [-]')
-            #     ax.grid(True, zorder=0, alpha=0.4)
-            #     plt.show()
-            
-            # v_count_plot()
-        
-            # def H_v_plot():
-            #     fig = plt.figure(dpi=600)    
-            #     ax = fig.add_subplot(111)
-            #     # Convert the histogram frequencies to percentages
-            #     percentage_v_counts = self.H_v * 100
-            #     counts, _, _ = ax.hist(self.bins[:-1], bins=self.bins, weights=percentage_v_counts, density=False, facecolor='cornflowerblue', edgecolor='black', rwidth=0.6, zorder=3)
-            #     ax.vlines(x=self.v_L, ymin=0, ymax=max(percentage_v_counts)+1, linewidth=1.5, color="indianred", linestyle="dashed", zorder=4)
-            #     ax.vlines(x=self.v_U, ymin=0, ymax=max(percentage_v_counts)+1, linewidth=1.5, color="indianred", linestyle="dashed", zorder=4)
-            #     ax.text(self.v_L-0.06, max(percentage_v_counts), "Voltage$_{min}$", fontsize=8, horizontalalignment='center', zorder=5)
-            #     ax.text(self.v_U+0.06, max(percentage_v_counts), "Voltage$_{max}$", fontsize=8, horizontalalignment='center', zorder=5)
-            #     ax.set_xlim([self.v_0-0.1, self.vol_max+0.1])
-            #     ax.set_ylim([0, max(percentage_v_counts)+1])
-            #     ax.set_xlabel('Operation voltage range [V]')
-            #     ax.set_ylabel('Voltage distribution [%]')
-            #     ax.grid(True, zorder=0, alpha=0.4)
-            #     plt.show()
-
-            # H_v_plot()
-        
-            self.bins = self.bins[1:]
-            
-            # defining weight for voltage load analysis w_vol
-            w_vol_1 = lambda v: (k_2*(v-self.v_L))**2+1  # if v<self.v_L
-            w_vol_2 = 1                                  # if self.v_L<v<self.v_U
-            w_vol_3 = lambda v: (k_2*(v-self.v_U))**2+1  # if v>self.v_U
-            
-            bin_width   = self.bins[1]-self.bins[0] # [V] total width of every bin  in the selected interval
-            bin_center  = bin_width/2               # [V] to subtract from bin value in order to obtain the average value of the bin among the interval extremes
-            
-            # voltage value (summation method)
-            m = 0
-            for index in range(len(self.bins)):
+                DFT_i=scipy.fft.fft(load_i)     # Fast Fourier Transorm (Discretized)
+                # Determine the number of points in DFT and create an index array
+                N = len(DFT_i)
+                n = np.arange(N)
                 
-                if self.bins[index] < self.v_L:
-                    val = self.H_v[index]*w_vol_1(self.bins[index]-bin_center)
-                elif self.bins[index] >= self.v_L and self.bins[index] <= self.v_U:
-                    val = self.H_v[index]*w_vol_2
-                elif self.bins[index]>self.v_U:
-                    val = self.H_v[index]*w_vol_3(self.bins[index]-bin_center)
-                m+=val
+                # defining sampling frequency and calculating the total time
+                Fs      = 1/(60*self.timestep)    # [Hz] sampling frequency
+                T       = N/Fs
+                freq    = n/T # frequency bins for DFT
                 
-            self.m_vol=m
+                # defining the maximum frequency to plot based on the Nyquist criterion
+                f_max = min(Fs, freq[-1])
         
-            print("m_vol="+str(self.m_vol))
+                DFT_i_mag=np.abs(DFT_i)/N # normalizing DFT magnitude
+    
+                def DFT_current():
+                    plt.figure(dpi=1000)      
+                    plt.plot(freq[0:int(N/2+1)],2*DFT_i_mag[0:int(N/2+1)])
+                    plt.grid()
+                    plt.xlim(0,f_max)
+                    plt.ylabel('|FFT_i(J)| [A/cm^2]')
+                    plt.xlabel('Frequency (Hz)')
+                    plt.title('Single-Sided Amplitude Spectrum of J(t)')
+                    plt.show() 
+    
+                w_curr = [k_1,1] # defining weight for current load analysis
+                # Fit a polynomial to the absolute value of the DFT over frequency
+                p_Cln = np.polyfit(freq, np.abs(DFT_i), 3)  # Third degree polynomial fitting
+                # Integrate the product of the polynomial fit and the current weight
+                prod = np.polyint(np.poly1d(p_Cln)*np.poly1d(w_curr))      
+                # Evaluate the definite integral between f_max and 0 to find the current modification factor
+                I = np.polyval(prod,f_max)-np.polyval(prod,0)
+                self.m_curr = round(1/T*I+1,6)
+    
+                'Load profile - cell voltage'
+                # Voltage histogram
+                
+                # Define bins for the histogram. These bins cover the range from slightly below the minimum voltage (v_0)
+                # to slightly above the maximum voltage (vol_max), with intervals of 0.01 volts
+                # capturing the distribution of voltage values
+                self.bins = np.arange(self.v_0 - 0.01, self.vol_max + 0.01, 0.01)  # [V] Voltage bins
+                self.v_round = np.around(load_V,3)  # [V] rounded voltage measurements
+                # indices where the voltage is greater than 0, to consider only positive voltage readings
+                self.v_pos = np.where(self.v_round > 0)[0]  # indices of positive voltages
+    
+                # voltage load profile histogram
+                self.v_counts = np.histogram(self.v_round[self.v_pos], self.bins)[0]  # voltage counts in each bin
+    
+                # normalizing the histogram by voltage measurements to get the frequency distribution
+                self.H_v = self.v_counts/len(self.v_pos)  # normalized histogram frequencies
+    
+                # calculating the total of the normalized histogram frequencies
+                # ideally be close to 1 if all measurements are accounted for and correctly binned
+                self.H_v_tot = self.H_v.sum()  # Sum of normalized frequencies
+         
+            
+                def v_count_plot():
+                    """
+                    Plots a histogram of voltage counts across specified bins to visualize the distribution of operation voltages. 
+                    It highlights the lower (v_L) and upper (v_U) limits of the optimal voltage range with dashed red lines. 
+                    This visualization helps in assessing the frequency of voltages within and outside the optimal operating conditions.
+                    """
+                    fig = plt.figure(dpi=600)    
+                    ax = fig.add_subplot(111)  
+                    self.v_counts = ax.hist(self.v_round, self.bins, density=False, facecolor='cornflowerblue', edgecolor='black', rwidth=0.6, zorder=3)
+                    ax.vlines(x=self.v_L, ymin=0, ymax=max(self.v_counts[0])+1, linewidth=1.5, color="indianred", linestyle="dashed", zorder=4)
+                    ax.vlines(x=self.v_U, ymin=0, ymax=max(self.v_counts[0])+1, linewidth=1.5, color="indianred", linestyle="dashed", zorder=4)
+                    ax.text(self.v_L-0.06, max(self.v_counts[0]), "Voltage$_{min}$", fontsize=8, horizontalalignment='center', zorder=5)
+                    ax.text(self.v_U+0.06, max(self.v_counts[0]), "Voltage$_{max}$", fontsize=8, horizontalalignment='center', zorder=5)
+                    ax.set_xlim([self.v_0-0.1, self.vol_max+0.1])
+                    ax.set_ylim([0,max(self.v_counts[0])+1])
+                    ax.set_xlabel('Operation voltage range [V]')
+                    ax.set_ylabel('Voltage counts [-]')
+                    ax.grid(True, zorder=0, alpha=0.4)
+                    plt.show()
+                
+                # v_count_plot()
+            
+                def H_v_plot():
+                    fig = plt.figure(dpi=600)    
+                    ax = fig.add_subplot(111)
+                    # Convert the histogram frequencies to percentages
+                    percentage_v_counts = self.H_v * 100
+                    counts, _, _ = ax.hist(self.bins[:-1], bins=self.bins, weights=percentage_v_counts, density=False, facecolor='cornflowerblue', edgecolor='black', rwidth=0.6, zorder=3)
+                    ax.vlines(x=self.v_L, ymin=0, ymax=max(percentage_v_counts)+1, linewidth=1.5, color="indianred", linestyle="dashed", zorder=4)
+                    ax.vlines(x=self.v_U, ymin=0, ymax=max(percentage_v_counts)+1, linewidth=1.5, color="indianred", linestyle="dashed", zorder=4)
+                    ax.text(self.v_L-0.06, max(percentage_v_counts), "Voltage$_{min}$", fontsize=8, horizontalalignment='center', zorder=5)
+                    ax.text(self.v_U+0.06, max(percentage_v_counts), "Voltage$_{max}$", fontsize=8, horizontalalignment='center', zorder=5)
+                    ax.set_xlim([self.v_0-0.1, self.vol_max+0.1])
+                    ax.set_ylim([0, max(percentage_v_counts)+1])
+                    ax.set_xlabel('Operation voltage range [V]')
+                    ax.set_ylabel('Voltage distribution [%]')
+                    ax.grid(True, zorder=0, alpha=0.4)
+                    plt.show()
+    
+                H_v_plot()
+            
+                self.bins = self.bins[1:]
+                
+                # defining weight for voltage load analysis w_vol
+                w_vol_1 = lambda v: (k_2*(v-self.v_L))**2+1  # if v<self.v_L
+                w_vol_2 = 1                                  # if self.v_L<v<self.v_U
+                w_vol_3 = lambda v: (k_2*(v-self.v_U))**2+1  # if v>self.v_U
+                
+                bin_width   = self.bins[1]-self.bins[0] # [V] total width of every bin  in the selected interval
+                bin_center  = bin_width/2               # [V] to subtract from bin value in order to obtain the average value of the bin among the interval extremes
+                
+                # voltage value (summation method)
+                m = 0
+                for index in range(len(self.bins)):
+                    
+                    if self.bins[index] < self.v_L:
+                        val = self.H_v[index]*w_vol_1(self.bins[index]-bin_center)
+                    elif self.bins[index] >= self.v_L and self.bins[index] <= self.v_U:
+                        val = self.H_v[index]*w_vol_2
+                    elif self.bins[index]>self.v_U:
+                        val = self.H_v[index]*w_vol_3(self.bins[index]-bin_center)
+                    m+=val
+                    
+                self.m_vol=m
+                        
+                'φ parameter calculation'
+                ## characteristic value of load
+                self.φ = self.m_curr*self.m_vol
+                
+                V_deg       = deg_rate(self,self.φ)                 # [V/min]  voltage decrease in the considered period - degradation rate
+                V_operation = V_deg*(operation_time*self.timestep)  # [V] voltage loss for the single fc cell due to operational conditions in the considered period
+                
+                # updating polarization curve
+                self.polarization_curve_ageing -= V_operation*self.nc  # [V] self.Voltage represents the design polarization curve
+    
+                # limit on degradation for single cell voltage reached
+                if max(self.polarization_curve_ageing-V_operation*self.nc)/self.nc > self.CellVoltage_limit:
+                    print('Electorlyzer module voltage exceeds safe limits due to ageing. Module must be replaced')
+            
+        self.stack['hydrogen_consumption[kg/s]'][step]           = hyd_consumption  # [kg/s]    hydrogen consumption in the timestep
         
-            'φ parameter calculation'
-            ## characteristic value of load
-            self.φ = self.m_curr*self.m_vol
-            
-            V_deg       = deg_rate(self,self.φ)                 # [V/min]  voltage decrease in the considered period - degradation rate
-            V_operation = V_deg*(operation_time*self.timestep)  # [V] voltage loss for the single fc cell due to operational conditions in the considered period
-            
-            # updating polarization curve
-            self.polarization_curve_ageing -= V_operation*self.nc  # [V] self.Voltage represents the design polarization curve
-            
-            # # limit on degradation for single cell voltage reached
-            # if max(polarization_curve_new-V_thermal)/self.nc > self.CellVoltage_limit:
-            #     print('Electorlyzer module voltage exceeds safe limits due to ageing. Module must be replaced')
-            
-        # link between current and module voltage: polarization curve
-        IV_new   = interp1d(self.Current,self.polarization_curve_ageing) # Linear spline 1-D interpolation - updating I-V function for ageing effect
-        V_op     = IV_new(Iop_id)       # [V] operational voltage accounting for ageing effect 
-        
-        ageing_factor_op    = V_op/Vop_id     # [-] ageing factor expressed as the ratio between operational and ideal voltage for the considered current. Numerator decreases over time
-        ageing_factor_rated = max(self.Voltage)/max(self.polarization_curve_ageing) # [-] ageing factor for functioning at rated power
-        hyd_consumption     = H2op_id/ageing_factor_op                      # [kg/s] hydrogen consumption in operative conditions accounting for ageing effects
-        P_th                = Pthop_id/ageing_factor_op             # [kW] thermal power output
-        eta                 = Etaop_id*ageing_factor_op             # [-] module operating efficiency corrected with ageing factor
-        water               = H2Oop_id//ageing_factor_op            # [Sm^3/s] water production
-
-        self.stack['Conversion_ratio_op[MWh/kg]'][step]     = self.Γ*ageing_factor_op                
-        self.stack['Conversion_ratio_rated[MWh/kg]'][step]  = self.Γ*ageing_factor_rated  #     ----->> qui forse fare più un append (salvando alla stessa frequenza della polarization curve)                     
-# =============================================================================
-#         ## Life time definition
-# 
-#         v_deg_rate_paper=paper_fit[0]*self.phi+paper_fit[1]
-#         self.v_deg_rate_pol=(polyfit_forced[0]*(self.phi**2))+(polyfit_forced[1]*self.phi)+polyfit_forced[2] #[microV/h]
-#         v_deg_rate_exp=a*np.exp(self.phi*b)
-#         print("v_deg="+str(self.v_deg_rate_pol))
-#         
-#         T_cell_h_paper=(0.1*self.v_rated)/(v_deg_rate_paper/1e6)   #[h]
-#         T_cell_y_paper=T_cell_h_paper/h_utilizzo_year
-# 
-#         self.T_cell_h_pol=(0.1*self.v_rated)/(self.v_deg_rate_pol/1e6)   #[h]
-#         self.T_cell_y_pol=self.T_cell_h_pol/h_utilizzo_year
-#         print("T_cell="+str(self.T_cell_h_pol))
-# 
-#         T_cell_h_exp=(0.1*self.v_rated)/(v_deg_rate_exp/1e6)   #[h]
-#         T_cell_y_exp=T_cell_h_exp/h_utilizzo_year
-# 
-#         n_replacements=economic_data['investment years']*(8760/self.T_cell_h_pol)
-#         for n in np.arange(n_replacements):
-#             self.replacements.append(self.T_cell_h_pol*(1+n))
-#         
-# 
-#            return self.replacements
-# =============================================================================
-# =============================================================================
-#         self.stack['Conversion_factor_op[kg/MWh]'][step]        = self.Σ*ageing_factor_op       # [kg/MWh]  ideal converison factor
-#         self.stack['Conversion_factor_rated[kg/MWh]'][step]     = self.Σ*ageing_factor_rated    # [kg/MWh]  ideal converison factor
-#         self.stack['hydrogen_production[kg/s]'][step]           = hyd_produced                  # [kg/s]    hydrogen produced in the timestep
-# =============================================================================
-        if step % self.timesteps_year == 0 and step != 0:
-            self.stack['Pol_curve_history'].append(self.polarization_curve_ageing)
-            print('quiiiiiiii')
+        if step % self.timesteps_year == 0:
+            self.stack['Pol_curve_history'].append(self.polarization_curve_ageing.copy())
             self.stack['Module_efficiency[-]'].append(self.eta_module*(self.Voltage/self.polarization_curve_ageing))         # [kg/MWh] ideal converison factor
             print(f'Year {int(step/self.timesteps_year)}')
         
-        
         return hyd_consumption,power,P_th,eta,water
-    
-    def plot_corrected_polcurves(self,h):
-        
-        fig=plt.figure(figsize=(12,8),dpi=1000)
-        fig.suptitle("Prestazioni FC da {}".format(round(self.FC_NominalPower,1)) +" kW con ageing",fontsize=25)
-        
-        ax_1=fig.add_subplot(111)
-        ax_1.plot(self.CellCurrDensity,self.Voltage,label='BoL', color='b',linewidth=3.0)
-        ax_1.plot(self.x,self.iV1(self.x),label='h='+str(h),color='g',linewidth=3.0)
-        #ax_1.plot(self.x,self.iV1(self.x),label="EoL",color='r',linewidth=3.0) 
-        ax_1.grid()
-        ax_1.legend(fontsize=20)
-        ax_1.set_xlabel('Cell Current Density [A cm$^{-2}$]',fontsize=20)
-        ax_1.set_ylabel('Stak Voltage [V]',fontsize=20)
-        ax_1.set_title('PEMFC Polarization Curve (V-i)',fontsize=20 )
-        
-        plt.tight_layout()
-        plt.show()
-            
-    
-    
     
     def tech_cost(self,tech_cost):
         """
@@ -1346,148 +1300,209 @@ if __name__ == "__main__":
                 'ageing': True
                 }
     
-    sim_steps   = 8760                             # [-] number of steps to be considered for the simulation - usually a time horizon of 1 year minimum is considered
-    timestep    = 60                               # [min] selected timestep for the simulation
-    time        = np.arange(sim_steps)
-    
-    fc = fuel_cell(inp_test,sim_steps,timestep=timestep)         # creating fuel cell object
-    # fc.plot_polarizationpts()                  # cell polarization curve
-    
-    available_hydrogen = 1000                   # [kg] hydrogen available in the storage system
-
-    if fc.model == 'PEM General' and fc.Npower == 13.6:
-        fc.plot_stackperformancePEM()                   # PEMFC stack performance curve
-    if fc.model == 'SOFC' and fc.Npower == 5:
-        fc.plot_stackperformanceSOFC()                  # SOFC stack performance curve
-
-    'Test 1 - Tailored ascending power input'
-
-    flow  = - np.linspace(0.5,fc.Npower*6,sim_steps)  # [kW] power demand - ascending series
-    flow1 = - np.linspace(0.5,fc.Npower,sim_steps)    # [kW] power demand - ascending series
-
-    hyd_used = np.zeros(sim_steps)      # [kg] hydrogen used by fuel cell
-    P_el     = np.zeros(sim_steps)      # [kW] electricity produced
-    P_th     = np.zeros(sim_steps)      # [kW] produced heat
-    eta      = np.zeros(sim_steps)      # [-]  efficiency  
-    water    = np.zeros(sim_steps)      # [Sm3/s]  produced water  
-    
-    for step in range(len(flow1)):
-        hyd_used[step],P_el[step],P_th[step],eta[step],water[step] = fc.use(step,flow1[step],available_hydrogen)
-        # available_hydrogen += hyd_used[step]*60*timestep  # [kg] updating available hydrogen
+    if inp_test['ageing'] == False: 
+        sim_steps   = 1000                            # [-] number of steps to be considered for the simulation - usually a time horizon of 1 year minimum is considered
+        timestep    = 60                               # [min] selected timestep for the simulation
+        time        = np.arange(sim_steps)
         
-# =============================================================================
-#     # fc.EFF[fc.EFF == 0] = math.nan      # activate to avoid representation o '0' values when fuel cell is turned off
-#     
-#     fig=plt.figure(figsize=(8,8),dpi=1000)
-#     fig.suptitle("{} ({} kW) performance".format(inp_test['stack model'],round(fc.Npower,1)))
-#     
-#     PI=fig.add_subplot(211)
-#     PI.plot(-flow1,P_th,label="Thermal Power") 
-#     PI.axvline(x=fc.MinPower,linestyle=':',label= 'Lower Functioning Boundary', zorder=3, linewidth = 2)   
-#     PI.set_title("Heat vs Electric Power")
-#     PI.grid(alpha=0.3, zorder=-1)
-#     PI.set_xlabel("Power Demand [kW]")
-#     PI.set_ylabel("Thermal Output [kW]")
-#     PI.legend(fontsize=15)
-#     
-#     ETA=fig.add_subplot(212)
-#     ETA.scatter(-flow1,fc.EFF,label="Efficiency",color="green",edgecolors='k')
-#     ETA.axvline(x=fc.MinPower,color='tab:blue',linestyle=':',label= 'Lower Functioning Boundary', zorder=3, linewidth = 2)   
-#     ETA.set_title("Efficiency vs Power")
-#     ETA.grid(alpha=0.3, zorder=-1)
-#     ETA.set_xlabel("Power Demand [kW]")
-#     ETA.set_ylabel("Efficiency [-]")
-#     ETA.legend(fontsize=15)
-#     
-#     plt.tight_layout()
-#     plt.show()
-#     
-#     
-#     fig=plt.figure(figsize=(8,8),dpi=1000)
-#     fig.suptitle("{} ({} kW) performance".format(inp_test['stack model'],round(fc.Npower,1)))
-#     
-#     PI=fig.add_subplot(211)
-#     PI.plot(-flow1,-hyd_used)
-#     PI.set_title("H$_{2}$ Consumption vs Power")
-#     PI.grid(alpha=0.3, zorder=-1)
-#     PI.set_xlabel("Power Output [kW]")
-#     PI.set_ylabel("Hydrogen consumption [kg/s]")
-#     # PI.legend(fontsize=15)
-#     
-#     ETA=fig.add_subplot(212)
-#     ETA.scatter(-flow1,fc.EFF,label="Efficiency",color="green",edgecolors='k',zorder =3)
-#     ETA.axvline(x=fc.MinPower,color='tab:blue',linestyle=':',label= 'Lower Functioning Boundary', zorder=3, linewidth = 2)   
-#     ETA.set_title("Efficiency vs Power")
-#     ETA.grid()
-#     ETA.set_xlabel("Power Output [kW]")
-#     ETA.set_ylabel("Efficiency [-]")
-#     ETA.legend(fontsize=15)
-#     
-#     plt.tight_layout()
-#     plt.show()
-#     
-#     fig, ax = plt.subplots(dpi=600)
-#     ax.scatter(-flow1,fc.EFF, edgecolors='k', zorder = 3)
-#     ax.set_title("Fuel Cell Module Efficiency")
-#     textstr = '\n'.join((
-#         r'$CellArea=%.1f$ $cm^{2}$' % (fc.FC_CellArea,),
-#         r'$P_{nom}= %.1f$ kW' % (fc.Npower,),
-#         r'$i_{max}= %.1f$ A $cm^{-2}$' % (fc.FC_MaxCurrDens,),
-#         r'$n_{cell}= %.0f$' % (fc.nc,)))
-#     props = dict(boxstyle='round', facecolor='wheat', alpha=0.8)
-#     ax.text(fc.Npower/2,0.2,textstr,fontsize=10,va='bottom',backgroundcolor='none', bbox=props)
-#     ax.grid(alpha=0.3, zorder=-1)
-#     ax.set_ylim(0,None)
-#     ax.set_xlabel('Power Output [kW]')
-#     ax.set_ylabel('$\\eta$') 
-#     
-#     plt.figure(dpi=1000)
-#     plt.plot(-flow1, fc.EFF)
-#     plt.grid(alpha=0.3,zorder=-1)
-#     plt.xlabel('Power Output [kW]')
-#     plt.ylabel('$\\eta$ - Efficiency [-]')
-#    
-#     for step in range(len(flow)):
-#         hyd_used[step],P_el[step],P_th[step],eta[step],water[step] = fc.use(step,flow[step],available_hydrogen)
-#         
-#     fig, ax = plt.subplots(dpi=600)
-#     ax.plot(-flow,fc.n_modules_used,color='tab:green',zorder=3)
-#     ax.set_xlabel('Required Power [kW]')
-#     ax.set_ylabel('Active modules [-]')
-#     ax.grid(alpha=0.3, zorder=-1)
-#     ax.set_title('Fuel Cell Stack - Nr of working modules')
-#   
-#     
-#     'Test 2 - Random power demand'
-# 
-#     fd   = -np.random.uniform(0.08*fc.Npower,5.2*fc.Npower,sim_steps)   # [kW] power required from the Fuel Cell - random values
-#     
-#     for step in range(len(fd)):
-#         hyd_used[step],P_el[step],P_th[step],eta[step],water[step] = fc.use(step,fd[step],available_hydrogen)
-#         
-#     fig, ax = plt.subplots(dpi=1000)
-#     ax2 = ax.twinx() 
-#     ax.bar(np.arange(sim_steps)-0.2,fc.EFF,width=0.35,zorder=3,edgecolor='k',label='$1^{st}$ module efficiency', alpha =0.8)
-#     ax.bar(np.arange(sim_steps)+0.,fc.EFF_last_module,width=0.35,zorder=3, edgecolor = 'k',align='edge',label='Last module efficiency',alpha =0.8)
-#     ax2.scatter(np.arange(sim_steps),-fd,color ='limegreen',s=25,edgecolors='k',label='Required Power')
-#     h1, l1 = ax.get_legend_handles_labels()
-#     h2, l2 = ax2.get_legend_handles_labels()
-#     ax.legend(h1+h2, l1+l2, loc='lower center',bbox_to_anchor=(0.5, 1.08), ncol =3, fontsize ='small')
-#     ax.set_xlabel('Time [step]')
-#     ax.set_ylabel('Efficiency [-]')
-#     ax2.set_ylabel('Power Output [kW]')
-#     ax.grid(alpha=0.3, zorder=-1)
-#     ax.set_title('Fuel Cell Stack functioning behaviour')
-#     
-#     num = 24   # number of hours to be represented in the plot below
-#     
-#     fig, ax = plt.subplots(dpi=1000)
-#     ax.bar(np.arange(num)-0.2,P_el[:num],width=0.35,zorder=3,color='lightseagreen',edgecolor='k',label='Electric output', alpha =0.8)
-#     ax.bar(np.arange(num)+0.,P_th[:num],width=0.35,zorder=3,color='indianred',edgecolor='k',align='edge',label='Thermal output',alpha =0.8)
-#     ax.legend(loc='lower center',bbox_to_anchor=(0.5, 1.08), ncol =3, fontsize ='small')
-#     ax.set_xlabel('Time [step]')
-#     ax.set_ylabel('Power [kW]')
-#     ax2.set_ylabel('Power Output [kW]')
-#     ax.grid(alpha=0.3, zorder=-1)
-#     ax.set_title('Fuel Cell Stack functioning behaviour')
-# =============================================================================
+        fc = fuel_cell(inp_test,sim_steps,timestep=timestep)         # creating fuel cell object
+        # fc.plot_polarizationpts()                  # cell polarization curve
+        
+        available_hydrogen = 1000                   # [kg] hydrogen available in the storage system
+    
+        if fc.model == 'PEM General' and fc.Npower == 13.6:
+            fc.plot_stackperformancePEM()                   # PEMFC stack performance curve
+        if fc.model == 'SOFC' and fc.Npower == 5:
+            fc.plot_stackperformanceSOFC()                  # SOFC stack performance curve
+    
+        'Test 1 - Tailored ascending power input'
+    
+        flow  = - np.linspace(0.5,fc.Npower*6,sim_steps)  # [kW] power demand - ascending series
+        flow1 = - np.linspace(0.5,fc.Npower,sim_steps)    # [kW] power demand - ascending series
+    
+        hyd_used = np.zeros(sim_steps)      # [kg] hydrogen used by fuel cell
+        P_el     = np.zeros(sim_steps)      # [kW] electricity produced
+        P_th     = np.zeros(sim_steps)      # [kW] produced heat
+        eta      = np.zeros(sim_steps)      # [-]  efficiency  
+        water    = np.zeros(sim_steps)      # [Sm3/s]  produced water  
+        
+        for step in range(len(flow1)):
+            hyd_used[step],P_el[step],P_th[step],eta[step],water[step] = fc.use(step,flow1[step],available_hydrogen)
+            # available_hydrogen += hyd_used[step]*60*timestep  # [kg] updating available hydrogen
+            
+        # fc.EFF[fc.EFF == 0] = math.nan      # activate to avoid representation o '0' values when fuel cell is turned off
+        
+        fig=plt.figure(figsize=(8,8),dpi=1000)
+        fig.suptitle("{} ({} kW) performance".format(inp_test['stack model'],round(fc.Npower,1)))
+        
+        PI=fig.add_subplot(211)
+        PI.plot(-flow1,P_th,label="Thermal Power") 
+        PI.axvline(x=fc.MinPower,linestyle=':',label= 'Lower Functioning Boundary', zorder=3, linewidth = 2)   
+        PI.set_title("Heat vs Electric Power")
+        PI.grid(alpha=0.3, zorder=-1)
+        PI.set_xlabel("Power Demand [kW]")
+        PI.set_ylabel("Thermal Output [kW]")
+        PI.legend(fontsize=15)
+        
+        ETA=fig.add_subplot(212)
+        ETA.scatter(-flow1,fc.EFF,label="Efficiency",color="green",edgecolors='k')
+        ETA.axvline(x=fc.MinPower,color='tab:blue',linestyle=':',label= 'Lower Functioning Boundary', zorder=3, linewidth = 2)   
+        ETA.set_title("Efficiency vs Power")
+        ETA.grid(alpha=0.3, zorder=-1)
+        ETA.set_xlabel("Power Demand [kW]")
+        ETA.set_ylabel("Efficiency [-]")
+        ETA.legend(fontsize=15)
+        
+        plt.tight_layout()
+        plt.show()
+        
+        
+        fig=plt.figure(figsize=(8,8),dpi=1000)
+        fig.suptitle("{} ({} kW) performance".format(inp_test['stack model'],round(fc.Npower,1)))
+        
+        PI=fig.add_subplot(211)
+        PI.plot(-flow1,-hyd_used)
+        PI.set_title("H$_{2}$ Consumption vs Power")
+        PI.grid(alpha=0.3, zorder=-1)
+        PI.set_xlabel("Power Output [kW]")
+        PI.set_ylabel("Hydrogen consumption [kg/s]")
+        # PI.legend(fontsize=15)
+        
+        ETA=fig.add_subplot(212)
+        ETA.scatter(-flow1,fc.EFF,label="Efficiency",color="green",edgecolors='k',zorder =3)
+        ETA.axvline(x=fc.MinPower,color='tab:blue',linestyle=':',label= 'Lower Functioning Boundary', zorder=3, linewidth = 2)   
+        ETA.set_title("Efficiency vs Power")
+        ETA.grid()
+        ETA.set_xlabel("Power Output [kW]")
+        ETA.set_ylabel("Efficiency [-]")
+        ETA.legend(fontsize=15)
+        
+        plt.tight_layout()
+        plt.show()
+        
+        fig, ax = plt.subplots(dpi=600)
+        ax.scatter(-flow1,fc.EFF, edgecolors='k', zorder = 3)
+        ax.set_title("Fuel Cell Module Efficiency")
+        textstr = '\n'.join((
+            r'$CellArea=%.1f$ $cm^{2}$' % (fc.FC_CellArea,),
+            r'$P_{nom}= %.1f$ kW' % (fc.Npower,),
+            r'$i_{max}= %.1f$ A $cm^{-2}$' % (fc.FC_MaxCurrDens,),
+            r'$n_{cell}= %.0f$' % (fc.nc,)))
+        props = dict(boxstyle='round', facecolor='wheat', alpha=0.8)
+        ax.text(fc.Npower/2,0.2,textstr,fontsize=10,va='bottom',backgroundcolor='none', bbox=props)
+        ax.grid(alpha=0.3, zorder=-1)
+        ax.set_ylim(0,None)
+        ax.set_xlabel('Power Output [kW]')
+        ax.set_ylabel('$\\eta$') 
+        
+        plt.figure(dpi=1000)
+        plt.plot(-flow1, fc.EFF)
+        plt.grid(alpha=0.3,zorder=-1)
+        plt.xlabel('Power Output [kW]')
+        plt.ylabel('$\\eta$ - Efficiency [-]')
+       
+        for step in range(len(flow)):
+            hyd_used[step],P_el[step],P_th[step],eta[step],water[step] = fc.use(step,flow[step],available_hydrogen)
+            
+        fig, ax = plt.subplots(dpi=600)
+        ax.plot(-flow,fc.n_modules_used,color='tab:green',zorder=3)
+        ax.set_xlabel('Required Power [kW]')
+        ax.set_ylabel('Active modules [-]')
+        ax.grid(alpha=0.3, zorder=-1)
+        ax.set_title('Fuel Cell Stack - Nr of working modules')
+      
+        
+        'Test 2 - Random power demand'
+    
+        fd   = -np.random.uniform(0.08*fc.Npower,5.2*fc.Npower,sim_steps)   # [kW] power required from the Fuel Cell - random values
+        
+        for step in range(len(fd)):
+            hyd_used[step],P_el[step],P_th[step],eta[step],water[step] = fc.use(step,fd[step],available_hydrogen)
+            
+        fig, ax = plt.subplots(dpi=1000)
+        ax2 = ax.twinx() 
+        ax.bar(np.arange(sim_steps)-0.2,fc.EFF,width=0.35,zorder=3,edgecolor='k',label='$1^{st}$ module efficiency', alpha =0.8)
+        ax.bar(np.arange(sim_steps)+0.,fc.EFF_last_module,width=0.35,zorder=3, edgecolor = 'k',align='edge',label='Last module efficiency',alpha =0.8)
+        ax2.scatter(np.arange(sim_steps),-fd,color ='limegreen',s=25,edgecolors='k',label='Required Power')
+        h1, l1 = ax.get_legend_handles_labels()
+        h2, l2 = ax2.get_legend_handles_labels()
+        ax.legend(h1+h2, l1+l2, loc='lower center',bbox_to_anchor=(0.5, 1.08), ncol =3, fontsize ='small')
+        ax.set_xlabel('Time [step]')
+        ax.set_ylabel('Efficiency [-]')
+        ax2.set_ylabel('Power Output [kW]')
+        ax.grid(alpha=0.3, zorder=-1)
+        ax.set_title('Fuel Cell Stack functioning behaviour')
+        
+        num = 24   # number of hours to be represented in the plot below
+        
+        fig, ax = plt.subplots(dpi=1000)
+        ax.bar(np.arange(num)-0.2,P_el[:num],width=0.35,zorder=3,color='lightseagreen',edgecolor='k',label='Electric output', alpha =0.8)
+        ax.bar(np.arange(num)+0.,P_th[:num],width=0.35,zorder=3,color='indianred',edgecolor='k',align='edge',label='Thermal output',alpha =0.8)
+        ax.legend(loc='lower center',bbox_to_anchor=(0.5, 1.08), ncol =3, fontsize ='small')
+        ax.set_xlabel('Time [step]')
+        ax.set_ylabel('Power [kW]')
+        ax2.set_ylabel('Power Output [kW]')
+        ax.grid(alpha=0.3, zorder=-1)
+        ax.set_title('Fuel Cell Stack functioning behaviour')
+        
+    elif inp_test['ageing'] == True:
+        inp_test['number of modules'] = 1
+        
+        sim_steps   = 8760*5 + 1                           # [-] number of steps to be considered for the simulation - usually a time horizon of 1 year minimum is considered
+        timestep    = 60                               # [min] selected timestep for the simulation
+        time        = np.arange(sim_steps)
+        
+        fc = fuel_cell(inp_test,sim_steps,timestep=timestep)         # creating fuel cell object
+        available_hydrogen = 10e4                   # [kg] hydrogen available in the storage system
+
+        hyd_used = np.zeros(sim_steps)      # [kg] hydrogen used by fuel cell
+        P_el     = np.zeros(sim_steps)      # [kW] electricity produced
+        P_th     = np.zeros(sim_steps)      # [kW] produced heat
+        eta      = np.zeros(sim_steps)      # [-]  efficiency  
+        water    = np.zeros(sim_steps)      # [Sm3/s]  produced water  
+        
+        flow = -np.random.uniform(0,fc.Npower,sim_steps)   # [kW] randomic power output as example
+        
+        for step in range(len(flow)):
+            hyd_used[step],P_el[step],P_th[step],eta[step],water[step] = fc.use(step,flow[step],available_hydrogen)
+        
+#%%
+        'Polarization Curve History'
+        fig, ax = plt.subplots(dpi=1000) 
+        
+        for index,item in enumerate(fc.stack['Pol_curve_history']):
+            ax.plot(fc.CellCurrDensity,item,label=f'{index}')
+        
+        ax.legend(title='Year',fontsize='small')
+        ax.set_xlabel('Current density [A/cm$^{2}$]')
+        ax.set_ylabel('Stack Voltage [V]')
+        # ax.set_ylim(135.10,135.3)
+        ax.grid(alpha=0.5,zorder=-1)    
+        plt.show()
+        
+        'Efficiency History'
+        fig, ax = plt.subplots(dpi=1000) 
+        
+        for index,item in enumerate(fc.stack['Module_efficiency[-]']):
+            ax.plot(fc.CellCurrDensity,item,label=f'{index}')
+        
+        ax.legend(title='Year',fontsize='small')
+        ax.set_xlabel('Current density [A/cm$^{2}$]')
+        ax.set_ylabel('Module efficiency [-]')
+        ax.grid(alpha=0.5,zorder=-1)    
+        plt.show()
+        
+        'Conversion Factor Update'
+        fig, ax = plt.subplots(dpi=1000)     
+        ax.scatter(np.arange(sim_steps),fc.stack['Conversion_ratio_op[kWh/kg]'], s=0.1, label='operational')
+        ax.scatter(np.arange(sim_steps),fc.stack['Conversion_ratio_rated[kWh/kg]'], s=0.1, label='rated')
+        # ax.plot(np.arange(sim_steps),el.stack['Conversion_factor_rated[kg/MWh]'], linewidth=0.1, label='rated')
+        # ax.plot(np.arange(sim_steps),el.stack['Conversion_factor_op[kg/MWh]'], linewidth=0.05, label='operational')
+        ax.legend()
+        ax.set_ylabel('Γ [kWh/kg]')
+        ax.set_xlabel('Time [step]')
+        ax.grid(alpha=0.5,zorder=-10)    
+        plt.show()
+
+
+        
