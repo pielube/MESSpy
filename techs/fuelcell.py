@@ -1239,7 +1239,7 @@ class fuel_cell:
         
         if step % self.timesteps_year == 0:
             self.stack['Pol_curve_history'].append(self.polarization_curve_ageing.copy())
-            self.stack['Module_efficiency[-]'].append(self.eta_module*(self.Voltage/self.polarization_curve_ageing))         # [kg/MWh] ideal converison factor
+            self.stack['Module_efficiency[-]'].append(self.eta_module*(self.polarization_curve_ageing/self.Voltage))         # [kg/MWh] ideal converison factor
             print(f'Year {int(step/self.timesteps_year)}')
         
         return hyd_consumption,power,P_th,eta,water
@@ -1448,7 +1448,7 @@ if __name__ == "__main__":
     elif inp_test['ageing'] == True:
         inp_test['number of modules'] = 1
         
-        sim_steps   = 8760*5 + 1                           # [-] number of steps to be considered for the simulation - usually a time horizon of 1 year minimum is considered
+        sim_steps   = 8760*4 + 1                           # [-] number of steps to be considered for the simulation - usually a time horizon of 1 year minimum is considered
         timestep    = 60                               # [min] selected timestep for the simulation
         time        = np.arange(sim_steps)
         
