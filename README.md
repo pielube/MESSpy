@@ -42,7 +42,7 @@ The model is developed in Python 3.9, and requires the following libraries:
 - pandas
 - os
 - pickle (results can be saved in .pickle)
-- csv (results can be saved in .pickle)
+- csv (results can be saved in csv)
 - json (input files are .json)
 - pvlib (used to download PV production series and weather data based on typical meteorological year)
 - matplotlib (used in post_process)
@@ -51,8 +51,18 @@ A less up-to-date but fully functional and documented fortran version is also av
 https://github.com/pielube/MESS-Fortran
 
 ## Quick start
-To get started, download the repository.
-Three examples analysis are available:
+- Download Anaconda from https://www.anaconda.com/download: recommended to handle virtual environments and package versions.
+
+- From Anaconda Prompt, choose folder and clone repository
+	git clone https://github.com/pielube/MESSpy.git
+	cd MESSpy/env
+	conda env create -f MES.yaml
+	conda activate MES
+- Authors usually use Spyder as IDE, so:
+	conda install spyder
+	spyder
+
+- You can run examples now. Three examples analysis are available:
 - "run_test_1" A small energy community composed by two consumers and one prosumer with PV and battery. A sensisivety analysi is also carried out.
 - "run_test_2" A residential building replaces the gas boiler with a heat pump
 - "run_test_3" Supercool hydrogen things
