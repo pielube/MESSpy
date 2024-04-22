@@ -51,18 +51,18 @@ A less up-to-date but fully functional and documented fortran version is also av
 https://github.com/pielube/MESS-Fortran
 
 ## Quick start
-- Download Anaconda from https://www.anaconda.com/download: recommended to handle virtual environments and package versions.
+Download Anaconda from https://www.anaconda.com/download: recommended to handle virtual environments and package versions.
 
-- From Anaconda Prompt, choose folder and clone repository
-	git clone https://github.com/pielube/MESSpy.git
-	cd MESSpy/env
-	conda env create -f MES.yaml
-	conda activate MES
-- Authors usually use Spyder as IDE, so:
-	conda install spyder
-	spyder
+From Anaconda Prompt, choose folder and clone repository
+- git clone https://github.com/pielube/MESSpy.git
+- cd MESSpy/env
+- conda env create -f MES.yaml
+- conda activate MES
+Authors usually use Spyder as IDE, so:
+- conda install spyder
+- spyder
 
-- You can run examples now. Three examples analysis are available:
+You can run examples now. Three examples analysis are available:
 - "run_test_1" A small energy community composed by two consumers and one prosumer with PV and battery. A sensisivety analysi is also carried out.
 - "run_test_2" A residential building replaces the gas boiler with a heat pump
 - "run_test_3" Supercool hydrogen things
