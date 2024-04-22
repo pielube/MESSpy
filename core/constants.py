@@ -35,6 +35,7 @@ kWh2kJ      =  3600                        # [kJ/kWh]    Conversion factor from 
 H2MOLMASS   =  2.01588e-3                 # [kg/mol]     Hydrogen molar mass
 H2NDENSITY  =  0.08988237638480538        # [kg/Nm^3]    Hydrogen density at Normal conditions (T = 0°C, P = 101325 Pa) -> PropsSI('D', 'T', 273.15, 'P', 101325, 'H2') 
 H2SDENSITY  =  0.08520493577522305        # [kg/Sm^3]    Hydrogen density at Standard conditions (T = 15°C, P = 101325 Pa) -> PropsSI('D', 'T', 288.15, 'P', 101325, 'H2') 
+H2NMOLVOL   =  H2MOLMASS/H2NDENSITY       # [Nm^3/mol]   Hydrogen molar volume at Normal conditions (T = 0°C, P = 101325 Pa)
 LHVH2       =  119.96                     # [MJ/kg]      Hydrogen Lower Heating Value              - https://www.eniscuola.net/mediateca/caratteristiche-dellidrogeno/
 LHVH2VOL    =  LHVH2*H2NDENSITY           # [MJ/Nm^3]    Hydrogen Lower Heating Value - Volumetric
 LHVH2MOL    =  H2MOLMASS*LHVH2*1e3        # [kJ/mol]     Hydrogen Lower Heating Value - Molar
@@ -84,16 +85,24 @@ O2MOL_S_E   = 205.1                       # [J/K*mol]    Oxygen Standard Entropy
 
 'Air'
 
-AIRMOLMASS   = 28.96547e-3                 # [kg/mol]      Air molar mass
-AIRSDENSITY  = 1.225                       # [kg/Sm^3]    Air density at Standard conditions (T = 15°C, P = 101325 Pa) -> PropsSI('D', 'T', 273.15, 'P', 101325, 'Air')
-CP_AIR       = 1.0063                      # [kJ/kgK]     Air mass specific costant pressure specific heat (T = 25°C, P = 101325 Pa)
-CV_AIR       = 0.7178                      # [kJ/kgK]     Air mass specific costant volume specific heat (T = 25°C, P = 101325 Pa) 
+AIRMOLMASS   = 28.96547e-3                # [kg/mol]     Air molar mass
+AIRSDENSITY  = 1.225                      # [kg/Sm^3]    Air density at Standard conditions (T = 15°C, P = 101325 Pa) -> PropsSI('D', 'T', 273.15, 'P', 101325, 'Air')
+CP_AIR       = 1.0063                     # [kJ/kgK]     Air mass specific costant pressure specific heat (T = 25°C, P = 101325 Pa)
+CV_AIR       = 0.7178                     # [kJ/kgK]     Air mass specific costant volume specific heat (T = 25°C, P = 101325 Pa) 
 
 'Steam'
 
-H1_STEAM800 = 4159.9                       # [kJ/kg]     Steam mass specific enthalpy @ T = 800°C, P = 116000 Pa
+H1_STEAM800  = 4159.9                     # [kJ/kg]      Steam mass specific enthalpy @ T = 800°C, P = 116000 Pa
 
 
+#%%
 
+'TIME UNITS'
 
+MINUTES_HOUR    = 60                      # [min/h]     Number of minutes in one hour 
+MINUTES_DAY     = 60*24                   # [min/day]   Number of minutes in one day 
+MINUTES_WEEK    = 60*24*7                 # [min/week]  Number of minutes in one week 
+MINUTES_MONTH   = 60*24*30                # [min/month] Number of minutes in one month
+HOURS_YEAR      = 8760                    # [h/year]    Number of hours in one year
+MINUTES_YEAR    = MINUTES_HOUR*HOURS_YEAR # [min/year]  Number of minutes in one year 
 
