@@ -284,14 +284,14 @@ class REC:
             # time zone correction
             if general['UTC time zone'] > 0:
                 refindex = weather.index
-                refindex = refindex.shift(general['UTC time zone']*60,'T')
+                refindex = refindex.shift(general['UTC time zone']*60,'min')
                 weather.index = refindex
                 
                 we2 = pd.DataFrame(data=weather[-general['UTC time zone']:], index=None, columns=weather.columns)
                 weather = weather[:-general['UTC time zone']]
                 
                 reindex = weather.index[:general['UTC time zone']]
-                reindex = reindex.shift(-general['UTC time zone']*60,'T')
+                reindex = reindex.shift(-general['UTC time zone']*60,'min')
                 we2.index = reindex   
                 
                 weather = pd.concat([we2,weather])
@@ -314,7 +314,7 @@ class REC:
                 zzz_end = zzz_end[zzz_end.index.hour==1+general['UTC time zone']]
                 zzz_end = pd.Series(zzz_end.index).unique()[-1]
                 
-                weather.loc[zzz_in:zzz_end] = weather.loc[zzz_in:zzz_end].shift(60,'T')
+                weather.loc[zzz_in:zzz_end] = weather.loc[zzz_in:zzz_end].shift(60,'min')
                 weather = weather.interpolate(method='linear')
 
                 weather['Local time - DST'] = weather.index
