@@ -77,7 +77,7 @@ class PV:
                     pv = res[0]['P']
                     refindex = weather.index
                     shift_minutes = int(str(pv.index[0])[14:16])
-                    refindex = refindex.shift(shift_minutes,'T')
+                    refindex = refindex.shift(shift_minutes,'min')
                     pv = pv[refindex]
                     
                 else: # INT
@@ -90,14 +90,14 @@ class PV:
                 # time zone correction
                 if c.UTC > 0:
                     pv_index = pv.index
-                    pv_index = pv_index.shift(c.UTC*60,'T')
+                    pv_index = pv_index.shift(c.UTC*60,'min')
                     pv.index = pv_index
                     
                     pv2 = pd.DataFrame(data=pv[-c.UTC:], index=None, columns=pv.columns)
                     pv = pv[:-c.UTC]
                     
                     reindex = pv.index[:c.UTC]
-                    reindex = reindex.shift(-c.UTC*60,'T')
+                    reindex = reindex.shift(-c.UTC*60,'min')
                     pv2.index = reindex  
                     pv = pd.concat([pv2,pv])
                     
@@ -120,7 +120,7 @@ class PV:
                     zzz_end=zzz_end[zzz_end.index.hour==1+c.UTC]
                     zzz_end = pd.Series(zzz_end.index).unique()[-1]
                     
-                    pv.loc[zzz_in:zzz_end] = pv.loc[zzz_in:zzz_end].shift(60,'T')
+                    pv.loc[zzz_in:zzz_end] = pv.loc[zzz_in:zzz_end].shift(60,'min')
                     pv=pv.interpolate(method='linear')
                 
                     pv['Local time - DST']=pv.index

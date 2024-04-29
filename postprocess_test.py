@@ -73,11 +73,11 @@ def REC_electricity_balance(simulation_name,noprint=False,mounth=False):
          into_grid = into_grid [ int(dmc[mounth-1]*24*60/c.timestep) : int(dmc[mounth]*24*60/c.timestep)]
          from_grid = from_grid [ int(dmc[mounth-1]*24*60/c.timestep) : int(dmc[mounth]*24*60/c.timestep)]
     
-    df.loc['CSC']['Value [kWh]'] = sum(csc)
-    df.loc['Into l. grid']['Value [kWh]'] = sum(into_grid)
-    df.loc['From l. grid']['Value [kWh]'] = sum(from_grid)
-    df.loc['Into n. grid']['Value [kWh]'] = sum(into_grid)  -sum(csc)
-    df.loc['From n. grid']['Value [kWh]'] = sum(from_grid) -sum(csc)
+    df.loc['CSC', 'Value [kWh]'] = sum(csc)
+    df.loc['Into l. grid', 'Value [kWh]'] = sum(into_grid)
+    df.loc['From l. grid', 'Value [kWh]'] = sum(from_grid)
+    df.loc['Into n. grid', 'Value [kWh]'] = sum(into_grid)  -sum(csc)
+    df.loc['From n. grid', 'Value [kWh]'] = sum(from_grid) -sum(csc)
     
     
     for loc in balances:
@@ -87,24 +87,24 @@ def REC_electricity_balance(simulation_name,noprint=False,mounth=False):
                 demand = balance['demand']
                 if mounth: # 1-12
                     demand = demand [ int(dmc[mounth-1]*24*60/c.timestep) : int(dmc[mounth]*24*60/c.timestep)]
-                df.loc['Demand']['Value [kWh]'] += -sum(demand)*c.P2E/c.kWh2kJ
+                df.loc['Demand', 'Value [kWh]'] += -sum(demand)*c.P2E/c.kWh2kJ
             if 'PV' in balance:
                 pv = balance['PV']
                 if mounth: # 1-12
                     pv = pv [ int(dmc[mounth-1]*24*60/c.timestep) : int(dmc[mounth]*24*60/c.timestep)]
-                df.loc['Production']['Value [kWh]'] += sum(pv)*c.P2E/c.kWh2kJ
+                df.loc['Production', 'Value [kWh]'] += sum(pv)*c.P2E/c.kWh2kJ
             if 'wind' in balance:
                 wind = balance['wind']
                 if mounth: # 1-12
                     pv = pv [ int(dmc[mounth-1]*24*60/c.timestep) : int(dmc[mounth]*24*60/c.timestep)]
-                df.loc['Production']['Value [kWh]'] += sum(wind)*c.P2E/c.kWh2kJ
+                df.loc['Production', 'Value [kWh]'] += sum(wind)*c.P2E/c.kWh2kJ
           
-    df.loc['SC']['Value [kWh]'] = df.loc['Demand']['Value [kWh]'] - df.loc['From n. grid']['Value [kWh]'] 
-    df.loc['Battery losses']['Value [kWh]'] = df.loc['Production']['Value [kWh]'] - df.loc['SC']['Value [kWh]'] - df.loc['Into n. grid']['Value [kWh]']
+    df.loc['SC', 'Value [kWh]'] = df.loc['Demand', 'Value [kWh]'] - df.loc['From n. grid', 'Value [kWh]'] 
+    df.loc['Battery losses', 'Value [kWh]'] = df.loc['Production', 'Value [kWh]'] - df.loc['SC', 'Value [kWh]'] - df.loc['Into n. grid', 'Value [kWh]']
     
     for b in df.index:
-        df.loc[b]['Value / production [%]'] = df.loc[b]['Value [kWh]'] / df.loc['Production']['Value [kWh]'] *100
-        df.loc[b]['Value / demand [%]'] = df.loc[b]['Value [kWh]'] / df.loc['Demand']['Value [kWh]'] *100
+        df.loc[b, 'Value / production [%]'] = df.loc[b, 'Value [kWh]'] / df.loc['Production', 'Value [kWh]'] * 100
+        df.loc[b, 'Value / demand [%]'] = df.loc[b, 'Value [kWh]'] / df.loc['Demand', 'Value [kWh]'] *100
            
     if not noprint:
         if mounth:
