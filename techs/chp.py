@@ -98,7 +98,7 @@ def inverse_bilinear_interp(_map, y, t_amb):
 
 class Chp:
     
-    def __init__(self, parameters, timestep_number):
+    def __init__(self, parameters, timestep_number, timestep = False):
         self.fuel           = parameters["Fuel"]            # type of fuel fed to the chp
         self.strategy       = parameters["Strategy"]        # parameter on which the operation of the system is based
         self.coproduct      = parameters["Co-product"]      # co-product energy stream
@@ -107,22 +107,30 @@ class Chp:
         self.load           = np.zeros(timestep_number)    # [-] working load of the system 
         self.q_th           = np.zeros(timestep_number)    # [kWh] thermal output of the chp
         self.w_el           = np.zeros(timestep_number)    # [kWh] electricity output of the system
-        self.m_fuel         = np.zeros(timestep_number)    # [kg/h] fuel consumption
+        self.m_fuel         = np.zeros(timestep_number)    # [kg/s] or [Sm3/s] fuel consumption
         self.l_bound        = np.zeros(timestep_number)    # [-] minimum load producible given working conditions
         self.u_bound        = np.zeros(timestep_number)    # [-] maximum load producible given working conditions
         self.steam          = np.zeros(timestep_number)    # [kg/s] steam produced by CHP system
         self.hot_w          = np.zeros(timestep_number)    # [kWh] hot water produced by CHP system
         self.shutdown       = np.zeros(timestep_number)    # [0/1] array to keep track of numbers of system shutdowns
         self.performances   = {                                                 # performance parameters dictionary. Self-consumption % of the considered energy streams
-                                self.strategy   : np.zeros(simulation_hours),
-                                self.coproduct  : np.zeros(simulation_hours),
+                                self.strategy   : np.zeros(timestep_number),
+                                self.coproduct  : np.zeros(timestep_number),
                               }    
 
         if self.fuel == 'gas':
             self.LHVfuel = c.LHVNG
         else:
             self.LHVfuel = c.LHVH2
-            
+        
+        if timestep == False: 
+            self.timestep           = c.timestep            # [min] simulation timestep if code is launched from main
+            self.timestep_number    = c.timestep_number     # [-]   number of timestep if code is launched from main  
+        else:
+            self.timestep           = timestep              # [min] simulation timestep if code is launched from electrolyzer.py
+            self.timestep_number    = timestep_number       # [-]   number of timestep if code is launched from electrolyzer.py
+        
+        
         'Data Extraction - Provided Operation Maps for the considered CHP system'
         main = False                      # check
         if __name__ == "__main__":        # if code is being executed from chp_gt.py script
@@ -232,7 +240,7 @@ class Chp:
         
                 minfuel = bilinear_interp(self.maps['fuel'],self.l_bound[step],t_amb)    # control needed when working with hydrogen \
                                                                                       # and no external source of fuel available (i.e. no grid connection)  
-                if available_fuel < minfuel:   # if available_fuel is lower than minimum fuel required at the minimum load, system is turned off
+                if available_fuel < minfuel*self.timestep*60:   # if available_fuel is lower than minimum fuel required at the minimum load, system is turned off
                     self.load[step]        = 0
                     self.m_fuel[step]      = 0
                     self.q_th[step]        = 0
@@ -248,7 +256,7 @@ class Chp:
                     load  = inverse_bilinear_interp(self.maps[self.strategy], demand, t_amb)    # operating load corresponding to demand at considered timestep    
                     mfuel = bilinear_interp(self.maps['fuel'], load, t_amb)                     # [kg/h] fuel consumption correspondig to defined operating load
                     
-                    if mfuel > available_fuel:   # if too much fuel is required compared to what is available
+                    if mfuel*self.timestep*60 > available_fuel:   # if too much fuel is required compared to what is available
                         load = inverse_bilinear_interp(self.maps['fuel'], available_fuel, t_amb)   # maximum load based on available fuel is computed and system is operated accordingly
                     else:
                         pass         
@@ -267,13 +275,17 @@ class Chp:
             load = self.l_bound[step]
     
         self.load[step]                    = load 
-        self.m_fuel[step]                  = bilinear_interp(self.maps['fuel'],load,t_amb)    
+        if self.fuel == 'hydrogen':
+            self.m_fuel[step]              = bilinear_interp(self.maps['fuel'],load,t_amb)    #[kg/s] hydrogen consumed
+        elif self.fuel == 'gas':
+            self.m_fuel[step]              = bilinear_interp(self.maps['fuel'],load,t_amb) / c.NGSDENSITY   #[Sm3/s] gas consumed
         self.q_th[step]                    = bilinear_interp(self.maps['process heat'],load,t_amb)
         self.w_el[step]                    = bilinear_interp(self.maps['electricity'],load,t_amb)
-        self.steam[step]                   = bilinear_interp(self.maps['process steam'],load,t_amb)      # [kg/h] steam produced by CHP system
+        self.steam[step]                   = bilinear_interp(self.maps['process steam'],load,t_amb)       # [kg/s] steam produced by CHP system
         self.hot_w[step]                   = 0
         # self.parameters[self.strategy]  =                                                   # [kWh] hot water produced by CHP system - active for specific application
-        
+    
+    
         return (self.steam[step], self.w_el[step], -self.m_fuel[step], self.q_th[step], self.hot_w[step])
     
     
@@ -501,10 +513,11 @@ if __name__ == "__main__":
     inp_test_abs = {"Npower": 100,
                     "COP"   : 0.72}
 
-    simulation_hours = 24     
+    timestep_number = 24    
+    timestep = 60
     
-    Chp = Chp(inp_test_chp,simulation_hours)            # creating Chp object
-    absorber = Absorber(inp_test_abs, simulation_hours) # creating Absorber object
+    Chp = Chp(inp_test_chp,timestep_number)            # creating Chp object
+    absorber = Absorber(inp_test_abs, timestep_number) # creating Absorber object
     
     x = np.arange(0,24)       # hours in a day
     days = ['Winter day', 'Spring day','Summer day','Autumn day']
@@ -516,8 +529,8 @@ if __name__ == "__main__":
                          }
     
     np.random.seed(42)
-    steam_demand = np.random.uniform(0.5,5.2,simulation_hours)*3600         # [kg/h] creating a random steam demand array 
-    electricity_demand = np.random.uniform(1000,6000,simulation_hours)      # [kWh] creating a random steam demand array 
+    steam_demand = np.random.uniform(0.5,5.2,timestep_number)    # [kg/s] creating a random steam demand array 
+    electricity_demand = np.random.uniform(1000,6000,timestep_number)      # [kWh] creating a random steam demand array 
     available_fuel = []
     
     for k in daily_temperature:
@@ -532,18 +545,18 @@ if __name__ == "__main__":
             available_fuel.append(consumption)
         
         fig, ax = plt.subplots(dpi=600)
-        ax.plot(x,Chp.l_bound[:simulation_hours]*6*3600,label ='Chp$_\mathregular{min}$', alpha=0.9)
-        ax.plot(x,Chp.u_bound[:simulation_hours]*6*3600,label = 'Chp$_\mathregular{max}$',alpha=0.9)
+        ax.plot(x,Chp.l_bound[:timestep_number]*6,label ='Chp$_\mathregular{min}$', alpha=0.9)
+        ax.plot(x,Chp.u_bound[:timestep_number]*6,label = 'Chp$_\mathregular{max}$',alpha=0.9)
         ax.scatter(x,steam_demand, label = 'm$_\mathregular{stdem}$', alpha =0.8, c='g',s=70,zorder=10,edgecolors='k', linewidths=0.6)
-        ax.scatter(x,Chp.steam[:simulation_hours], label = 'm$_\mathregular{stprod}$', alpha =0.8, c='b',s=22,zorder=10,edgecolors='k', linewidths=0.6)
+        ax.scatter(x,Chp.steam[:timestep_number], label = 'm$_\mathregular{stprod}$', alpha =0.8, c='b',s=22,zorder=10,edgecolors='k', linewidths=0.6)
         ax.grid(zorder=0, alpha= 0.4)
-        ax.set_ylabel('m$_{st}$ [kg/h]')
+        ax.set_ylabel('m$_{st}$ [kg/s]')
         ax.set_xlabel('Time [step]')
-        if max(steam_demand) > max(Chp.u_bound[:simulation_hours]*6*3600):
-            ax.fill_between(x,Chp.u_bound[:simulation_hours]*6*3600,max(steam_demand), facecolor = 'orangered',zorder=0, alpha=0.3,label = 'Not satisfed') 
-        ax.fill_between(x,Chp.l_bound[:simulation_hours]*6*3600,Chp.u_bound[:simulation_hours]*6*3600, facecolor = 'lightblue',zorder=0, alpha=0.3,label = 'Chp')
-        if min(steam_demand)< min(Chp.l_bound[:simulation_hours]*6*3600):
-            ax.fill_between(x,Chp.l_bound[:simulation_hours],Chp.l_bound[:simulation_hours]*6*3600, facecolor = 'orangered',zorder=0, alpha=0.3)
+        if max(steam_demand) > max(Chp.u_bound[:timestep_number]*6):
+            ax.fill_between(x,Chp.u_bound[:timestep_number]*6,max(steam_demand), facecolor = 'orangered',zorder=0, alpha=0.3,label = 'Not satisfed') 
+        ax.fill_between(x,Chp.l_bound[:timestep_number]*6,Chp.u_bound[:timestep_number]*6, facecolor = 'lightblue',zorder=0, alpha=0.3,label = 'Chp')
+        if min(steam_demand)< min(Chp.l_bound[:timestep_number]*6):
+            ax.fill_between(x,Chp.l_bound[:timestep_number],Chp.l_bound[:timestep_number]*6, facecolor = 'orangered',zorder=0, alpha=0.3)
         ax.legend(ncol=3,bbox_to_anchor = (0.85,-0.15))
         ax.set_title('Chp system behaviour - ' + k)
         plt.show()
