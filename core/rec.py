@@ -72,6 +72,7 @@ class REC:
         else:
             check_pv = False
         self.weather = self.weather_generation(general,path,check,file_general) # check if metereological data have to been downloaded from PVgis or has already been done in a previous simulation
+        self.weather = pd.concat([self.weather] * c.simulation_years, ignore_index = True)
         if check == False:
             with open(f"previous_simulation/{file_general}.pkl", 'wb') as f: pickle.dump(general, f)
         if check_pv == False:

@@ -32,6 +32,8 @@
                                       	         "strategy"          : "hydrogen-first",
                                       	         "only_renewables"   : false,
                                       	         "minimum_load"      : false,
+                                      	         "operational_period": "01-01,31-12",
+                                      	         "state"             : "on",
                                               	 "priority"          : 3  },
                                               	 
                             "mechanical compressor":{
