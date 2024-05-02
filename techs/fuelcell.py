@@ -785,108 +785,105 @@ class fuel_cell:
         available_hydrogen = available_hyd/(self.timestep*60) # [kg] to [kg/s] conversion for available hydrogen at the considered step
         state = self.operational_state[step]
         if state == 0:
-            return(0,0,0,0,0)     # fuel cell turned off
+            p = 0   # # fuel cell turned off as for planned operation schedule, required power output forced to zero
         if state == 1:
+            pass
+     
+        ##########################
+        if self.model=='FCS-C5000':
             
-           ##########################
-            if self.model=='FCS-C5000':
-               
-                p_required = -p                      # [kW] system power requirement in the considered step
+            p_required = -p                      # [kW] system power requirement in the considered step
+            
+            power = min(p_required,self.Npower)      # [kW] how much electricity can be absorbed by the fuel cell absorb
+            
+            # Calculating the operating point on the characteristic curves
+            I=self.PI(power)
+           
+            # calculate the hydrogen consumed by each single cell
+            qe=I/self.FaradayConst                                              # [mol_e/s] Faraday
+            qH=qe/2                                                             # [mol_H2/s] the moles of H2 are 1/2 the moles of electrons in the considered step
+            QH=qH*self.H2MolMass                                                # [kg_H2/s] 
+            hyd = QH*self.nc                                                    # [kg/s] total stack hydrogen consumption in the considered step 
+            water = (hyd*(self.h2oMolMass/self.H2MolMass))/self.rhoStdh2o       # [Sm3/s] stoichiometric water production
+            
+            if hyd > available_hydrogen: # if available hydrogen is not enough to meet demand (partial load operation is not considered in this model)
+                hyd     = 0
+                power   = 0
+                water   = 0 
+                # turn off the fuel cell
                 
-                power = min(p_required,self.Npower)      # [kW] how much electricity can be absorbed by the fuel cell absorb
-                
-                # Calculating the operating point on the characteristic curves
-                I=self.PI(power)
-               
-                # calculate the hydrogen consumed by each single cell
-                qe=I/self.FaradayConst                                              # [mol_e/s] Faraday
-                qH=qe/2                                                             # [mol_H2/s] the moles of H2 are 1/2 the moles of electrons in the considered step
-                QH=qH*self.H2MolMass                                                # [kg_H2/s] 
-                hyd = QH*self.nc                                                    # [kg/s] total stack hydrogen consumption in the considered step 
-                water = (hyd*(self.h2oMolMass/self.H2MolMass))/self.rhoStdh2o       # [Sm3/s] stoichiometric water production
-                
-                if hyd > available_hydrogen: # if available hydrogen is not enough to meet demand (partial load operation is not considered in this model)
-                    hyd     = 0
-                    power   = 0
-                    water   = 0 
-                    # turn off the fuel cell
-                    
-                return (-hyd,power,0.5,0,water) # return hydrogen absorbed [kg] and electricity required [kW]
-    
-            ###############################
-            if self.model in ['PEM General','SOFC']:
-                
-                # PowerOutput [kW] - Electric Power required from the fuel cell
-                if (abs(p) <= self.Npower) or (available_hydrogen/self.max_h2_module < 1):      # if required power or available hydrogen in system are lower than nominal fuel cell parameters
-                    if abs(p) >= self.Npower*self.min_load: 
-                        hyd,power,FC_Heat,etaFC,water = fuel_cell.use1(self,step,p,available_hydrogen)
-                        if abs(hyd) > 0:
-                            self.n_modules_used[step] = 1
-                        else:
-                            self.n_modules_used[step] = 0
-                                
-                        self.EFF[step]   = etaFC
+            return (-hyd,power,0.5,0,water) # return hydrogen absorbed [kg] and electricity required [kW]
+ 
+         ###############################
+        if self.model in ['PEM General','SOFC']:
+            
+            # PowerOutput [kW] - Electric Power required from the fuel cell
+            if (abs(p) <= self.Npower) or (available_hydrogen/self.max_h2_module < 1):      # if required power or available hydrogen in system are lower than nominal fuel cell parameters
+                if abs(p) >= self.Npower*self.min_load: 
+                    hyd,power,FC_Heat,etaFC,water = fuel_cell.use1(self,step,p,available_hydrogen)
+                    if abs(hyd) > 0:
+                        self.n_modules_used[step] = 1
                     else:
-                        p = self.Npower*self.min_load
-                        hyd,power,FC_Heat,etaFC,water = fuel_cell.use1(self,step,-p,available_hydrogen)
-                        if abs(hyd) > 0:
-                            self.n_modules_used[step] = 1
-                        else:
-                            self.n_modules_used[step] = 0
-                                
-                                
-                        self.EFF[step]   = etaFC 
-            
-                elif abs(p) > self.MaxPowerStack and available_hydrogen > self.max_h2_stack:    # if required power and available hydrogen are compatible with the entire stack full-load operations
-                    hyd,power,FC_Heat,etaFC,water = np.array(fuel_cell.use1(self,step,-self.Npower,available_hydrogen))
-                    
-                    hyd     = hyd*self.n_modules
-                    power   = power*self.n_modules
-                    FC_Heat = FC_Heat*self.n_modules
-                    water   = water*self.n_modules
-                    
-                    self.n_modules_used[step]   = self.n_modules
-                    self.EFF[step]              = etaFC
-                
-                elif abs(p) > self.Npower:                                                        # if Electric Power required is higher than nominal one, i.e., more modules can be used
-                    required_full_modules   = min(self.n_modules,int(abs(p)/self.Npower))                 # number of required modules working at full load
-                    full_modules            = min(required_full_modules,int(available_hydrogen/self.max_h2_module))  # number of modules operating full load based on the amount of hydrogen available   
-                    hyd,power,FC_Heat,etaFC_full,water = np.array(fuel_cell.use1(self,step,-self.Npower,available_hydrogen))
-                    
-                    hyd_full        = hyd*full_modules
-                    power_full      = power*full_modules
-                    FC_Heat_full    = FC_Heat*full_modules
-                    water_full      = water*full_modules
-                    
-                    residual_power      = abs(p) - power_full 
-                    residual_hydrogen   = available_hydrogen - abs(hyd_full)
-                    if residual_power >= self.Npower*self.min_load:
-                        hyd_singlemodule,power_singlemodule,FC_Heat_singlemodule,etaFC_singlemodule,water_singlemodule = fuel_cell.use1(self,step,-residual_power,residual_hydrogen)
-                        if hyd_singlemodule != 0:   # single module operating in partial load 
-                            self.n_modules_used[step] = full_modules + 1
-                            self.EFF[step] = ((full_modules*etaFC_full) + (etaFC_singlemodule))/self.n_modules_used[step]  # weighted average 
-                            self.EFF_last_module[step] = etaFC_singlemodule
-                        else: 
-                            self.n_modules_used[step] = full_modules
-                            self.EFF[step] = etaFC_full
+                        self.n_modules_used[step] = 0
+                            
+                    self.EFF[step]   = etaFC
+                else:
+                    p = self.Npower*self.min_load
+                    hyd,power,FC_Heat,etaFC,water = fuel_cell.use1(self,step,-p,available_hydrogen)
+                    if abs(hyd) > 0:
+                        self.n_modules_used[step] = 1
                     else:
-                        residual_power = self.Npower*self.min_load
-                        hyd_singlemodule,power_singlemodule,FC_Heat_singlemodule,etaFC_singlemodule,water_singlemodule = fuel_cell.use1(self,step,-residual_power,residual_hydrogen)
-                        if hyd_singlemodule != 0:   # single module operating in partial load 
-                            self.n_modules_used[step] = full_modules + 1
-                            self.EFF[step] = ((full_modules*etaFC_full) + (etaFC_singlemodule))/self.n_modules_used[step]  # weighted average 
-                            self.EFF_last_module[step] = etaFC_singlemodule
-                        else:
-                            self.n_modules_used[step] = full_modules
-                            self.EFF[step] = etaFC_full
-                    hyd     = hyd_full + hyd_singlemodule           # [kg/s]  produced hydrogen   
-                    power   = power_full + power_singlemodule       # [kW] output power
-                    FC_Heat = FC_Heat_full + FC_Heat_singlemodule   # [kW] co-product heat
-                    etaFC   = self.EFF[step]
-                    water   = water_full + water_singlemodule       # [m^3/s] produced water
-                    
-            return (hyd,power,FC_Heat,etaFC,water)  # return hydrogen absorbed [kg/s] electricity required [kW] and heat [kW] and water [Sm3] as a co-products 
+                        self.n_modules_used[step] = 0
+                            
+                            
+                    self.EFF[step]   = etaFC 
+        
+            elif abs(p) > self.MaxPowerStack and available_hydrogen > self.max_h2_stack:    # if required power and available hydrogen are compatible with the entire stack full-load operations
+                hyd,power,FC_Heat,etaFC,water = np.array(fuel_cell.use1(self,step,-self.Npower,available_hydrogen))
+                
+                hyd     = hyd*self.n_modules
+                power   = power*self.n_modules
+                FC_Heat = FC_Heat*self.n_modules
+                water   = water*self.n_modules
+                
+                self.n_modules_used[step]   = self.n_modules
+                self.EFF[step]              = etaFC
             
+            elif abs(p) > self.Npower:                                                        # if Electric Power required is higher than nominal one, i.e., more modules can be used
+                required_full_modules   = min(self.n_modules,int(abs(p)/self.Npower))                 # number of required modules working at full load
+                full_modules            = min(required_full_modules,int(available_hydrogen/self.max_h2_module))  # number of modules operating full load based on the amount of hydrogen available   
+                hyd,power,FC_Heat,etaFC_full,water = np.array(fuel_cell.use1(self,step,-self.Npower,available_hydrogen))
+                
+                hyd_full        = hyd*full_modules
+                power_full      = power*full_modules
+                FC_Heat_full    = FC_Heat*full_modules
+                water_full      = water*full_modules
+                
+                residual_power      = abs(p) - power_full 
+                residual_hydrogen   = available_hydrogen - abs(hyd_full)
+                if residual_power >= self.Npower*self.min_load:
+                    hyd_singlemodule,power_singlemodule,FC_Heat_singlemodule,etaFC_singlemodule,water_singlemodule = fuel_cell.use1(self,step,-residual_power,residual_hydrogen)
+                    if hyd_singlemodule != 0:   # single module operating in partial load 
+                        self.n_modules_used[step] = full_modules + 1
+                        self.EFF[step] = ((full_modules*etaFC_full) + (etaFC_singlemodule))/self.n_modules_used[step]  # weighted average 
+                        self.EFF_last_module[step] = etaFC_singlemodule
+                    else: 
+                        self.n_modules_used[step] = full_modules
+                        self.EFF[step] = etaFC_full
+                else:
+                    residual_power = 0
+                    hyd_singlemodule,power_singlemodule,FC_Heat_singlemodule,water_singlemodule = [0]*4
+                    self.n_modules_used[step] = full_modules
+                    self.EFF[step] = etaFC_full
+                    
+                hyd     = hyd_full + hyd_singlemodule           # [kg/s]  produced hydrogen   
+                power   = power_full + power_singlemodule       # [kW] output power
+                FC_Heat = FC_Heat_full + FC_Heat_singlemodule   # [kW] co-product heat
+                etaFC   = self.EFF[step]
+                water   = water_full + water_singlemodule       # [m^3/s] produced water
+                
+        return (hyd,power,FC_Heat,etaFC,water)  # return hydrogen absorbed [kg/s] electricity required [kW] and heat [kW] and water [Sm3] as a co-products 
+        
                 
     def use1(self,step,p,available_hydrogen):
          
@@ -1356,7 +1353,7 @@ if __name__ == "__main__":
                 "number of modules": 3,
                 'stack model':'PEM General',
                 'ageing': False,
-                'operational_period': "01-01,31-12",
+                'operational_period': "01-03,30-09",
                 'state': 'on'
                 }
     
