@@ -3,6 +3,7 @@ from scipy.interpolate import interp1d
 import numpy as np
 from sklearn.linear_model import LinearRegression
 from numpy import log as ln
+import pandas as pd
 import math
 import os
 import sys 
@@ -24,6 +25,7 @@ class electrolyzer:
             'strategy': str - 'full-time'. Electrolyzers operational 24/7, grid connection must be present. 
                             - 'hydrogen-first'. Electrolyzers working only when renewable power is available, 
                                prioritizing production of hydrogen over electricity production from RES
+           'operational period': period of the year during which the electrolyzer is turned on or off
                       
         output : electrolyzer object able to:
             abrosrb electricity and water and produce hydrogen and oxygen .use(p)
@@ -156,9 +158,9 @@ class electrolyzer:
             self.CurrDensityMin      = 0.005            # [A/cm^2]
             self.OperatingTemp       = 273.15 + 70      # [K]
             self.OperatingPress      = 3000000          # [Pa]
-            self.MinInputPower       = 0.1*self.Npower  # [kW] minimum input power chosen as 10% of module nominal power 
+            self.MinInputPower       = self.min_load*self.Npower  # [kW] minimum input power chosen as 10% of module nominal power 
             self.MaxPowerStack       = self.n_modules*self.Npower           # [kW] electrolyzer stack total power
-            self.min_partial_load    = self.min_load*self.MaxPowerStack     # [kW] minimum operational load for the electrolyzer during simulation
+            self.min_partial_load    = self.min_load*self.MaxPowerStack     # [kW] minimum operational load for the electrolyzer during simulation - used in file location.py
             self.nc                  = 10+int((self.Npower/1000)*(35-10))   # For a power range between 0kW and 1000kW the number of cells in the stack varies between 10 and 35 
             self.CurrDensityMax      = 2.1+(self.Npower/1000)*(3-2.1)       # For a power range between 0kW and 1000kW the maximum current density varies between 2.1 and 3 A/cm2 
             
@@ -479,7 +481,33 @@ class electrolyzer:
             self.P2h        = interp1d(Power_inp,h2_prodmodulemass,bounds_error=False,fill_value='extrapolate')         # Linear spline 1-D interpolation -> Power consumption - Produced H2
             self.PetaEle    = interp1d(Power_inp,self.eta_module,bounds_error=False,fill_value='extrapolate')           # Linear spline 1-D interpolation -> Power consumption - Electric efficiency
 
-            
+        # Operational period
+        self.state = parameters["state"]                           #on or off
+        self.operational_period = parameters["operational_period"]
+        initial_day, final_day = self.operational_period.split(',')    #extract inital and final operational days
+        initial_day = pd.to_datetime(initial_day, format = '%d-%m')
+        final_day = pd.to_datetime(final_day, format = '%d-%m')
+        year = initial_day.year
+        operational_state = [] 
+
+        for day in pd.date_range(start = pd.Timestamp(year=year,month=1,day=1), end = pd.Timestamp(year=year+1,month=1, day=1)):
+            if self.state == "on":                 
+                value = 0                                         #initialization
+                if day >= initial_day and day <= final_day:
+                    value = 1                                      #update if turned on 
+                operational_state.append((day, value))
+            elif self.state == "off":
+                 value = 1                                         #initialization
+                 if day >= initial_day and day <= final_day:
+                     value = 0                                    #update if turned off
+                 operational_state.append((day, value))
+        operational_state = pd.DataFrame(operational_state, columns=['Day', 'State'])
+        operational_state.set_index('Day', inplace=True)
+        frequency =  f'{self.timestep}T'
+        operational_state_freq = operational_state.resample(frequency).ffill().iloc[:-1,:]  #resample dataframe to simulation timestep
+        self.operational_state = np.tile(np.array(operational_state_freq['State']), int(self.timestep_number*self.timestep/c.MINUTES_YEAR)) #repeat for simulation years
+                
+
     def h2power(self,h2):
         """
         Inverse function that computes the power consumption and Faraday efficiency
@@ -776,6 +804,12 @@ class electrolyzer:
         P_absorbed: float electricity absorbed [kW]
         
         """
+        state = self.operational_state[step]
+        if state == 0:
+            storable_hydrogen,p,hydrog = [0]*3    # electrolyser turned off as for planned operation schedule, required power output forced to zero
+        if state == 1:
+            pass
+        #####
         if self.strategy == 'hydrogen-first' and hydrog == False:       # defined strategy is either to work only with renewable energy or to prioritize its consumption while interacting also with the electricity grid
             
             if self.model not in ['PEM General','Alkaline']:
@@ -854,7 +888,7 @@ class electrolyzer:
                                 watCons = watCons_1+watCons
                                 self.wat_cons[step] = watCons
                                 self.n_modules_used[step] = n_modules_used
-        
+          
                         if hyd_11[-1] <= max_hyd_storable:                  # if, using n_modules, the total amount of producible hydrogen is lower than storable one  
                             hyd_1 = hyd*n_modules_used                       # total amount of H2 produced by modules working at full load
                             P_absorbed_1 = P_absorbed*n_modules_used         # total power absorbed    // // // // // 
@@ -978,7 +1012,7 @@ class electrolyzer:
                 
      
         return (hyd,-P_absorbed,oxygen,-watCons)
-        
+    
                
     def use1(self,step,p,max_hyd_storable,Text):
         """
@@ -1111,11 +1145,13 @@ if __name__ == "__main__":
                   "minimum_load": 0.2,
                   "ageing": False,
                   "strategy": 'hydrogen-first',
-                  "only_renewables":True
+                  "only_renewables":True,
+  	              "operational_period": "01-01,31-12",
+          	      "state"             : "on",
                 }
     
     
-    sim_steps = 1000           # [step] simulated period of time - usually it's 1 year minimum
+    sim_steps = 8760           # [step] simulated period of time - usually it's 1 year minimum
     timestep = 60              # [min] selected timestep
     storable_hydrogen = 10000                      # [kg] Available capacity in tank for H2 storage at timestep 'step'
 

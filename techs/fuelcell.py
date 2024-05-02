@@ -3,7 +3,8 @@ from scipy.interpolate import interp1d
 import numpy as np
 import math
 from numpy import log as ln
-from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import LinearRegression 
+import pandas as pd
 import os
 import sys 
 sys.path.append(os.path.abspath(os.path.join(os.getcwd(),os.path.pardir)))   # temporarily adding constants module path 
@@ -21,9 +22,11 @@ class fuel_cell:
         parameters : dictionary
             'Npower': float nominal power [kW]
             "number of modules": str  number of modules in the stack [-]
+            'minimum_load': 0-1 float [%], if specified, minimum load the fuel cell must operate at
             'stack model': str 'FCS-C5000','PEM General' and 'SOFC' are aviable
             'priority': int technology assigned priority
             'ageing': bool true if aging has to be calculated
+            'operational period': period of the year during which the fuel cell is turned on or off
             
         timestep_number : int number of timesteps considered in the simulation
                       
@@ -536,6 +539,33 @@ class fuel_cell:
             self.iHeat  = interp1d(self.CellCurrDensity,FC_Heat_produced,bounds_error=False,fill_value='extrapolate')   # Linear spline 1-D interpolation -> Operating current density - produced heat            
             self.iwater = interp1d(self.CellCurrDensity,water,bounds_error=False,fill_value='extrapolate')              # Linear spline 1-D interpolation -> Operating current density - produced water            
 
+        ####### Operational period
+        self.state = parameters["state"]                           #on or off
+        self.operational_period = parameters["operational_period"]
+        initial_day, final_day = self.operational_period.split(',')    #extract inital and final operational days
+        initial_day = pd.to_datetime(initial_day, format = '%d-%m')
+        final_day = pd.to_datetime(final_day, format = '%d-%m')
+        year = initial_day.year
+        operational_state = [] 
+        
+        for day in pd.date_range(start = pd.Timestamp(year=year,month=1,day=1), end = pd.Timestamp(year=year+1,month=1, day=1)):
+            if self.state == "on":                 
+                value = 0                                         #initialization
+                if day >= initial_day and day <= final_day:
+                    value = 1                                      #update if turned on 
+                operational_state.append((day, value))
+            elif self.state == "off":
+                 value = 1                                         #initialization
+                 if day >= initial_day and day <= final_day:
+                     value = 0                                    #update if turned off
+                 operational_state.append((day, value))
+        operational_state = pd.DataFrame(operational_state, columns=['Day', 'State'])
+        operational_state.set_index('Day', inplace=True)
+        frequency =  f'{self.timestep}T'
+        operational_state_freq = operational_state.resample(frequency).ffill().iloc[:-1,:]  #resample dataframe to simulation timestep
+        self.operational_state = np.tile(np.array(operational_state_freq['State']), int(self.timestep_number*self.timestep/c.MINUTES_YEAR)) #repeat for simulation years
+     
+
 #%%                     
     def plot_polarizationpts(self):
          
@@ -753,9 +783,15 @@ class fuel_cell:
         output : hydrogen consumption [kg/s], electricity [kW] and heat supplied[kW] in the cosideterd step
         """
         available_hydrogen = available_hyd/(self.timestep*60) # [kg] to [kg/s] conversion for available hydrogen at the considered step
+        state = self.operational_state[step]
+        if state == 0:
+            p = 0   # # fuel cell turned off as for planned operation schedule, required power output forced to zero
+        if state == 1:
+            pass
+     
         ##########################
         if self.model=='FCS-C5000':
-           
+            
             p_required = -p                      # [kW] system power requirement in the considered step
             
             power = min(p_required,self.Npower)      # [kW] how much electricity can be absorbed by the fuel cell absorb
@@ -777,19 +813,31 @@ class fuel_cell:
                 # turn off the fuel cell
                 
             return (-hyd,power,0.5,0,water) # return hydrogen absorbed [kg] and electricity required [kW]
-
-        ###############################
+ 
+         ###############################
         if self.model in ['PEM General','SOFC']:
             
             # PowerOutput [kW] - Electric Power required from the fuel cell
             if (abs(p) <= self.Npower) or (available_hydrogen/self.max_h2_module < 1):      # if required power or available hydrogen in system are lower than nominal fuel cell parameters
-                hyd,power,FC_Heat,etaFC,water = fuel_cell.use1(self,step,p,available_hydrogen)
-                if abs(hyd) > 0:
-                    self.n_modules_used[step] = 1
+                if abs(p) >= self.Npower*self.min_load: 
+                    hyd,power,FC_Heat,etaFC,water = fuel_cell.use1(self,step,p,available_hydrogen)
+                    if abs(hyd) > 0:
+                        self.n_modules_used[step] = 1
+                    else:
+                        self.n_modules_used[step] = 0
+                            
+                    self.EFF[step]   = etaFC
                 else:
-                    self.n_modules_used[step] = 0
-                self.EFF[step]   = etaFC
-            
+                    p = self.Npower*self.min_load
+                    hyd,power,FC_Heat,etaFC,water = fuel_cell.use1(self,step,-p,available_hydrogen)
+                    if abs(hyd) > 0:
+                        self.n_modules_used[step] = 1
+                    else:
+                        self.n_modules_used[step] = 0
+                            
+                            
+                    self.EFF[step]   = etaFC 
+        
             elif abs(p) > self.MaxPowerStack and available_hydrogen > self.max_h2_stack:    # if required power and available hydrogen are compatible with the entire stack full-load operations
                 hyd,power,FC_Heat,etaFC,water = np.array(fuel_cell.use1(self,step,-self.Npower,available_hydrogen))
                 
@@ -813,14 +861,21 @@ class fuel_cell:
                 
                 residual_power      = abs(p) - power_full 
                 residual_hydrogen   = available_hydrogen - abs(hyd_full)
-                hyd_singlemodule,power_singlemodule,FC_Heat_singlemodule,etaFC_singlemodule,water_singlemodule = fuel_cell.use1(self,step,-residual_power,residual_hydrogen)
-                if hyd_singlemodule != 0:   # single module operating in partial load 
-                    self.n_modules_used[step] = full_modules + 1
-                    self.EFF[step] = ((full_modules*etaFC_full) + (etaFC_singlemodule))/self.n_modules_used[step]  # weighted average 
-                    self.EFF_last_module[step] = etaFC_singlemodule
-                else: 
+                if residual_power >= self.Npower*self.min_load:
+                    hyd_singlemodule,power_singlemodule,FC_Heat_singlemodule,etaFC_singlemodule,water_singlemodule = fuel_cell.use1(self,step,-residual_power,residual_hydrogen)
+                    if hyd_singlemodule != 0:   # single module operating in partial load 
+                        self.n_modules_used[step] = full_modules + 1
+                        self.EFF[step] = ((full_modules*etaFC_full) + (etaFC_singlemodule))/self.n_modules_used[step]  # weighted average 
+                        self.EFF_last_module[step] = etaFC_singlemodule
+                    else: 
+                        self.n_modules_used[step] = full_modules
+                        self.EFF[step] = etaFC_full
+                else:
+                    residual_power = 0
+                    hyd_singlemodule,power_singlemodule,FC_Heat_singlemodule,water_singlemodule = [0]*4
                     self.n_modules_used[step] = full_modules
                     self.EFF[step] = etaFC_full
+                    
                 hyd     = hyd_full + hyd_singlemodule           # [kg/s]  produced hydrogen   
                 power   = power_full + power_singlemodule       # [kW] output power
                 FC_Heat = FC_Heat_full + FC_Heat_singlemodule   # [kW] co-product heat
@@ -829,7 +884,7 @@ class fuel_cell:
                 
         return (hyd,power,FC_Heat,etaFC,water)  # return hydrogen absorbed [kg/s] electricity required [kW] and heat [kW] and water [Sm3] as a co-products 
         
-            
+                
     def use1(self,step,p,available_hydrogen):
          
         'Finding the working point of the FuelCell by explicitly solving the system:'
@@ -1297,11 +1352,13 @@ if __name__ == "__main__":
     inp_test = {'Npower': 1000,
                 "number of modules": 3,
                 'stack model':'PEM General',
-                'ageing': True
+                'ageing': False,
+                'operational_period': "01-03,30-09",
+                'state': 'on'
                 }
     
     if inp_test['ageing'] == False: 
-        sim_steps   = 1000                            # [-] number of steps to be considered for the simulation - usually a time horizon of 1 year minimum is considered
+        sim_steps   = 8760                           # [-] number of steps to be considered for the simulation - usually a time horizon of 1 year minimum is considered
         timestep    = 60                               # [min] selected timestep for the simulation
         time        = np.arange(sim_steps)
         
@@ -1448,7 +1505,7 @@ if __name__ == "__main__":
     elif inp_test['ageing'] == True:
         inp_test['number of modules'] = 1
         
-        sim_steps   = 8760*4 + 1                           # [-] number of steps to be considered for the simulation - usually a time horizon of 1 year minimum is considered
+        sim_steps   = 8760*4                          # [-] number of steps to be considered for the simulation - usually a time horizon of 1 year minimum is considered
         timestep    = 60                               # [min] selected timestep for the simulation
         time        = np.arange(sim_steps)
         

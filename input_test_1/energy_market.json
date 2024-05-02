@@ -1,5 +1,5 @@
 {								 					 
-"REC": {"collective self consumption incentives": 0.118,
+"REC": {"collective self consumption incentives": "pun_2023.csv",
 		"incentives redistribution": {	"producers": 20,
 										"consumers": 80,
 										"manager": 0},

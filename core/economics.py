@@ -98,6 +98,8 @@ def NPV(file_studycase,
     
     results = {}                        # dictionary initialise economic results of each locations
     
+    peakP = sum(location_name.get('PV', {}).get('peakP',0) for location_name in studycase.values()) + sum(location_name.get('wind', {}).get('Npower',0)for location_name in studycase.values())/1000  #calculate total nominal power of REC
+    
     for location_name in tc:            # for reach location
         
         results[location_name] = {}     # dictionary initialise economic results
@@ -254,14 +256,43 @@ def NPV(file_studycase,
          
         # REC incentives redistribution
         if 'REC' in economic_data:
-            csc     = balances[location_name]['electricity']['collective self consumption']
-
-            inc_pro = - csc * economic_data['REC']['incentives redistribution']['producers']/100 * economic_data['REC']['collective self consumption incentives']
+            csc = balances[location_name]['electricity']['collective self consumption']
+            if type(economic_data['REC']['collective self consumption incentives']) == str:     # if the pun price series is given (Italian legislation)
+                pun = pd.read_csv(path+'/energy_price/'+economic_data['REC']['collective self consumption incentives'])['0'].to_numpy()
+                if len(pun) < (c.HOURS_YEAR+2):                   # it means that the serie must be repeated for the simulation_length selected
+                    pun = np.tile(pun,int(c.simulation_years))
+                # check su potenza nominale impianto
+                if peakP > 600:
+                    csc_inc = [min(0.100, (0.060 + max(0,0.180-i))) for i in pun]
+                elif peakP > 200 and peakP <= 600:
+                    csc_inc = [min(0.110, (0.070 + max(0,0.180-i))) for i in pun]
+                else:
+                    csc_inc = [min(0.120, (0.080 + max(0,0.180-i))) for i in pun]
+                for i in range(len(csc_inc)):
+                    csc_inc[i] += 0.008    #ARERA
+                
+                #PV incentives adjustment for the central and northern regions
+                if 'region' in economic_data['REC']:
+                    region = economic_data['REC']['region']
+                    centro = ['Lazio', 'Marche', 'Toscana', 'Umbria', 'Abruzzo']
+                    nord = ['Emilia-Romagna', 'Friuli-Venezia Giulia', 'Liguria', 'Lombardia', 'Piemonte',
+                            'Trentino-Alto Adige/Südtirol', "Valle d'Aosta/Vallée d'Aoste", "Veneto"]
+                    if region in centro:
+                        for i in range(len(csc_inc)):
+                            csc_inc[i] += 0.004
+                    elif region in nord:
+                        for i in range(len(csc_inc)):
+                            csc_inc[i] += 0.010
+            
+            else:
+                csc_inc = economic_data['REC']['collective self consumption incentives']
+    
+            inc_pro = - csc * economic_data['REC']['incentives redistribution']['producers']/100 * csc_inc
             inc_pro = np.tile(inc_pro,years_factor)
             inc_pro = np.reshape(inc_pro,(-1,8760))    
             results[location_name]['CF_studycase']['CSC'] += inc_pro.sum(axis=1,where=inc_pro>0) 
             
-            inc_con = csc * economic_data['REC']['incentives redistribution']['consumers']/100 * economic_data['REC']['collective self consumption incentives']
+            inc_con = csc * economic_data['REC']['incentives redistribution']['consumers']/100 * csc_inc
             inc_con= np.tile(inc_con,years_factor)
             inc_con = np.reshape(inc_con,(-1,8760))
             results[location_name]['CF_studycase']['CSC'] += inc_con.sum(axis=1,where=inc_con>0)   
