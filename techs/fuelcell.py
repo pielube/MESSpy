@@ -41,8 +41,8 @@ class fuel_cell:
             The maximum capacity is 1000 kW.\n\
             Options to fix the problem: \n\
                 (a) -  Global fuel cell capacity can be increased by adding more modules in fuel cell parameters in studycase.json")
-        self.min_load           = parameters.get('minimum_load', 0) # if 'minimum load' is not specified as model input, the default value of 0 is selected by default
-        self.ageing             = parameters.get('ageing', False)   # if 'ageing' is not specified as model input, the default value is set to False 
+        self.min_load           = parameters.get('minimum_load',0.1)    # if 'minimum load' is not specified as model input, the default value of 0.1 (i.e.10% of rated power) is selected by default
+        self.ageing             = parameters.get('ageing',False)        # if 'ageing' is not specified as model input, the default value is set to False 
         self.min_year   = c.MINUTES_YEAR                    # [min/year]    number of minutes in one year
         self.min_week   = c.MINUTES_WEEK                    # [min/week]    number of minutes in one week
         self.min_month  = c.MINUTES_MONTH                   # [min/month]   number of minutes in one month        
@@ -141,7 +141,7 @@ class fuel_cell:
             self.MembThickness       = 250                                 # [μm]     Fuel cell membrane thickness - if Nominal Power < 6 kW: MembThickness = 100 
                                                                            #                                    - if //   //   //  > 6 kW: MembThickness = 145 
             self.FC_MaxCurrent       = 230                                 # [A]      Value taken from datasheet. Current value at which maximum power is delivered
-            self.MinOutputPower       = 0.1*self.Npower                    # [kW] minimum output power chosen as 10% of module nominal power 
+            self.MinOutputPower       = self.min_load*self.Npower          # [kW] minimum output power chosen as 10% of module nominal power 
 
             self.n_modules           = parameters['number of modules']     # [-]      Number of modules constituting the stack
             self.MaxPowerStack       = self.n_modules*self.Npower          # [kW]     Stack maximum power output
@@ -223,7 +223,7 @@ class fuel_cell:
             self.Current = self.CellCurrDensity*self.FC_CellArea    # [A] Defining the current value: same both for the single cell and the full stack!
             
             # Defining Fuel Cell Max Power Generation
-            'Fuel Cell Max Power Consumption'
+            'Fuel Cell Max Power Output'
             
             FC_power = []
             for i in range(len(self.Current)):
@@ -828,7 +828,7 @@ class fuel_cell:
                             
                     self.EFF[step]   = etaFC
                 else:
-                    p = self.Npower*self.min_load
+                    p = 0  #!!! fuel cell switched off.  On the other hand p=self.Npower*self.min_load: different approach to be set if the aim is to use the fc at minimum load
                     hyd,power,FC_Heat,etaFC,water = fuel_cell.use1(self,step,-p,available_hydrogen)
                     if abs(hyd) > 0:
                         self.n_modules_used[step] = 1
@@ -1353,7 +1353,8 @@ if __name__ == "__main__":
                 "number of modules": 3,
                 'stack model':'PEM General',
                 'ageing': False,
-                'operational_period': "01-03,30-09",
+                'minimum_load': 0,
+                'operational_period': "01-01,31-12",
                 'state': 'on'
                 }
     
@@ -1374,8 +1375,8 @@ if __name__ == "__main__":
     
         'Test 1 - Tailored ascending power input'
     
-        flow  = - np.linspace(0.5,fc.Npower*6,sim_steps)  # [kW] power demand - ascending series
-        flow1 = - np.linspace(0.5,fc.Npower,sim_steps)    # [kW] power demand - ascending series
+        flow  = - np.linspace(fc.Npower*0.01,fc.Npower*6,sim_steps)  # [kW] power demand - ascending series
+        flow1 = - np.linspace(fc.Npower*0.01,fc.Npower,sim_steps)    # [kW] power demand - ascending series
     
         hyd_used = np.zeros(sim_steps)      # [kg] hydrogen used by fuel cell
         P_el     = np.zeros(sim_steps)      # [kW] electricity produced
@@ -1387,43 +1388,45 @@ if __name__ == "__main__":
             hyd_used[step],P_el[step],P_th[step],eta[step],water[step] = fc.use(step,flow1[step],available_hydrogen)
             # available_hydrogen += hyd_used[step]*60*timestep  # [kg] updating available hydrogen
             
-        # fc.EFF[fc.EFF == 0] = math.nan      # activate to avoid representation o '0' values when fuel cell is turned off
+        fc.EFF[fc.EFF == 0] = math.nan      # activate to avoid representation o '0' values when fuel cell is turned off
+        P_th[P_th == 0] = math.nan
         
-        fig=plt.figure(figsize=(8,8),dpi=1000)
-        fig.suptitle("{} ({} kW) performance".format(inp_test['stack model'],round(fc.Npower,1)))
+        fig = plt.figure(figsize=(8,8),dpi=1000)
+        fig.suptitle("{} fuel cell performance- {} kW rated power".format(inp_test['stack model'],round(fc.Npower,1)))
         
-        PI=fig.add_subplot(211)
-        PI.plot(-flow1,P_th,label="Thermal Power") 
-        PI.axvline(x=fc.MinPower,linestyle=':',label= 'Lower Functioning Boundary', zorder=3, linewidth = 2)   
-        PI.set_title("Heat vs Electric Power")
-        PI.grid(alpha=0.3, zorder=-1)
-        PI.set_xlabel("Power Demand [kW]")
-        PI.set_ylabel("Thermal Output [kW]")
-        PI.legend(fontsize=15)
+        ax1 = fig.add_subplot(211)
+        ax1.plot(-flow1,P_th,label="Thermal Power") 
+        ax1.axvline(x=fc.MinOutputPower,linestyle=':',label= 'Lower Functioning Boundary', zorder=3, linewidth = 2)   
+        ax1.set_title("Heat vs Electric Power")
+        ax1.grid(alpha=0.3, zorder=-1)
+        ax1.set_xlabel("Power Demand [kW]")
+        ax1.set_ylabel("Thermal Output [kW]")
+        ax1.legend()
         
-        ETA=fig.add_subplot(212)
-        ETA.scatter(-flow1,fc.EFF,label="Efficiency",color="green",edgecolors='k')
-        ETA.axvline(x=fc.MinPower,color='tab:blue',linestyle=':',label= 'Lower Functioning Boundary', zorder=3, linewidth = 2)   
-        ETA.set_title("Efficiency vs Power")
-        ETA.grid(alpha=0.3, zorder=-1)
-        ETA.set_xlabel("Power Demand [kW]")
-        ETA.set_ylabel("Efficiency [-]")
-        ETA.legend(fontsize=15)
+        ax2=fig.add_subplot(212)
+        ax2.scatter(-flow1,fc.EFF,label="Efficiency",color="green",edgecolors='k', s=5)
+        ax2.axvline(x=fc.MinOutputPower,color='tab:blue',linestyle=':',label= 'Lower Functioning Boundary', zorder=3, linewidth = 2)   
+        ax2.set_title("Efficiency vs Power")
+        ax2.grid(alpha=0.3, zorder=-1)
+        ax2.set_xlabel("Power Demand [kW]")
+        ax2.set_ylabel("Efficiency [-]")
+        ax2.legend()
         
         plt.tight_layout()
         plt.show()
         
         
         fig=plt.figure(figsize=(8,8),dpi=1000)
-        fig.suptitle("{} ({} kW) performance".format(inp_test['stack model'],round(fc.Npower,1)))
+        fig.suptitle("{} fuel cell performance- {} kW rated power".format(inp_test['stack model'],round(fc.Npower,1)))
         
-        PI=fig.add_subplot(211)
-        PI.plot(-flow1,-hyd_used)
-        PI.set_title("H$_{2}$ Consumption vs Power")
-        PI.grid(alpha=0.3, zorder=-1)
-        PI.set_xlabel("Power Output [kW]")
-        PI.set_ylabel("Hydrogen consumption [kg/s]")
-        # PI.legend(fontsize=15)
+        ax3=fig.add_subplot(211)
+        ax3.plot(-flow1,-hyd_used,color='tab:orange')
+        ax3.set_title("H$_{2}$ Consumption vs Power")
+        ax3.axvline(x=fc.MinOutputPower,color='tab:blue',linestyle=':',label= 'Lower Functioning Boundary', zorder=3, linewidth = 2)   
+        ax3.grid(alpha=0.3, zorder=-1)
+        ax3.set_xlabel("Power Output [kW]")
+        ax3.set_ylabel("Hydrogen consumption [kg/s]")
+        ax3.legend()
         
         ETA=fig.add_subplot(212)
         ETA.scatter(-flow1,fc.EFF,label="Efficiency",color="green",edgecolors='k',zorder =3)
@@ -1432,13 +1435,13 @@ if __name__ == "__main__":
         ETA.grid()
         ETA.set_xlabel("Power Output [kW]")
         ETA.set_ylabel("Efficiency [-]")
-        ETA.legend(fontsize=15)
+        ETA.legend()
         
         plt.tight_layout()
         plt.show()
         
         fig, ax = plt.subplots(dpi=600)
-        ax.scatter(-flow1,fc.EFF, edgecolors='k', zorder = 3)
+        ax.scatter(-flow1,fc.EFF, edgecolors='k', zorder = 3, s = 5)
         ax.set_title("Fuel Cell Module Efficiency")
         textstr = '\n'.join((
             r'$CellArea=%.1f$ $cm^{2}$' % (fc.FC_CellArea,),
@@ -1452,11 +1455,11 @@ if __name__ == "__main__":
         ax.set_xlabel('Power Output [kW]')
         ax.set_ylabel('$\\eta$') 
         
-        plt.figure(dpi=1000)
-        plt.plot(-flow1, fc.EFF)
-        plt.grid(alpha=0.3,zorder=-1)
-        plt.xlabel('Power Output [kW]')
-        plt.ylabel('$\\eta$ - Efficiency [-]')
+        # plt.figure(dpi=1000)
+        # plt.plot(-flow1, fc.EFF)
+        # plt.grid(alpha=0.3,zorder=-1)
+        # plt.xlabel('Power Output [kW]')
+        # plt.ylabel('$\\eta$ - Efficiency [-]')
        
         for step in range(len(flow)):
             hyd_used[step],P_el[step],P_th[step],eta[step],water[step] = fc.use(step,flow[step],available_hydrogen)
@@ -1468,19 +1471,21 @@ if __name__ == "__main__":
         ax.grid(alpha=0.3, zorder=-1)
         ax.set_title('Fuel Cell Stack - Nr of working modules')
       
-        
+#%%
         'Test 2 - Random power demand'
     
         fd   = -np.random.uniform(0.08*fc.Npower,5.2*fc.Npower,sim_steps)   # [kW] power required from the Fuel Cell - random values
         
         for step in range(len(fd)):
             hyd_used[step],P_el[step],P_th[step],eta[step],water[step] = fc.use(step,fd[step],available_hydrogen)
-            
+         
+        interval = 48
+        x = np.arange(interval)
         fig, ax = plt.subplots(dpi=1000)
         ax2 = ax.twinx() 
-        ax.bar(np.arange(sim_steps)-0.2,fc.EFF,width=0.35,zorder=3,edgecolor='k',label='$1^{st}$ module efficiency', alpha =0.8)
-        ax.bar(np.arange(sim_steps)+0.,fc.EFF_last_module,width=0.35,zorder=3, edgecolor = 'k',align='edge',label='Last module efficiency',alpha =0.8)
-        ax2.scatter(np.arange(sim_steps),-fd,color ='limegreen',s=25,edgecolors='k',label='Required Power')
+        ax.bar(x-0.2,fc.EFF[:interval],width=0.35,zorder=3,edgecolor='k',label='$1^{st}$ module efficiency', alpha =0.8)
+        ax.bar(x+0.,fc.EFF_last_module[:interval],width=0.35,zorder=3, edgecolor = 'k',align='edge',label='Last module efficiency',alpha =0.8)
+        ax2.scatter(x,-fd[:interval],color ='limegreen',s=20,edgecolors='k',label='Required Power')
         h1, l1 = ax.get_legend_handles_labels()
         h2, l2 = ax2.get_legend_handles_labels()
         ax.legend(h1+h2, l1+l2, loc='lower center',bbox_to_anchor=(0.5, 1.08), ncol =3, fontsize ='small')
@@ -1502,6 +1507,7 @@ if __name__ == "__main__":
         ax.grid(alpha=0.3, zorder=-1)
         ax.set_title('Fuel Cell Stack functioning behaviour')
         
+#%%
     elif inp_test['ageing'] == True:
         inp_test['number of modules'] = 1
         
