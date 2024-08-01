@@ -5,7 +5,7 @@ An open-source model for simulating multy-energy systems such as Renewable Energ
 
 
 ### Authors
-**Mattia Pasqui**, **Alessandro Mati**, **Andrea Ademollo**, **Pietro Lubello**,  and **Carlo Carcasci**\
+**Mattia Pasqui**, **Alessandro Mati**, **Andrea Ademollo**,**Mattia Calabrese**, **Pietro Lubello**,  and **Carlo Carcasci**\
 Department of Industrial Engineering (DIEF), University of Florence (UNIFI), Italy
 
 ## Overview
