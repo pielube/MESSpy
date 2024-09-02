@@ -83,6 +83,8 @@ Results are saved in both .pkl and .csv
 We suggest you to create your own run_dev.py, input_dev/ and post_process_dev.py and to work on them instead of modifying the existing file used as initial test. 
 
 ## Related works
+- "Exploring the role of hydrogen in decarbonizing energy-intensive industries: A techno-economic analysis of a solid oxide fuel cell cogeneration system"\
+https://doi.org/10.1016/j.jclepro.2024.143254
 - "Optimal sizing of a distributed energy system with thermal load electrification"\
 https://www.e3s-conferences.org/articles/e3sconf/abs/2020/57/e3sconf_ati2020_01006/e3sconf_ati2020_01006.html
 - "The potential of simulating energy systems: The multi energy systems simulator model"\
