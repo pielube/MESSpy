@@ -12,6 +12,8 @@
 "interest rate": 0.05,
 
 "inflation rate": { "electricity": 0.02},
+					
+"decommissioning" : 0,				  
 					      
 "investment years": 30
 }

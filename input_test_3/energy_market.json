@@ -10,7 +10,7 @@
                 "sale": 0.10,
 				"emission intensity": 350},
                 
-"wind electricity": {"purchase": 0}, 
+"wind electricity": {"purchase": 0.065}, 
                         
 "pv electricity": {"purchase": 0.065},  
 				 
@@ -23,11 +23,11 @@
 "water": {"purchase": 2.38,
             "sale": 0},
             
-"gas": {"purchase": 1,   
+"gas": {"purchase": 0.5,   
         "sale": 0}, 	  
 		  
-"green_hydrogen_incentives": { "application":true,
-                               "value": 0.5,
+"green_hydrogen_incentives": { "application":false,
+                               "value": 2.5,
                                "n_years": 10},
 		  
 "interest rate": 0.05,
