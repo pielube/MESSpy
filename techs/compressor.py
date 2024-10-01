@@ -52,8 +52,8 @@ class Compressor:
             raise ValueError("Warning: redundancy issue. Both nominal power and nominal flow rate have been defined as input.\n\
             Option to fix the problem: \n\
                 (a) - Choose only one as input parameter")
-        if 'Npower' in parameters       :  self.Npower      = parameters['Npower']      # [kW] nominal power of compressor
-        if 'Nflow_rate' in parameters   :  self.Nflowrate   = parameters['Nflow_rate']  # [kg/s]  nominal flow rate that can be processed by the compressor
+        self.Npower      = parameters.get('Npower', False)      # [kW] nominal power of compressor
+        self.Nflowrate   = parameters.get('Nflow_rate', False)  # [kg/s]  nominal flow rate that can be processed by the compressor
         if maxflowrate_ele:             # if code is being executed from main maxflowrate_ele is a given parameter: maximum hydrogen producible by the electrolyzers. Compressor functioning only in conjuction with electorlyzers. 
             if parameters.get('Npower') and parameters.get('Npower') < maxflowrate_ele:
                 warning_message = f"Warning: The specified flow rate is lower than maximum flow rate producible by electorlysers. \n\
@@ -107,7 +107,9 @@ class Compressor:
             intercept   = df.loc[df['Pressure in [barg]'] == self.P_in, 'Intercept'].iloc[0]
             
             self.en_cons     = (intercept+slope*(self.P_out-self.P_in))*self.conversion     # [kJ/kgH2] specific energy consumption of the simple compressor model
-        
+            self.Npower = self.Nflowrate*self.en_cons/self.eta_motor         # [kW] compressor nominal power - simple assumption
+            
+            print(f"\nSimple compressor model with a nominal power of {int(self.Npower)} kW to comprise a max flow rate of {round(self.Nflowrate,3)} kg/s")
         else:  # if any other model is selected
 
             # initialisation of variables - thermodynamic points of compression process
@@ -197,6 +199,7 @@ class Compressor:
                     self.Nflowrate      = maxflowrate_ele
                     self.Npower         = (self.Nflowrate*self.comp_lav_spec[0])/self.eta_motor     # [kW] compressor nominal power - simple assumption
 
+                print(f"Normal compressor model with a nominal power of {int(self.Npower)} kW to comprise a max flow rate of {round(self.Nflowrate,3)} kg/s")                                                                                                                                                             
             ################################################################################################
             # Single-stage compressor operation with refrigeration 
             if self.model == 'compressor_with_refrigeration': 
@@ -288,7 +291,8 @@ class Compressor:
                     Power               = q_m*a/1000                        # [kW] https://transitionaccelerator.ca/wp-content/uploads/2023/04/TA-Technical-Brief-1.1_TEEA-Hydrogen-Compression_PUBLISHED.pdf
                     self.Npower         = m.ceil(Power/self.eta_motor)      # [kW] compressor nominal power 
                     self.IC_power_list  = self.Nflowrate*self.delta_H       # [kW] Total heat to be removed by the cooling system
-    
+
+                print(f"Single stage refrigerated compressor model with a nominal power of {int(self.Npower)} kW to comprise a max flow rate of {round(self.Nflowrate,3)} kg/s")
             ########################################################################################à
             # Multistage compressor operation with refrigeration
             if parameters['compressor model'] == 'multistage_compressor_with_refrigeration':
@@ -387,6 +391,8 @@ class Compressor:
                     Power               = q_m*a/1000                    # [kW] https://transitionaccelerator.ca/wp-content/uploads/2023/04/TA-Technical-Brief-1.1_TEEA-Hydrogen-Compression_PUBLISHED.pdf
                     self.Npower         = m.ceil(Power/self.eta_motor)  # [kW] compressor nominal power 
                     self.IC_power_list  = self.Nflowrate*self.delta_H   # [kW] Total heat to be removed by the cooling system
+                    
+                print(f"Multi stage refrigerated compressor model with a nominal power of {int(self.Npower)} kW to comprise a max flow rate of {round(self.Nflowrate,3)} kg/s")                
     ##########################################################################################################################################################
                     
                 # # Hydrogen Refueling Station (HRS) application - isoentalpic transformation, control from T to dispenser to check if temperature limits are met
@@ -867,17 +873,31 @@ class Compressor:
         
         if self.model == "normal_compressor":
             
-            self.hyd[step]  = self.flow_rate                # [kg/s] hydrogen mass flowrate in the considered timestep
-            p_absorbed      = self.Npower                   # [kW] energia del compressore in un'ora di utilizzo
-            t_absorbed      = 0                             # [kW] cooling not considered in this model
+            if massflowrate == False:                   # compressor working in between a buffer and an HPH storage. Only full load operations allowed. 
+                self.hyd[step]  = self.Nflowrate        # [kg/s] hydrogen mass flow rate
+                t_absorbed      = 0                     # [kW] of required cooling
+                p_absorbed      = self.Npower           # [kW] absorbed power 
+                    
+                if self.hyd[step] > available_hyd_lp:   # if the is not enough space in the H tank to store the hydrogen (H tank is nearly full)
+                    self.hyd[step]  = 0
+                    p_absorbed      = 0
+                    t_absorbed      = 0
+                    
+                elif self.hyd[step] > storable_hydrogen_hp:     # if mass flow rate is higher than the storable amount of hydrogen
+                    self.hyd[step]  = 0
+                    p_absorbed      = 0
+                    t_absorbed      = 0
+                            
+                return(self.hyd[step],-p_absorbed,-t_absorbed)
             
-            if self.hyd[step] > available_hyd_lp:           # if the is not enough space in the H tank to store the hydrogen (H tank is nearly full)
-                self.hyd[step]  = 0                         # partial load operations not allowed
-                p_absorbed      = 0
+            else:
+                self.hyd[step]  = massflowrate
+                p_absorbed      = (massflowrate*self.comp_lav_spec[0])/self.eta_motor
                 t_absorbed      = 0
             
-            return(self.hyd[step],-p_absorbed,-t_absorbed)
+                                                          
                 
+                return(self.hyd[step],-p_absorbed,-t_absorbed)                                                           
         elif self.model == 'multistage_compressor_with_refrigeration' or self.model == 'compressor_with_refrigeration': 
             
             if massflowrate == False:                   # compressor working in between a buffer and an HPH storage. Only full load operations allowed. 
