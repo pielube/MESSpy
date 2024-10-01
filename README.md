@@ -19,11 +19,12 @@ Models of different technologies are avialable and still under development to in
 - Wind turbines
 - Batteries
 - Electrolyzers
+- Steam Methane Reformer
 - Fuel Cells
 - Hydrogen tanks
-- Hydrogen compressor
+- Hydrogen compressors
 - Heat pumps
-- Boilers (ng, ele or H2)
+- Boilers (NG, electric or H2)
 - CHP (combined heat and power)
 
 ### MESS needs the load profiles as input as a .csv file
@@ -53,19 +54,21 @@ https://github.com/pielube/MESS-Fortran
 ## Quick start
 Download Anaconda from https://www.anaconda.com/download: recommended to handle virtual environments and package versions.
 
-From Anaconda Prompt, choose folder and clone repository
+From Anaconda Prompt, install git, choose folder, clone repository, create the virtual environment and install Spyder (Authors usually use Spyder as IDE)
+- conda install git
+- cd path/to/your/folder
 - git clone https://github.com/pielube/MESSpy.git
 - cd MESSpy/env
 - conda env create -f MES.yaml
 - conda activate MES
-Authors usually use Spyder as IDE, so:
 - conda install spyder
 - spyder
 
 You can run examples now. Three examples analysis are available:
 - "run_test_1" A small energy community composed by two consumers and one prosumer with PV and battery. A sensisivety analysi is also carried out.
 - "run_test_2" A residential building replaces the gas boiler with a heat pump
-- "run_test_3" Supercool hydrogen things
+- "run_test_3" On-site hydrogen production plant for an industrial facility 
+
 Choose one of these, read it and press run!
 
 ### Input files
