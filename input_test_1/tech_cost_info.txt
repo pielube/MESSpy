@@ -1,4 +1,4 @@
-"cost per unit": float [€/kw] (pv,inverter,electrolyzer,fc,hp,boiler) [€/kWh] (battery) [€/kg] (Htank) 
+"cost per unit": float [€/kW] (pv,inverter,electrolyzer,fc,hp,boiler) [€/kWh] (battery) [€/kg] (Htank) [€/kW of produced hydrogen] (SMR)
 "OeM": operations and maintenance costs [%I0/y]       
 "refund": 
 	 "rate": rate of initial investemt that will be refunded [%]
@@ -6,3 +6,59 @@
 "replacement":
 		"rate": rate of initial investemt that will be payed to replace teh technology [%]
  		"years": replacement time [years]
+
+
+Below is given an example; copy-paste in tech_cost.json if you want to use these inputs:
+
+{			
+"PV": { "cost per unit": 1000, 
+        "OeM": 1, 
+        "refund": { "rate": 50, "years": 10},
+        "replacement": {"rate": 80, "years": 25}},
+		
+"wind": {   "cost per unit": 1200, 
+            "OeM": 3, 
+            "refund": { "rate": 0, "years": 0},
+            "replacement": {"rate": 80, "years": 25}}, 
+        
+"SMR": { "cost per unit": 280, 
+							"OeM": 1, 
+							"refund": { "rate": 0, "years": 0},
+							"replacement": {"rate": 80, "years": 25}},
+							
+"electrolyzer": {"cost per unit":"default price correlation" , 
+                 "OeM": 1, 
+                 "refund": { "rate": 0, "years": 0},
+                 "replacement": {"rate": 30, "years": 15}},  
+				 
+"H tank": {"cost per unit": 450,
+           "OeM": 1,
+           "refund": { "rate": 0, "years": 0},
+           "replacement": {"rate": 80, "years": 30}},
+
+"fuel cell": {"cost per unit": 3000,
+              "OeM": 2, 
+              "refund": { "rate": 0, "years": 0},
+              "replacement": {"rate": 30, "years": 15}},    
+ 
+"mechanical compressor": {"cost per unit": "default price correlation",
+                        "OeM": 1,
+                        "refund": { "rate": 0, "years": 0},
+                        "replacement": {"rate": 30, "years": 20}},
+                        
+"boiler_ng": {"cost per unit": 200, 
+              "OeM": 1, 
+              "refund": { "rate": 0, "years": 0},
+              "replacement": {"rate": 60, "years": 20}},
+			  
+"battery": {"cost per unit": 800, 
+            "OeM": 1, 
+            "refund": { "rate": 50, "years": 10},
+            "replacement": {"rate": 60, "years": 20}}, 
+
+"heatpump": {"cost per unit": 900, 
+             "OeM": 0.5, 
+             "refund": { "rate": 65, "years": 10},
+             "replacement": {"rate": 60, "years": 20}} 
+            			                    									
+}

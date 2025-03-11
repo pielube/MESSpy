@@ -1,7 +1,7 @@
 {			
 "PV": { "cost per unit": 1000, 
         "OeM": 1, 
-        "refund": { "rate": 50, "years": 10},
+        "refund": { "rate": 0, "years": 0},
         "replacement": {"rate": 80, "years": 25}},
 		
 "wind": {   "cost per unit": 1200, 
@@ -41,7 +41,7 @@
 			  
 "battery": {"cost per unit": 800, 
             "OeM": 1, 
-            "refund": { "rate": 50, "years": 10},
+            "refund": { "rate": 0, "years": 0},
             "replacement": {"rate": 60, "years": 20}}, 
 
 "heatpump": {"cost per unit": 900, 

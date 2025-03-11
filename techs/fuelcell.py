@@ -22,11 +22,13 @@ class fuel_cell:
         parameters : dictionary
             'Npower': float nominal power [kW]
             "number of modules": str  number of modules in the stack [-]
-            'minimum_load': 0-1 float [%], if specified, minimum load the fuel cell must operate at
-            'stack model': str 'FCS-C5000','PEM General' and 'SOFC' are aviable
+            'min power module': 0-1 float [%], if specified, minimum load the fuel cell must operate at
+            'stack model': str 'simple','PEM General' and 'SOFC' are aviable
             'priority': int technology assigned priority
             'ageing': bool true if aging has to be calculated
             'operational period': period of the year during which the fuel cell is turned on or off
+            'electric efficiency': float efficiency of simple model [0-1]
+            'thermal efficiency': float efficiency of simple model [0-1]                                
             
         timestep_number : int number of timesteps considered in the simulation
                       
@@ -36,13 +38,16 @@ class fuel_cell:
         
         self.model              = parameters['stack model'] # [-]  Fuel cell model
         self.Npower             = parameters['Npower']      # [kW] Single module nominal power
+        self.n_modules           = parameters['number of modules']     # [-]      Number of modules constituting the stack                                                                                                                          
         if self.model in ['PEM General','SOFC'] and self.Npower> 1000:
             raise ValueError(f"Warning: {self.Npower} kW of rated power has been selected for the single {self.model} fuel cell module. \n\
             The maximum capacity is 1000 kW.\n\
             Options to fix the problem: \n\
                 (a) -  Global fuel cell capacity can be increased by adding more modules in fuel cell parameters in studycase.json")
-        self.min_load           = parameters.get('minimum_load', 0) # if 'minimum load' is not specified as model input, the default value of 0 is selected by default
+        self.min_input_module           = parameters.get('min power module', 0) # if 'minimum load' is not specified as model input, the default value of 0 is selected by default
         self.ageing             = parameters.get('ageing', False)   # if 'ageing' is not specified as model input, the default value is set to False 
+        if self.ageing != False:
+            raise ValueError("Warning: ageing is not yet available for fuel cell, thus set it to false")                                                                     
         self.min_year   = c.MINUTES_YEAR                    # [min/year]    number of minutes in one year
         self.min_week   = c.MINUTES_WEEK                    # [min/week]    number of minutes in one week
         self.min_month  = c.MINUTES_MONTH                   # [min/month]   number of minutes in one month        
@@ -68,7 +73,7 @@ class fuel_cell:
         self.SteamSH            = c.H1_STEAM800     # [kJ/kg]     Steam mass specific enthalpy @ T = 800°C, P = 116000 Pa
         if __name__ == "__main__":                  # if code is being executed from chp_gt.py script
             self.timestep   = timestep            # [min]       simulation timestep if launched from main
-            self.timestep_number    = timestep_number       # [-]   number of timestep if code is launched from electrolyzer.py
+            self.timestep_number    = timestep_number       # [-]   number of timestep if code is launched from fuel cell.py
         else:
             self.timestep   = c.timestep              # [min]       simulation timestep if launched from fuelcell.py
             self.timestep_number    = c.timestep_number     # [-]   number of timestep if code is launched from main  
@@ -81,36 +86,48 @@ class fuel_cell:
         # Ambient conditions 
         self.AmbTemp      = c.AMBTEMP               # [K]         Standard ambient temperature - 15 °C
      
-        #########################################
-        if self.model == 'FCS-C5000':           # this model is based on FCS-C5000 characteristic curves https://www.horizonfuelcell.com/hseries
-            self.nc = 120 * self.Npower/5       # number of cells (120 cells are required to have a nominal power of 5000 W)
-        
-            # characteristic curves
-            I=[0, 10, 20, 30, 40, 50, 60, 70, 80]                        # [A]
-            v=[0.96, 0.83, 0.796, 0.762, 0.728, 0.694, 0.66, 0.6, 0.5]   # [V]
-            V=[]                                                         # [V] Stack voltage list 
-            P=[]                                                         # [W] Stack output power list
-            for i in range(len(I)):
-                volt=self.nc*v[i]
-                V.append(volt)
-                pot=I[i]*volt/1000                                       # [W] -> [kW] conversion
-                P.append(pot)                                            # [kW] Stack power
+        self.h2p_el_eff_in = parameters.get('electric efficiency',False)
+        self.h2p_th_eff_in = parameters.get('thermal efficiency',False)
+        if self.model == 'simple':
+            if not isinstance(self.h2p_el_eff_in, (int, float)) or self.h2p_el_eff_in is False:
+                raise ValueError("Warning: For the fuel cell 'simple' model, 'electric efficiency' must be provided and must be a number between 0 and 1.")
+            if not isinstance(self.h2p_th_eff_in, (int, float)) or self.h2p_th_eff_in is False:
+                raise ValueError("Warning: For the fuel cell 'simple' model, 'thermal efficiency' must be provided and must be a number between 0 and 1.")
+            if self.n_modules != 1:
+                raise ValueError("Warning: For the fuel cell 'simple' model, 'number of modules' must be set to 1. 'N power' corresponds to the total power of the fuel cell. For considering more modules 'SOFC' or 'PEM General' models must be selected")
+        elif self.model in ['SOFC', 'PEM General']:
+            if self.h2p_el_eff_in is not False:
+                raise ValueError("Warning: For the fuel cell 'SOFC' or 'PEM General' models, 'electric efficiency' must be set to false as they are calculated based on the voltage-current density curve.")
+                              
+                                                                                                 
+                                                                                           
             
-            self.IP=interp1d(I,P,kind='cubic',bounds_error=False,fill_value='extrapolate')  
-            self.Pmax=max(P)
+            if self.h2p_th_eff_in is not False:
+                raise ValueError("Warning: For the fuel cell 'SOFC' or 'PEM General' models, 'thermal efficiency' must be set to false as they are calculated based on the voltage-current density curve.")
+        else:
+            raise ValueError("Warning: Invalid model selected.")
            
-            # PI inverse curve that will be used to find the operating point
-            I=[]
-            P=[]
-            for a in range(800):
-                i=a/10
-                pot=self.IP(i)
-                if pot>self.Pmax:
-                    break  
-                I.append(i)
-                P.append(pot)
-            self.PI=interp1d(P,I,kind='cubic',bounds_error=False,fill_value='extrapolate')
+        self.MinOutputPower       = self.min_input_module *self.Npower                    # [kW] minimum output power chosen as tot% of module nominal power                                                                                                                                                     
+        ###########################################
+        if self.model == 'simple':     
+            
+            total_efficiency = self.h2p_el_eff_in + self.h2p_th_eff_in
+            if total_efficiency > 1:
+                raise ValueError(f"Warning: Total efficiency results to be {total_efficiency*100:.1f} %. Decrease 'electric efficiency' or 'thermal efficiency' so that their sum does not exceed one.")
+            print("\nWarning: fuel cell simple model has only a specific consumption value, it does not consider ageing and minimum load")
+            self.h2p_eff = (1/(self.h2p_el_eff_in*c.HHVH2*1000))*3600 # [kg/kWh] kg/h of hydrogen produced per kWh of input power            
+            self.MaxPowerStack  = self.Npower          # [kW]     Stack maximum power output
+            self.max_h2_stack   = self.MaxPowerStack/(self.h2p_el_eff_in*c.HHVH2*1000)    # [kg/s] maximum amount of exploitable hydrogen for the considered stack
+            self.MinOutputPower      = 0  # [kW] minimum input power  
+            self.MaxPowerStack       = self.Npower           # [kW] fuel cell stack total power
+                             
+                                                                                          
 
+            print(f"\nThe fuel cell electric efficiency is set equal to {self.h2p_el_eff_in*100:.1f}%, which is equivalent to {round(self.h2p_eff, 3)} kg/kWh (using H2 HHV). "
+                  f"The fuel cell thermal efficiency is set equal to {self.h2p_th_eff_in*100:.1f}%. The output heat temperature is not available for the 'simple' model. "
+                  f"Thus, the total efficiency is equal to {total_efficiency*100:.1f}%. "
+                  f"A fuel cell nominal power of {self.MaxPowerStack:.2f} kW needs to be fed with {self.max_h2_stack*3600:.2f} kg/h of hydrogen.")
+        
         ###########################################
         if self.model == 'PEM General':
             
@@ -141,9 +158,7 @@ class fuel_cell:
             self.MembThickness       = 250                                 # [μm]     Fuel cell membrane thickness - if Nominal Power < 6 kW: MembThickness = 100 
                                                                            #                                    - if //   //   //  > 6 kW: MembThickness = 145 
             self.FC_MaxCurrent       = 230                                 # [A]      Value taken from datasheet. Current value at which maximum power is delivered
-            self.MinOutputPower       = 0.1*self.Npower                    # [kW] minimum output power chosen as 10% of module nominal power 
-
-            self.n_modules           = parameters['number of modules']     # [-]      Number of modules constituting the stack
+        
             self.MaxPowerStack       = self.n_modules*self.Npower          # [kW]     Stack maximum power output
          
             self.nc                  = 90 + int((self.Npower/1000)*(250-90))    # For a power range between 0 kW and 1000 kW the number of cells in the stack varies between 90 and 250 
@@ -223,7 +238,7 @@ class fuel_cell:
             self.Current = self.CellCurrDensity*self.FC_CellArea    # [A] Defining the current value: same both for the single cell and the full stack!
             
             # Defining Fuel Cell Max Power Generation
-            'Fuel Cell Max Power Consumption'
+            'Fuel Cell Max Power Output'
             
             FC_power = []
             for i in range(len(self.Current)):
@@ -286,7 +301,8 @@ class fuel_cell:
                 
                 'Process heat, that can be recovered'
               
-                FC_Heat = ((1.481*self.nc)/FC_Vstack-1)*p_required              # [kW] 
+                heat_loss = 0.2 * (-FC_deltaHydrogen)      # Assuming 20% of energy losses                                                                            
+                FC_Heat = ((1.481*self.nc)/FC_Vstack-1)*p_required -  heat_loss              # [kW] 
                     
                 hydrogen.append(hyd)                        # [kg/s]    consumed hydrogen
                 water.append(water_produced)                # [m^3/s]   produced water
@@ -299,6 +315,15 @@ class fuel_cell:
             self.maxVolt_module = max(self.Voltage)                     # [V] maximum voltage of the considered module
             self.minVolt_module = min(self.Voltage)                     # [V] minimum voltage of the considered module
             
+            electric_eff_module = self.eta_module[-1]  # Module electric efficiency
+            h2p_eff = (1/(electric_eff_module*c.HHVH2*1000))*3600 # [kg/kWh] kg/h of hydrogen produced per kWh of input power
+            thermal_eff_module = (FC_Heat_produced[-1] / - FC_deltaHydrogen) # Module thermal efficiency
+            total_efficiency = electric_eff_module + thermal_eff_module
+
+            print(f"\nThe fuel cell electric efficiency of each module is found to be equal to {electric_eff_module*100:.2f}%, which is equivalent to {round(h2p_eff, 3)} kg/kWh (using H2 HHV). "
+                  f"The fuel cell thermal efficiency of each module is found to be equal to {thermal_eff_module*100:.2f}% with heat output available for cogeneration at {self.FC_OperatingTemp}K. "
+                  f"Thus, the total efficiency is equal to {total_efficiency*100:.2f}%. "
+                  f"A fuel cell nominal power of {self.MaxPowerStack:.2f} kW needs to be fed with {self.max_h2_stack*3600:.2f} kg/h of hydrogen.")
             self.etaFuelCell = interp1d(hydrogen,self.eta_module,bounds_error=False,fill_value='extrapolate')          # Linear spline 1-D interpolation -> H2 consumption - FC efficiency
             self.h2P         = interp1d(hydrogen,electricity_produced,bounds_error=False,fill_value='extrapolate')  # Linear spline 1-D interpolation -> H2 consumption - produced electricity
             self.FC_Heat     = interp1d(hydrogen,FC_Heat_produced,bounds_error=False,fill_value='extrapolate')      # Linear spline 1-D interpolation -> H2 consumption - produced heat
@@ -367,8 +392,7 @@ class fuel_cell:
             self.DiffusionVolumeH20           = 13.1               # [-] 
             self.DiffusionVolumeH2            = 6.1                # [-]      
             self.stoichiometriccoeff          = 2                  # [-]    coefficient used to account for working in excess air
-            
-            self.n_modules          = parameters['number of modules']  # [-]      Number of modules constituting the stack
+
             self.MaxPowerStack      = self.n_modules*self.Npower       # [kW]     Max power output 
             
             self.nc                  = 80 + int((self.Npower/1000)*(250-80))       # For a power range between 0kW and 1000kW the number of cells in the stack varies between 80 and 250 
@@ -457,7 +481,7 @@ class fuel_cell:
             electricity_produced    = []
             eta_FuelCell            = []
             FC_Heat_produced        = []
-            #!!! - Think about the need of implementing more outputs for SOFC 
+
             for i in range(len(FC_power)):
                 
                 p_required = FC_power[i]                                    # [kW] power production               
@@ -528,6 +552,15 @@ class fuel_cell:
                 
             self.max_h2_module = max(hydrogen)                 # [kg/s] maximum amount of exploitable hydrogen for the considered module
             self.max_h2_stack   = self.max_h2_module*self.n_modules     # [kg/s] maximum amount of exploitable hydrogen for the considered stack
+            
+            electric_eff_module = eta_FuelCell[-1] # Module electric efficiency
+            h2p_eff = (1/(electric_eff_module*c.HHVH2*1000))*3600 # [kg/kWh] kg/h of hydrogen produced per kWh of input power
+            thermal_eff_module = (FC_Heat_produced[-1] / - FC_deltaHydrogen) # Module thermal efficiency
+            total_efficiency = electric_eff_module + thermal_eff_module
+            print(f"\nThe fuel cell electric efficiency of each module is found to be equal to {electric_eff_module*100:.2f}%, which is equivalent to {round(h2p_eff, 3)} kg/kWh (using H2 HHV). "
+                  f"The fuel cell thermal efficiency of each module is found to be equal to {thermal_eff_module*100:.2f}% with heat output available for cogeneration at {self.FC_OperatingTemp}K. "
+                  f"Thus, the total efficiency is equal to {total_efficiency*100:.2f}%. "
+                  f"A fuel cell nominal power of {self.MaxPowerStack:.2f} kW needs to be fed with {self.max_h2_stack*3600:.2f} kg/h of hydrogen.")
 
             self.etaFuelCell = interp1d(hydrogen,eta_FuelCell,bounds_error=False,fill_value='extrapolate')          # Linear spline 1-D interpolation -> H2 consumption - FC efficiency
             self.h2P         = interp1d(hydrogen,electricity_produced,bounds_error=False,fill_value='extrapolate')  # Linear spline 1-D interpolation -> H2 consumption - produced electricity
@@ -561,7 +594,7 @@ class fuel_cell:
                  operational_state.append((day, value))
         operational_state = pd.DataFrame(operational_state, columns=['Day', 'State'])
         operational_state.set_index('Day', inplace=True)
-        frequency =  f'{self.timestep}T'
+        frequency =  f'{self.timestep}min'
         operational_state_freq = operational_state.resample(frequency).ffill().iloc[:-1,:]  #resample dataframe to simulation timestep
         self.operational_state = np.tile(np.array(operational_state_freq['State']), int(self.timestep_number*self.timestep/c.MINUTES_YEAR)) #repeat for simulation years
      
@@ -790,36 +823,37 @@ class fuel_cell:
             pass
      
         ##########################
-        if self.model=='FCS-C5000':
+        if self.model=='simple':
             
             p_required = -p                      # [kW] system power requirement in the considered step
             
             power = min(p_required,self.Npower)      # [kW] how much electricity can be absorbed by the fuel cell absorb
             
-            # Calculating the operating point on the characteristic curves
-            I=self.PI(power)
-           
-            # calculate the hydrogen consumed by each single cell
-            qe=I/self.FaradayConst                                              # [mol_e/s] Faraday
-            qH=qe/2                                                             # [mol_H2/s] the moles of H2 are 1/2 the moles of electrons in the considered step
-            QH=qH*self.H2MolMass                                                # [kg_H2/s] 
-            hyd = QH*self.nc                                                    # [kg/s] total stack hydrogen consumption in the considered step 
+            FC_hyd = power / self.h2p_el_eff_in            # [kW] hydrogen power input
+            hyd = power/(self.h2p_el_eff_in*c.HHVH2*1000)    # [kg/s] amount of needed hydrogen for the given input power
+            FC_Heat = FC_hyd * self.h2p_th_eff_in           # [kW] thermal power output
+                                                                 
+                                                                                                   
+                                                                                                                                                                  
+                                                                                            
+                                                                                                                                                 
             water = (hyd*(self.h2oMolMass/self.H2MolMass))/self.rhoStdh2o       # [Sm3/s] stoichiometric water production
-            
-            if hyd > available_hydrogen: # if available hydrogen is not enough to meet demand (partial load operation is not considered in this model)
-                hyd     = 0
-                power   = 0
-                water   = 0 
-                # turn off the fuel cell
+           
+            etaFC = self.h2p_el_eff_in
+            if hyd > available_hydrogen: # if available hydrogen is not enough to meet demand
+                hyd     = available_hydrogen
+                power   = hyd * self.h2p_el_eff_in 
+                FC_Heat = hyd * self.h2p_th_eff_in
+                water   = (hyd*(self.h2oMolMass/self.H2MolMass))/self.rhoStdh2o       # [Sm3/s] stoichiometric water production
                 
-            return (-hyd,power,0.5,0,water) # return hydrogen absorbed [kg] and electricity required [kW]
- 
+            return (-hyd,power,FC_Heat,etaFC,water) # return hydrogen absorbed [kg] and electricity required [kW]
+
          ###############################
         if self.model in ['PEM General','SOFC']:
             
             # PowerOutput [kW] - Electric Power required from the fuel cell
             if (abs(p) <= self.Npower) or (available_hydrogen/self.max_h2_module < 1):      # if required power or available hydrogen in system are lower than nominal fuel cell parameters
-                if abs(p) >= self.Npower*self.min_load: 
+                if abs(p) >= self.MinOutputPower: 
                     hyd,power,FC_Heat,etaFC,water = fuel_cell.use1(self,step,p,available_hydrogen)
                     if abs(hyd) > 0:
                         self.n_modules_used[step] = 1
@@ -828,7 +862,7 @@ class fuel_cell:
                             
                     self.EFF[step]   = etaFC
                 else:
-                    p = self.Npower*self.min_load
+                    p = self.MinOutputPower
                     hyd,power,FC_Heat,etaFC,water = fuel_cell.use1(self,step,-p,available_hydrogen)
                     if abs(hyd) > 0:
                         self.n_modules_used[step] = 1
@@ -861,7 +895,7 @@ class fuel_cell:
                 
                 residual_power      = abs(p) - power_full 
                 residual_hydrogen   = available_hydrogen - abs(hyd_full)
-                if residual_power >= self.Npower*self.min_load:
+                if residual_power >= self.MinOutputPower:
                     hyd_singlemodule,power_singlemodule,FC_Heat_singlemodule,etaFC_singlemodule,water_singlemodule = fuel_cell.use1(self,step,-residual_power,residual_hydrogen)
                     if hyd_singlemodule != 0:   # single module operating in partial load 
                         self.n_modules_used[step] = full_modules + 1
@@ -1348,14 +1382,17 @@ if __name__ == "__main__":
     """
     Functional test
     """
-    
+
     inp_test = {'Npower': 1000,
-                "number of modules": 3,
+                "number of modules": 1,
                 'stack model':'PEM General',
+                'electric efficiency':  0.45,
+ 				'thermal efficiency':  0.35,
                 'ageing': False,
-                'operational_period': "01-03,30-09",
-                'state': 'on'
-                }
+     			'min power module' : 0.2,
+                'operational_period': "01-01,31-12",
+                'state': "on"}
+         
     
     if inp_test['ageing'] == False: 
         sim_steps   = 8760                           # [-] number of steps to be considered for the simulation - usually a time horizon of 1 year minimum is considered
@@ -1374,8 +1411,8 @@ if __name__ == "__main__":
     
         'Test 1 - Tailored ascending power input'
     
-        flow  = - np.linspace(0.5,fc.Npower*6,sim_steps)  # [kW] power demand - ascending series
-        flow1 = - np.linspace(0.5,fc.Npower,sim_steps)    # [kW] power demand - ascending series
+        flow  = - np.linspace(fc.Npower*0.01,fc.Npower*6,sim_steps)  # [kW] power demand - ascending series
+        flow1 = - np.linspace(fc.Npower*0.01,fc.Npower,sim_steps)    # [kW] power demand - ascending series
     
         hyd_used = np.zeros(sim_steps)      # [kg] hydrogen used by fuel cell
         P_el     = np.zeros(sim_steps)      # [kW] electricity produced
@@ -1388,27 +1425,32 @@ if __name__ == "__main__":
             # available_hydrogen += hyd_used[step]*60*timestep  # [kg] updating available hydrogen
             
         # fc.EFF[fc.EFF == 0] = math.nan      # activate to avoid representation o '0' values when fuel cell is turned off
+                                  
         
         fig=plt.figure(figsize=(8,8),dpi=1000)
         fig.suptitle("{} ({} kW) performance".format(inp_test['stack model'],round(fc.Npower,1)))
         
         PI=fig.add_subplot(211)
         PI.plot(-flow1,P_th,label="Thermal Power") 
-        PI.axvline(x=fc.MinPower,linestyle=':',label= 'Lower Functioning Boundary', zorder=3, linewidth = 2)   
+        if inp_test['stack model'] != 'simple':
+            PI.axvline(x=fc.P[0],linestyle=':',color='tab:red',label= 'Lower Functioning Boundary', zorder=3, linewidth = 2)  
+            PI.axvline(x=fc.MinOutputPower,linestyle=':',label= 'Minimum Output Power', zorder=3, linewidth = 2)
         PI.set_title("Heat vs Electric Power")
         PI.grid(alpha=0.3, zorder=-1)
         PI.set_xlabel("Power Demand [kW]")
         PI.set_ylabel("Thermal Output [kW]")
         PI.legend(fontsize=15)
         
-        ETA=fig.add_subplot(212)
-        ETA.scatter(-flow1,fc.EFF,label="Efficiency",color="green",edgecolors='k')
-        ETA.axvline(x=fc.MinPower,color='tab:blue',linestyle=':',label= 'Lower Functioning Boundary', zorder=3, linewidth = 2)   
-        ETA.set_title("Efficiency vs Power")
-        ETA.grid(alpha=0.3, zorder=-1)
-        ETA.set_xlabel("Power Demand [kW]")
-        ETA.set_ylabel("Efficiency [-]")
-        ETA.legend(fontsize=15)
+        if inp_test['stack model'] != 'simple':
+            ETA=fig.add_subplot(212)
+            ETA.scatter(-flow1,fc.EFF,label="Efficiency",color="green",edgecolors='k')
+            ETA.axvline(x=fc.MinOutputPower,color='tab:blue',linestyle=':',label= 'Minimum Output Power', zorder=3, linewidth = 2)   
+            ETA.axvline(x=fc.P[0],linestyle=':',color='tab:red',label= 'Lower Functioning Boundary', zorder=3, linewidth = 2)   
+            ETA.set_title("Efficiency vs Power")
+            ETA.grid(alpha=0.3, zorder=-1)
+            ETA.set_xlabel("Power Demand [kW]")
+            ETA.set_ylabel("Efficiency [-]")
+            ETA.legend(fontsize=15)
         
         plt.tight_layout()
         plt.show()
@@ -1419,55 +1461,62 @@ if __name__ == "__main__":
         
         PI=fig.add_subplot(211)
         PI.plot(-flow1,-hyd_used)
+        if inp_test['stack model'] != 'simple':
+            PI.axvline(x=fc.P[0],linestyle=':',color='tab:red',label= 'Lower Functioning Boundary', zorder=3, linewidth = 2) 
+            PI.axvline(x=fc.MinOutputPower,linestyle=':',label= 'Minimum Output Power', zorder=3, linewidth = 2) 
         PI.set_title("H$_{2}$ Consumption vs Power")
         PI.grid(alpha=0.3, zorder=-1)
         PI.set_xlabel("Power Output [kW]")
         PI.set_ylabel("Hydrogen consumption [kg/s]")
         # PI.legend(fontsize=15)
         
-        ETA=fig.add_subplot(212)
-        ETA.scatter(-flow1,fc.EFF,label="Efficiency",color="green",edgecolors='k',zorder =3)
-        ETA.axvline(x=fc.MinPower,color='tab:blue',linestyle=':',label= 'Lower Functioning Boundary', zorder=3, linewidth = 2)   
-        ETA.set_title("Efficiency vs Power")
-        ETA.grid()
-        ETA.set_xlabel("Power Output [kW]")
-        ETA.set_ylabel("Efficiency [-]")
-        ETA.legend(fontsize=15)
+        if inp_test['stack model'] != 'simple':
+            ETA=fig.add_subplot(212)
+            ETA.scatter(-flow1,fc.EFF,label="Efficiency",color="green",edgecolors='k',zorder =3)
+            ETA.axvline(x=fc.MinOutputPower,color='tab:blue',linestyle=':',label= 'Minimum Output Power', zorder=3, linewidth = 2)   
+            ETA.axvline(x=fc.P[0],linestyle=':',color='tab:red',label= 'Lower Functioning Boundary', zorder=3, linewidth = 2)
+            ETA.set_title("Efficiency vs Power")
+            ETA.grid()
+            ETA.set_xlabel("Power Output [kW]")
+            ETA.set_ylabel("Efficiency [-]")
+            ETA.legend(fontsize=15)
         
         plt.tight_layout()
         plt.show()
         
-        fig, ax = plt.subplots(dpi=600)
-        ax.scatter(-flow1,fc.EFF, edgecolors='k', zorder = 3)
-        ax.set_title("Fuel Cell Module Efficiency")
-        textstr = '\n'.join((
-            r'$CellArea=%.1f$ $cm^{2}$' % (fc.FC_CellArea,),
-            r'$P_{nom}= %.1f$ kW' % (fc.Npower,),
-            r'$i_{max}= %.1f$ A $cm^{-2}$' % (fc.FC_MaxCurrDens,),
-            r'$n_{cell}= %.0f$' % (fc.nc,)))
-        props = dict(boxstyle='round', facecolor='wheat', alpha=0.8)
-        ax.text(fc.Npower/2,0.2,textstr,fontsize=10,va='bottom',backgroundcolor='none', bbox=props)
-        ax.grid(alpha=0.3, zorder=-1)
-        ax.set_ylim(0,None)
-        ax.set_xlabel('Power Output [kW]')
-        ax.set_ylabel('$\\eta$') 
-        
-        plt.figure(dpi=1000)
-        plt.plot(-flow1, fc.EFF)
-        plt.grid(alpha=0.3,zorder=-1)
-        plt.xlabel('Power Output [kW]')
-        plt.ylabel('$\\eta$ - Efficiency [-]')
-       
+        if inp_test['stack model'] != 'simple':
+            fig, ax = plt.subplots(dpi=600)
+            ax.scatter(-flow1,fc.EFF, edgecolors='k', zorder = 3)
+            ax.set_title("Fuel Cell Module Efficiency")
+            textstr = '\n'.join((
+                r'$CellArea=%.1f$ $cm^{2}$' % (fc.FC_CellArea,),
+                r'$P_{nom}= %.1f$ kW' % (fc.Npower,),
+                r'$i_{max}= %.1f$ A $cm^{-2}$' % (fc.FC_MaxCurrDens,),
+                r'$n_{cell}= %.0f$' % (fc.nc,)))
+            props = dict(boxstyle='round', facecolor='wheat', alpha=0.8)
+            ax.text(fc.Npower/2,0.2,textstr,fontsize=10,va='bottom',backgroundcolor='none', bbox=props)
+            ax.grid(alpha=0.3, zorder=-1)
+            ax.set_ylim(0,None)
+            ax.set_xlabel('Power Output [kW]')
+            ax.set_ylabel('$\\eta$') 
+            
+            plt.figure(dpi=1000)
+            plt.plot(-flow1, fc.EFF)
+            plt.grid(alpha=0.3,zorder=-1)
+            plt.xlabel('Power Output [kW]')
+            plt.ylabel('$\\eta$ - Efficiency [-]')
+           
         for step in range(len(flow)):
             hyd_used[step],P_el[step],P_th[step],eta[step],water[step] = fc.use(step,flow[step],available_hydrogen)
-            
-        fig, ax = plt.subplots(dpi=600)
-        ax.plot(-flow,fc.n_modules_used,color='tab:green',zorder=3)
-        ax.set_xlabel('Required Power [kW]')
-        ax.set_ylabel('Active modules [-]')
-        ax.grid(alpha=0.3, zorder=-1)
-        ax.set_title('Fuel Cell Stack - Nr of working modules')
-      
+         
+        if inp_test['stack model'] != 'simple':
+            fig, ax = plt.subplots(dpi=600)
+            ax.plot(-flow,fc.n_modules_used,color='tab:green',zorder=3)
+            ax.set_xlabel('Required Power [kW]')
+            ax.set_ylabel('Active modules [-]')
+            ax.grid(alpha=0.3, zorder=-1)
+            ax.set_title('Fuel Cell Stack - Nr of working modules')
+          
         
         'Test 2 - Random power demand'
     
@@ -1475,33 +1524,37 @@ if __name__ == "__main__":
         
         for step in range(len(fd)):
             hyd_used[step],P_el[step],P_th[step],eta[step],water[step] = fc.use(step,fd[step],available_hydrogen)
+        
+        if inp_test['stack model'] != 'simple':
+                         
+                                   
+            fig, ax = plt.subplots(dpi=1000)
+            ax2 = ax.twinx() 
+            ax.bar(np.arange(sim_steps)-0.2,fc.EFF,width=0.35,zorder=3,edgecolor='k',label='$1^{st}$ module efficiency', alpha =0.8)
+            ax.bar(np.arange(sim_steps)+0.,fc.EFF_last_module,width=0.35,zorder=3, edgecolor = 'k',align='edge',label='Last module efficiency',alpha =0.8)
+            ax2.scatter(np.arange(sim_steps),-fd,color ='limegreen',s=25,edgecolors='k',label='Required Power')
+            h1, l1 = ax.get_legend_handles_labels()
+            h2, l2 = ax2.get_legend_handles_labels()
+            ax.legend(h1+h2, l1+l2, loc='lower center',bbox_to_anchor=(0.5, 1.08), ncol =3, fontsize ='small')
+            ax.set_xlabel('Time [step]')
+            ax.set_ylabel('Efficiency [-]')
+            ax2.set_ylabel('Power Output [kW]')
+            ax.grid(alpha=0.3, zorder=-1)
+            ax.set_title('Fuel Cell Stack functioning behaviour')
+                        
+            num = 24   # number of hours to be represented in the plot below
             
-        fig, ax = plt.subplots(dpi=1000)
-        ax2 = ax.twinx() 
-        ax.bar(np.arange(sim_steps)-0.2,fc.EFF,width=0.35,zorder=3,edgecolor='k',label='$1^{st}$ module efficiency', alpha =0.8)
-        ax.bar(np.arange(sim_steps)+0.,fc.EFF_last_module,width=0.35,zorder=3, edgecolor = 'k',align='edge',label='Last module efficiency',alpha =0.8)
-        ax2.scatter(np.arange(sim_steps),-fd,color ='limegreen',s=25,edgecolors='k',label='Required Power')
-        h1, l1 = ax.get_legend_handles_labels()
-        h2, l2 = ax2.get_legend_handles_labels()
-        ax.legend(h1+h2, l1+l2, loc='lower center',bbox_to_anchor=(0.5, 1.08), ncol =3, fontsize ='small')
-        ax.set_xlabel('Time [step]')
-        ax.set_ylabel('Efficiency [-]')
-        ax2.set_ylabel('Power Output [kW]')
-        ax.grid(alpha=0.3, zorder=-1)
-        ax.set_title('Fuel Cell Stack functioning behaviour')
+            fig, ax = plt.subplots(dpi=1000)
+            ax.bar(np.arange(num)-0.2,P_el[:num],width=0.35,zorder=3,color='lightseagreen',edgecolor='k',label='Electric output', alpha =0.8)
+            ax.bar(np.arange(num)+0.,P_th[:num],width=0.35,zorder=3,color='indianred',edgecolor='k',align='edge',label='Thermal output',alpha =0.8)
+            ax.legend(loc='lower center',bbox_to_anchor=(0.5, 1.08), ncol =3, fontsize ='small')
+            ax.set_xlabel('Time [step]')
+            ax.set_ylabel('Power [kW]')
+            ax2.set_ylabel('Power Output [kW]')
+            ax.grid(alpha=0.3, zorder=-1)
+            ax.set_title('Fuel Cell Stack functioning behaviour')
         
-        num = 24   # number of hours to be represented in the plot below
-        
-        fig, ax = plt.subplots(dpi=1000)
-        ax.bar(np.arange(num)-0.2,P_el[:num],width=0.35,zorder=3,color='lightseagreen',edgecolor='k',label='Electric output', alpha =0.8)
-        ax.bar(np.arange(num)+0.,P_th[:num],width=0.35,zorder=3,color='indianred',edgecolor='k',align='edge',label='Thermal output',alpha =0.8)
-        ax.legend(loc='lower center',bbox_to_anchor=(0.5, 1.08), ncol =3, fontsize ='small')
-        ax.set_xlabel('Time [step]')
-        ax.set_ylabel('Power [kW]')
-        ax2.set_ylabel('Power Output [kW]')
-        ax.grid(alpha=0.3, zorder=-1)
-        ax.set_title('Fuel Cell Stack functioning behaviour')
-        
+#%%
     elif inp_test['ageing'] == True:
         inp_test['number of modules'] = 1
         

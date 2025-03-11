@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from core import constants as c
 import matplotlib.patches as mpatches
+from matplotlib import cm                         
 
         
 def location_balance(simulation_name,loc,var=None):
@@ -63,8 +64,8 @@ def REC_electricity_balance(simulation_name,noprint=False,mounth=False):
     
     
     csc = balances['REC']['electricity']['collective self consumption']*c.P2E/c.kWh2kJ
-    into_grid = -balances['REC']['electricity']['into grid']*c.P2E/c.kWh2kJ
-    from_grid = balances['REC']['electricity']['from grid']*c.P2E/c.kWh2kJ
+    into_grid = -balances['REC']['electricity']['into electricity grid']*c.P2E/c.kWh2kJ
+    from_grid = balances['REC']['electricity']['from electricity grid']*c.P2E/c.kWh2kJ
     
     
     dmc = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365] # duration of months: cumulate [days]             
@@ -83,8 +84,8 @@ def REC_electricity_balance(simulation_name,noprint=False,mounth=False):
     for loc in balances:
         if loc != 'REC':   
             balance = balances[loc]['electricity']
-            if 'demand' in balance:
-                demand = balance['demand']
+            if 'electricity demand' in balance:
+                demand = balance['electricity demand']
                 if mounth: # 1-12
                     demand = demand [ int(dmc[mounth-1]*24*60/c.timestep) : int(dmc[mounth]*24*60/c.timestep)]
                 df.loc['Demand', 'Value [kWh]'] += -sum(demand)*c.P2E/c.kWh2kJ
@@ -195,328 +196,75 @@ def NPV_plot(study_case):
     plt.xlim(0,len(y)-1)
     plt.show()
                 
-def hourly_balances_electricity(simulation_name,location_name,first_day,last_day,carrier='electricity',width=0.9,collective=0):
-    
-        with open('results/pkl/balances_'+simulation_name+'.pkl', 'rb') as f:
-            balances = pickle.load(f)
-            
-        balances = balances[location_name][carrier]
-        
-        if 'demand' in balances:
-            load = -balances['demand'][first_day*24*60//c.timestep:last_day*24*60//c.timestep+24*60//c.timestep]
-        else:
-            load = np.zeros(last_day*24*60/c.timestep+24*60/c.timestep - first_day*24*60/c.timestep)
-            
-        if 'chp_gt' in balances:
-            chp_gt = balances['chp_gt'][first_day*24*60//c.timestep:last_day*24*60//c.timestep+24*60//c.timestep]
-            
-        if 'chp' in balances:
-            chp = balances['chp'][first_day*24*60//c.timestep:last_day*24*60//c.timestep+24*60//c.timestep]
-        
-        if 'PV' in balances:
-            pv = balances['PV'][first_day*24*60//c.timestep:last_day*24*60//c.timestep+24*60//c.timestep]
-        
-        if 'wind' in balances:
-            wind = balances['wind'][first_day*24*60//c.timestep:last_day*24*60//c.timestep+24*60//c.timestep]
-            
-        if 'grid' in balances:                
-            into_grid = np.zeros(24*(last_day-first_day+1)*60//c.timestep)
-            from_grid = np.zeros(24*(last_day-first_day+1)*60//c.timestep)
-            for i,e in enumerate(balances['grid'][first_day*24*60//c.timestep:last_day*24*60//c.timestep+24*60//c.timestep]):
-                if e > 0:
-                    from_grid[i] = e
-                else:
-                    into_grid[i] = e 
-        
-        if 'battery' in balances:
-            charge_battery = np.zeros(24*(last_day-first_day+1)*60//c.timestep)
-            discharge_battery = np.zeros(24*(last_day-first_day+1)*60//c.timestep)
-            for i,e in enumerate(balances['battery'][first_day*24*60//c.timestep:last_day*24*60//c.timestep+24*60//c.timestep]):
-                if e > 0:
-                    discharge_battery[i] = e
-                else:
-                    charge_battery[i] = e 
-        
-        if 'electrolyzer' in balances:
-            ele = balances['electrolyzer'][first_day*24*60//c.timestep:last_day*24*60//c.timestep+24*60//c.timestep]
-        
-        if 'mechanical compressor' in balances:
-            compressor = balances['mechanical compressor'][first_day*24*60//c.timestep:last_day*24*60//c.timestep+24*60//c.timestep]
-        
-        if 'fuel cell' in balances:
-            fc = balances['fuel cell'][first_day*24*60//c.timestep:last_day*24*60//c.timestep+24*60//c.timestep]
 
-                     
-        to_csc = np.zeros(24*(last_day-first_day+1)*60//c.timestep)
-        from_csc = np.zeros(24*(last_day-first_day+1)*60//c.timestep)
-        for i,e in enumerate(balances['collective self consumption'][first_day*24*60//c.timestep:last_day*24*60//c.timestep+24*60//c.timestep]):
-            if e > 0:
-                from_csc[i] = e
+def RES_plot(simulation_name,location_name):
+      
+    with open('results/pkl/balances_'+simulation_name+'.pkl', 'rb')  as f: balances  = pickle.load(f) 
+    balances_RES = balances[location_name]['electricity']
+
+    for tech in balances_RES:
+        if tech in ['PV','wind']:
+            plt.figure(dpi=600)                               
+            y = balances_RES[tech]
+            x = np.linspace(0,len(y),len(y))        
+            plt.plot(x,y,label=location_name)
+            plt.grid()
+            plt.ylabel('RES production [kW]')
+            if c.simulation_years == 1 and c.timestep == 60:
+                xticks = list(np.linspace(0, len(x) - 1, 13).astype(int))
+                xticklabels = ['          Jan','         Feb','          Mar','         Apr','         May','          Jun','         Jul','          Aug','           Sep','          Oct','          Nov','           Dec','']
+                plt.xticks(xticks,xticklabels,rotation=45)
+                plt.xlabel('Time [hours]')
+            elif c.simulation_years != 1 and c.timestep == 60:
+                plt.xlabel('Time [hours]')
             else:
-                to_csc[i] = e 
-            
-        x = np.arange(first_day*24*60/c.timestep,(last_day+1)*24*60/c.timestep)
-        
-        fig = plt.figure(dpi=1000)
-        from mpl_toolkits.axisartist.axislines import SubplotZero
-        ax = SubplotZero(fig, 1, 1, 1)
-        fig.add_subplot(ax)
-        ax.axis["xzero"].set_visible(True)
-        ax.axis["xzero"].label.set_visible(False)
-        ax.axis["xzero"].major_ticklabels.set_visible(False)
+                plt.xlabel('Timestep')
+            plt.title(location_name+' '+tech)
+            plt.xlim(0,x[-1])
+            plt.show()
 
-        for n in ["bottom","top", "right"]:
-            ax.axis[n].set_visible(True)
-        ax.grid(axis='y', alpha = 0.5, zorder = -4)
-        
-        
-        if 'PV' in balances and 'wind' in balances:
-            # windsc      = np.minimum(balances[loc]['electricity']['wind'],-demand)
-            # pvsc        = np.minimum(-np.minimum(windsc+demand, 0),balances[loc]['electricity']['PV'])   
-            ax.bar(x, np.minimum(load,wind), width,  label='Wind self consumption', color='yellowgreen')
-            ax.bar(x, np.maximum(wind-load,np.zeros(len(pv))), width, bottom=load, label='Wind surplus', color='cornflowerblue')
-            ax.bar(x, np.maximum(np.minimum(wind+pv,load)-wind,np.zeros(len(pv))), width, bottom= wind, label='PV self consumption', color='tab:green')
-            ax.bar(x, np.maximum(wind-load+pv,np.zeros(len(pv)))-np.maximum(wind-load,np.zeros(len(pv))), width, bottom=load+np.maximum(wind-load,np.zeros(len(pv))),label='PV surplus', color='tab:blue')
-            
-            if not 'battery' in balances and not 'electrolyzer' in balances:
-                ax.bar(x, from_grid-from_csc, width ,bottom=pv+from_csc, label='from grid', color='tomato')
-                ax.bar(x, np.array(from_csc), width, bottom=pv,  color='gold')
-            
-                ax.bar(x, np.array(into_grid), width, label='into grid', color='orange')
-                ax.bar(x, np.array(to_csc), width, label='collective self consumption',  color='gold')
-                
-            if 'battery' in balances:
-                ax.bar(x, from_grid-from_csc, width, bottom=pv+discharge_battery+from_csc, label='from grid', color='tomato')
-                ax.bar(x, np.array(from_csc), width, bottom=discharge_battery+pv,  color='gold')
-                ax.bar(x, discharge_battery, width, bottom = pv, label='discharge battery',  color='purple')
-                
-                ax.bar(x, np.array(into_grid), width, bottom=charge_battery , label='into grid', color='orange')
-                if collective == 0:
-                    ax.bar(x, np.array(charge_battery), width,  label='charge battery',  color='violet')
-                    ax.bar(x, np.array(to_csc), width, bottom=charge_battery, label='collective self consumption',  color='gold')
-                else:
-                    ax.bar(x, np.array(charge_battery), width, bottom=np.array(to_csc),  label='charge battery',  color='violet')
-                    ax.bar(x, np.array(to_csc), width, label='collective self consumption',  color='gold')
-                    
-            if 'electrolyzer' in balances and 'fuel cell' in balances:
-                ax.bar(x, from_grid-from_csc, width ,bottom=pv+fc+from_csc, label='from grid', color='tomato')
-                ax.bar(x, np.array(from_csc), width, bottom=pv+fc,  color='y')
-            
-                ax.bar(x, np.array(into_grid), width,bottom=ele , label='into grid', color='orange')
-                ax.bar(x, np.array(ele), width,  label='to electrolyzer',  color='chocolate')
-                ax.bar(x, fc, width, bottom = pv, label='from fuel cell',  color='peru')
-                ax.bar(x, np.array(to_csc), width, bottom=ele, label='collective self consumption',  color='gold') 
-                
-            if 'electrolyzer' in balances:
-                ax.bar(x, from_grid-from_csc, width ,bottom=wind+pv+from_csc, label='from grid', color='tomato')
-                ax.bar(x, np.array(from_csc), width, bottom=pv,  color='y')
-                ax.bar(x, np.array(into_grid), width,bottom=ele , label='into grid', color='orange')
-                ax.bar(x, np.array(ele), width,  label='to electrolyzer',  color='chocolate')
-                ax.bar(x, np.array(to_csc), width, bottom=ele, label='collective self consumption',  color='gold')
-            
-            if 'mechanical compressor' in balances:
-                ax.bar(x, np.array(compressor), width, bottom = ele, label='to compressor',  color='maroon')
-                ax.bar(x, np.array(into_grid), width, bottom=ele+compressor , label='into grid', color='orange')
-                
-        elif 'PV' in balances and not ('chp_gt' and 'chp') in balances:
-            ax.bar(x, np.minimum(load,pv), width,  label='PV self consumption', color='yellowgreen')
-            ax.bar(x, np.maximum(pv-load,np.zeros(len(pv))), width, bottom=load, label='PV surplus', color='cornflowerblue')
-            
-            if not 'battery' in balances and not 'electrolyzer' in balances:
-                ax.bar(x, from_grid-from_csc, width ,bottom=pv+from_csc, label='from grid', color='tomato')
-                ax.bar(x, np.array(from_csc), width, bottom=pv,  color='gold')
-            
-                ax.bar(x, np.array(into_grid), width, label='into grid', color='orange')
-                ax.bar(x, np.array(to_csc), width, label='collective self consumption',  color='gold')
-                
-            if 'battery' in balances:
-                ax.bar(x, from_grid-from_csc, width, bottom=pv+discharge_battery+from_csc, label='from grid', color='tomato')
-                ax.bar(x, np.array(from_csc), width, bottom=discharge_battery+pv,  color='gold')
-                ax.bar(x, discharge_battery, width, bottom = pv, label='discharge battery',  color='purple')
-                
-                ax.bar(x, np.array(into_grid), width, bottom=charge_battery , label='into grid', color='orange')
-                if collective == 0:
-                    ax.bar(x, np.array(charge_battery), width,  label='charge battery',  color='violet')
-                    ax.bar(x, np.array(to_csc), width, bottom=charge_battery, label='collective self consumption',  color='gold')
-                else:
-                    ax.bar(x, np.array(charge_battery), width, bottom=np.array(to_csc),  label='charge battery',  color='violet')
-                    ax.bar(x, np.array(to_csc), width, label='collective self consumption',  color='gold')
-                    
-            if 'electrolyzer' in balances and 'fuel cell' in balances:
-                ax.bar(x, from_grid-from_csc, width ,bottom=pv+fc+from_csc, label='from grid', color='tomato')
-                ax.bar(x, np.array(from_csc), width, bottom=pv+fc,  color='y')
-            
-                ax.bar(x, np.array(into_grid), width,bottom=ele , label='into grid', color='orange')
-                ax.bar(x, np.array(ele), width,  label='to electrolyzer',  color='chocolate')
-                ax.bar(x, fc, width, bottom = pv, label='from fuel cell',  color='peru')
-                ax.bar(x, np.array(to_csc), width, bottom=ele, label='collective self consumption',  color='gold')
-            
-            if 'mechanical compressor' in balances:
-                ax.bar(x, np.array(compressor), width, bottom = ele, label='to compressor',  color='maroon')
-                ax.bar(x, np.array(into_grid), width, bottom= ele+compressor , label='into grid', color='orange')
-           
-        elif 'wind' in balances and not ('chp_gt' and 'chp') in balances:
-            ax.bar(x, np.minimum(load,wind), width,  label='wind self consumption', color='yellowgreen')
-            ax.bar(x, np.maximum(wind-load,np.zeros(len(wind))), width, bottom=load, label='wind surplus', color='cornflowerblue')
-            
-            if not 'battery' in balances and not 'electrolyzer' in balances:
-                ax.bar(x, from_grid-from_csc, width ,bottom=wind+from_csc, label='from grid', color='tomato')
-                ax.bar(x, np.array(from_csc), width, bottom=wind,  color='gold')
-            
-                ax.bar(x, np.array(into_grid), width, label='into grid', color='orange')
-                ax.bar(x, np.array(to_csc), width, label='collective self consumption',  color='gold')
-                
-            if 'battery' in balances:
-                ax.bar(x, from_grid-from_csc, width, bottom=wind+discharge_battery+from_csc, label='from grid', color='tomato')
-                ax.bar(x, np.array(from_csc), width, bottom=discharge_battery+wind,  color='gold')
-                ax.bar(x, discharge_battery, width, bottom = wind, label='discharge battery',  color='purple')
-                
-                ax.bar(x, np.array(into_grid), width, bottom=charge_battery , label='into grid', color='orange')
-                if collective == 0:
-                    ax.bar(x, np.array(charge_battery), width,  label='charge battery',  color='violet')
-                    ax.bar(x, np.array(to_csc), width, bottom=charge_battery, label='collective self consumption',  color='gold')
-                else:
-                    ax.bar(x, np.array(charge_battery), width, bottom=np.array(to_csc),  label='charge battery',  color='violet')
-                    ax.bar(x, np.array(to_csc), width, label='collective self consumption',  color='gold')
-                
-            if 'electrolyzer' in balances and 'fuel cell' in balances:
-                ax.bar(x, from_grid-from_csc, width ,bottom=wind+fc+from_csc, label='from grid', color='tomato')
-                ax.bar(x, np.array(from_csc), width, bottom=wind+fc,  color='y')
-            
-                ax.bar(x, np.array(into_grid), width,bottom=ele , label='into grid', color='orange')
-                ax.bar(x, np.array(ele), width,  label='to electrolyzer',  color='chocolate')
-                ax.bar(x, fc, width, bottom = wind, label='from fuel cell',  color='peru')
-                ax.bar(x, np.array(to_csc), width, bottom=ele, label='collective self consumption',  color='gold')
-                
-            if 'electrolyzer' in balances:
-                ax.bar(x, from_grid-from_csc, width ,bottom=wind+from_csc, label='from grid', color='tomato')
-                ax.bar(x, np.array(from_csc), width, bottom=wind,  color='y')
-            
-                ax.bar(x, np.array(into_grid), width,bottom=ele , label='into grid', color='orange')
-                ax.bar(x, np.array(ele), width,  label='to electrolyzer',  color='chocolate')
-                ax.bar(x, np.array(to_csc), width, bottom=ele, label='collective self consumption',  color='gold')
-            
-            if 'mechanical compressor' in balances:
-                ax.bar(x, np.array(compressor), width, bottom = ele, label='to compressor',  color='maroon')
-                ax.bar(x, np.array(into_grid), width, bottom= ele+compressor , label='into grid', color='orange')
-                
-        elif 'chp_gt' in balances:
-            ax.bar(x, np.minimum(load,chp_gt), width,  label='CHP self consumption', color='yellowgreen')
-            ax.bar(x, np.maximum(chp_gt-load,np.zeros(len(chp_gt))), width, bottom=load, label='CHP surplus', color='cornflowerblue')
-            
-            if 'PV' in balances: 
-                ax.bar(x, np.maximum(np.minimum(chp_gt+pv,load)-chp_gt,np.zeros(len(pv))), width, bottom= chp_gt, label='PV self consumption', color='tab:green')
-                ax.bar(x, np.maximum(chp_gt-load+pv,np.zeros(len(pv)))-np.maximum(chp_gt-load,np.zeros(len(pv))), width, bottom=load+np.maximum(chp_gt-load,np.zeros(len(pv))),label='PV surplus', color='tab:blue')
-                
-            if not 'battery' in balances and not 'electrolyzer' in balances:
-                ax.bar(x, from_grid-from_csc, width ,bottom=chp_gt+pv+from_csc, label='from grid', color='tomato')
-                ax.bar(x, np.array(from_csc), width, bottom=chp_gt+pv, color='gold')
-            
-                ax.bar(x, np.array(into_grid), width, label='into grid', color='orange')
-                ax.bar(x, np.array(to_csc), width, label='collective self consumption',  color='gold')
-                
-            if 'battery' in balances:
-                ax.bar(x, from_grid-from_csc, width, bottom=pv+discharge_battery+from_csc, label='from grid', color='tomato')
-                ax.bar(x, np.array(from_csc), width, bottom=discharge_battery+pv,  color='gold')
-                ax.bar(x, discharge_battery, width, bottom = pv, label='discharge battery',  color='purple')
-                
-                ax.bar(x, np.array(into_grid), width, bottom=charge_battery , label='into grid', color='orange')
-                if collective == 0:
-                    ax.bar(x, np.array(charge_battery), width,  label='charge battery',  color='violet')
-                    ax.bar(x, np.array(to_csc), width, bottom=charge_battery, label='collective self consumption',  color='gold')
-                else:
-                    ax.bar(x, np.array(charge_battery), width, bottom=np.array(to_csc),  label='charge battery',  color='violet')
-                    ax.bar(x, np.array(to_csc), width, label='collective self consumption',  color='gold')
-            
-            if 'electrolyzer' in balances:
-                ax.bar(x, from_grid-from_csc, width ,bottom=chp_gt+pv+from_csc, label='from grid', color='tomato')
-                ax.bar(x, np.array(from_csc), width, bottom=pv,  color='y')
-            
-                ax.bar(x, np.array(into_grid), width,bottom=ele , label='into grid', color='orange')
-                ax.bar(x, np.array(ele), width,  label='to electrolyzer',  color='chocolate')
-                # ax.bar(x, fc, width, bottom = pv, label='from fuel cell',  color='peru')
-                ax.bar(x, np.array(to_csc), width, bottom=ele, label='collective self consumption',  color='gold')  
-                
-            if 'electrolyzer' in balances and 'fuel cell' in balances:
-                ax.bar(x, from_grid-from_csc, width ,bottom=pv+fc+from_csc, label='from grid', color='tomato')
-                ax.bar(x, np.array(from_csc), width, bottom=pv+fc,  color='y')
-            
-                ax.bar(x, np.array(into_grid), width,bottom=ele , label='into grid', color='orange')
-                ax.bar(x, np.array(ele), width,  label='to electrolyzer',  color='chocolate')
-                ax.bar(x, fc, width, bottom = pv, label='from fuel cell',  color='peru')
-                ax.bar(x, np.array(to_csc), width, bottom=ele, label='collective self consumption',  color='gold')
-            
-            if 'mechanical compressor' in balances:
-                ax.bar(x, np.array(compressor), width, bottom = ele, label='to compressor',  color='maroon')
-                ax.bar(x, np.array(into_grid), width, bottom= ele+compressor , label='into grid', color='orange')
-        
-        elif 'chp' in balances:
-            ax.bar(x, np.minimum(load,chp), width,  label='CHP self consumption', color='yellowgreen')
-            ax.bar(x, np.maximum(chp-load,np.zeros(len(chp))), width, bottom=load, label='CHP surplus', color='cornflowerblue')
-            
-            if 'PV' in balances: 
-                ax.bar(x, np.maximum(np.minimum(chp+pv,load)-chp,np.zeros(len(pv))), width, bottom= chp, label='PV self consumption', color='tab:green')
-                ax.bar(x, np.maximum(chp-load+pv,np.zeros(len(pv)))-np.maximum(chp-load,np.zeros(len(pv))), width, bottom=load+np.maximum(chp-load,np.zeros(len(pv))),label='PV surplus', color='tab:blue')
-                
-            if not 'battery' in balances and not 'electrolyzer' in balances:
-                ax.bar(x, from_grid-from_csc, width ,bottom=chp+pv+from_csc, label='from grid', color='tomato')
-                ax.bar(x, np.array(from_csc), width, bottom=chp+pv, color='gold')
-            
-                ax.bar(x, np.array(into_grid), width, label='into grid', color='orange')
-                ax.bar(x, np.array(to_csc), width, label='collective self consumption',  color='gold')
-                
-            if 'battery' in balances:
-                ax.bar(x, from_grid-from_csc, width, bottom=pv+discharge_battery+from_csc, label='from grid', color='tomato')
-                ax.bar(x, np.array(from_csc), width, bottom=discharge_battery+pv,  color='gold')
-                ax.bar(x, discharge_battery, width, bottom = pv, label='discharge battery',  color='purple')
-                
-                ax.bar(x, np.array(into_grid), width, bottom=charge_battery , label='into grid', color='orange')
-                if collective == 0:
-                    ax.bar(x, np.array(charge_battery), width,  label='charge battery',  color='violet')
-                    ax.bar(x, np.array(to_csc), width, bottom=charge_battery, label='collective self consumption',  color='gold')
-                else:
-                    ax.bar(x, np.array(charge_battery), width, bottom=np.array(to_csc),  label='charge battery',  color='violet')
-                    ax.bar(x, np.array(to_csc), width, label='collective self consumption',  color='gold')
-            
-            if 'electrolyzer' in balances:
-                ax.bar(x, from_grid-from_csc, width ,bottom=chp+pv+from_csc, label='from grid', color='tomato')
-                ax.bar(x, np.array(from_csc), width, bottom=pv,  color='y')
-            
-                ax.bar(x, np.array(into_grid), width,bottom=ele , label='into grid', color='orange')
-                ax.bar(x, np.array(ele), width,  label='to electrolyzer',  color='chocolate')
-                # ax.bar(x, fc, width, bottom = pv, label='from fuel cell',  color='peru')
-                ax.bar(x, np.array(to_csc), width, bottom=ele, label='collective self consumption',  color='gold')  
-                
-            if 'electrolyzer' in balances and 'fuel cell' in balances:
-                ax.bar(x, from_grid-from_csc, width ,bottom=pv+fc+from_csc, label='from grid', color='tomato')
-                ax.bar(x, np.array(from_csc), width, bottom=pv+fc,  color='y')
-            
-                ax.bar(x, np.array(into_grid), width,bottom=ele , label='into grid', color='orange')
-                ax.bar(x, np.array(ele), width,  label='to electrolyzer',  color='chocolate')
-                ax.bar(x, fc, width, bottom = pv, label='from fuel cell',  color='peru')
-                ax.bar(x, np.array(to_csc), width, bottom=ele, label='collective self consumption',  color='gold')
-                
-            if 'mechanical compressor' in balances:
-                ax.bar(x, np.array(compressor), width, bottom = ele, label='to compressor',  color='maroon')
-                ax.bar(x, np.array(into_grid), width,bottom=ele+compressor , label='into grid', color='orange')
-        else:
-            ax.bar(x, from_grid-from_csc, width ,bottom=from_csc, label='from grid', color='tomato')
-            ax.bar(x, np.array(from_csc), width, label='collective self consumption',  color='gold')
-           # plt.ylim(0,3.3)
-        
-        plt.title(location_name+' days '+str(first_day)+'-'+str(last_day))
-        plt.plot(x,load,'k',label='load')     
-        plt.legend(ncol=2, bbox_to_anchor = (1.01,-0.11))
-        plt.ylabel("Power [kW] ")
-        plt.xlabel( f"Time  [hour] ")
-        if (last_day-first_day) <= 10:
-             plt.xticks(list(range(first_day*24*60//c.timestep, (last_day+1)*24*60//c.timestep+1,24*60//c.timestep)), [str(x) for x in list(range(first_day*24, (last_day+1)*24+1,24))], rotation=45)
-        # ax.xaxis.set_tick_params(bottom=True,labelbottom=True)
-        #plt.xticks([0,6,12,18,24],['0','6','12','18','24'],fontsize=10,color='g')
-        #plt.xticks([0,6,12,18,24,30,36,42,48],['0','6','12','18','24','30','36','42','48'],fontsize=10,color='g')
-        #plt.yticks([-2,-1,0,1,2],['-2','-1','0','1','2'])
-        plt.show()
+def demand_plot(simulation_name,location_name):
+      
+    with open('results/pkl/balances_'+simulation_name+'.pkl', 'rb')  as f: balances  = pickle.load(f) 
 
+    UM = {
+        'electricity': 'kW',
+        'heating water': 'kW',
+        'cooling water': 'kW',
+        'process heat': 'kW',
+        'process hot water': 'kW',
+        'process cold water': 'kW',
+        'process chilled water': 'kW',
+        'hydrogen': 'kg/s',
+        'LP hydrogen': 'kg/s',
+        'HP hydrogen': 'kg/s',
+        'oxygen': 'kg/s',
+        'process steam': 'kg/s',
+        'gas': 'Sm^3/s',
+        'water': 'm^3/s'
+    }
+
+    for carrier in balances[location_name]:
+        if carrier + ' demand' in balances[location_name][carrier]:
+            plt.figure(dpi=600)                               
+            y = - balances[location_name][carrier][carrier + ' demand']
+            x = np.linspace(0,len(y),len(y))        
+            plt.plot(x,y,label=location_name)
+            plt.grid()
+            plt.ylabel(f"{carrier} demand [{UM[carrier]}]")
+            plt.xlabel('Time [hours]')
+            if c.simulation_years == 1 and c.timestep == 60:
+                xticks = list(np.linspace(0, len(x) - 1, 13).astype(int))
+                xticklabels = ['          Jan','         Feb','          Mar','         Apr','         May','          Jun','         Jul','          Aug','           Sep','          Oct','          Nov','           Dec','']
+                plt.xticks(xticks,xticklabels,rotation=45)
+                plt.xlabel('Time [hours]')
+            elif c.simulation_years != 1 and c.timestep == 60:
+                plt.xlabel('Time [hours]')
+            else:
+                plt.xlabel('Timestep')
+            plt.title(location_name+' '+carrier+' demand')
+            plt.xlim(0,x[-1])
+            plt.show()
 def LOC_plot(simulation_name):
       
     with open('results/pkl/LOC_'+simulation_name+'.pkl', 'rb') as f:
@@ -533,10 +281,15 @@ def LOC_plot(simulation_name):
             plt.plot(x,y,label=location_name)
             plt.grid()
             plt.ylabel('LOC '+unit[tech])
-            plt.xlabel('Time [hours]')
-            xticks = list(np.linspace(0, len(x) - 1, 13).astype(int))
-            xticklabels = ['          Jan','         Feb','          Mar','         Apr','         May','          Jun','         Jul','          Aug','           Sep','          Oct','          Nov','           Dec','']
-            plt.xticks(xticks,xticklabels,rotation=45)
+            if c.simulation_years == 1 and c.timestep == 60:
+                xticks = list(np.linspace(0, len(x) - 1, 13).astype(int))
+                xticklabels = ['          Jan','         Feb','          Mar','         Apr','         May','          Jun','         Jul','          Aug','           Sep','          Oct','          Nov','           Dec','']
+                plt.xticks(xticks,xticklabels,rotation=45)
+                plt.xlabel('Time [hours]')
+            elif c.simulation_years != 1 and c.timestep == 60:
+                plt.xlabel('Time [hours]')
+            else:
+                plt.xlabel('Timestep')                          
             plt.title(location_name+' '+tech)
             plt.xlim(0,x[-1])
             plt.show()
@@ -591,274 +344,142 @@ def heating_demand(demand):
     plt.xlim(0,len(demand))
     plt.title('Heating water demand')
     plt.show()
-    
-def energy_balance_results(studycase,simulation_name,loc,print_=False,plot=False):
+
+
+def hydrogen_chain_curves(studycase,simulation_name,loc,print_=False,plot=False):
     
     """
-    Total balances figures and hydrogen-related ghg emissions calculation
+    Plot hydrogen supply chain cumulative electricity consumption curves and hydrogen production figures and plots
     ----------
-    studycase : dictionary (all the inputs are optional)
-        'location_1_name': inputs required to create a location object (see Location.py)
-        'location_2_name': 
-            ...
-        'location_n_name':
-            
-    simulation_name : str
-    
-    simulation_years : str - years to be simulated
-    
-    loc : str - location_name
-
-    emission_intensity : dict
-    
-    ref_year: str -> necessary to specify the reference year for grid intensity
-                        
-    output:  balances_pp: dictionary containing total balances calculation useful for LCOH calculation, NPV calculation and post process plots
-
     """  
-
+    
+    # Load the production and consumption data
+    with open('results/pkl/production_'+simulation_name+'.pkl', 'rb') as f: production  = pickle.load(f)
+    with open('results/pkl/consumption_'+simulation_name+'.pkl', 'rb') as f: consumption  = pickle.load(f)
     with open('results/pkl/balances_'+simulation_name+'.pkl', 'rb') as f: balances = pickle.load(f)
+    
+    # ---------- PART 1: Hydrogen Production Plot ----------
+    
+    # Hydrogen production details (previously hydrogen_production function)
+    simulation_steps    = len(balances[loc]['hydrogen']['electrolyzer'])
+    constantflow        = sum(balances[loc]['hydrogen']['electrolyzer']) / simulation_steps       # [kg/s] constant flow rate deliverable by the system
+    demand_constant     = np.array([constantflow * (i + 1) for i in range(simulation_steps)])     # [kg/s] fictitious constant demand 
+    production          = np.cumsum(balances[loc]['hydrogen']['electrolyzer'])                    # [kg/s] actual production from electrolyzer stack 
+    
+    if plot:  # Only plot if plot=True
+        fig, ax = plt.subplots(dpi=1000)
+        ax.plot(demand_constant * (c.timestep * 60), label='constant demand')
+        ax.plot(production * (c.timestep * 60), label='production')
+        ax.grid(alpha=0.3, zorder=0)
+        ax.set_ylabel('Hydrogen [kg]')
+        if c.simulation_years == 1 and c.timestep == 60:
+            ax.set_xlabel('Time [hours]')
+            xticks = list(np.linspace(0, simulation_steps - 1, 13).astype(int))
+            xticklabels = ['         Jan', '         Feb', '          Mar', '         Apr', '         May', '          Jun',
+                           '        Jul', '          Aug', '           Sep', '          Oct', '          Nov', '           Dec', '']
+            ax.set_xticks(xticks)
+            ax.set_xticklabels(xticklabels)
+        elif c.simulation_years != 1 and c.timestep == 60:
+            ax.set_xlabel('Time [hours]')
+        else:
+            ax.set_xlabel('Timestep')
+        ax.legend()
+        plt.title('Cumulative H$_\mathregular{2}$ production and demand')
+        plt.show()
+    
+    if print_:  # Only print if print_=True
+        print("\nAnnual produced hydrogen is equal to " + 
+              str(round((sum(balances[loc]['hydrogen']['electrolyzer'] * c.timestep * 60) / 1e3), 2)) +
+              " t/y ensuring a deliverable hydrogen mass flow rate equal to " + str(round((constantflow), 2)) + " kg/s")
 
-    if 'wind' not in balances[loc]['electricity'] and 'PV' not in balances[loc]['electricity']:    # if no renewables are included in the location        
+    # ---------- PART 2: Hydrogen Chain Curves (electricity consumption) ----------
+    
+    with open('results/pkl/production_'+simulation_name+'.pkl', 'rb')            as f: production  = pickle.load(f)
+    with open('results/pkl/consumption_'+simulation_name+'.pkl', 'rb')           as f: consumption  = pickle.load(f)
+    
+    if 'wind' not in production[loc]['electricity'] and 'PV' not in production[loc]['electricity']:    # if no renewables are included in the location        
         print("No renewable energy sources are present in the considered case study\nAutoconsumption data calculation not available\n")
         return
 
-    else: 
-        windsc      = {}
-        pvsc        = {}
-        from_grid   = {}
-        wind_autoconsumption    = np.zeros(c.timestep_number)
-        pv_autoconsumption      = np.zeros(c.timestep_number)
-        
-        if 'PV' in balances[loc]['electricity']:
-            pv_still_available = balances[loc]['electricity']['PV'].copy()
-        else:
-            pv_still_available = np.zeros(c.timestep_number)
-        
-        if 'wind' in balances[loc]['electricity']:
-            wind_still_available = balances[loc]['electricity']['wind'].copy()
-        else:
-            wind_still_available = np.zeros(c.timestep_number)
-        
-        system = dict(sorted(studycase[loc].items(), key=lambda item: item[1]['priority'])) # ordered by priority
-                
-            
-        if 'wind' in balances[loc]['electricity'] and 'PV' not in balances[loc]['electricity']:    
-            for tech_name in system: # (which is ordered py priority)
-                if tech_name == 'electricity demand':
-                    tech_name = 'demand'
-                if tech_name in balances[loc]['electricity'] and all(num <= 0 for num in balances[loc]['electricity'][tech_name]) and tech_name != 'collective self consumption':
-                    windsc[tech_name]       = np.zeros(c.timestep_number)  # initializing the array to store wind energy self consumption values for tech_name technology
-                    from_grid[tech_name]    = np.zeros(c.timestep_number)
-                    for i in range(len(balances[loc]['electricity'][tech_name])):
-                        if balances[loc]['electricity'][tech_name][i] < 0:
-                            windsc[tech_name][i]    = np.minimum(wind_still_available[i],-balances[loc]['electricity'][tech_name][i])
-                            from_grid[tech_name][i] = -balances[loc]['electricity'][tech_name][i] - windsc[tech_name][i]
-                            wind_still_available[i] = wind_still_available[i] - windsc[tech_name][i]
-                            wind_autoconsumption[i] += windsc[tech_name][i]
-                    if print_ == True:
-                        print('\nwindsc_'+str(tech_name)+'    = '+str(round((sum(windsc[tech_name]*(c.timestep/60))/1e3),2))+' MWh') 
-                        print('from_grid_'+str(tech_name)+' = '+str(round((sum(from_grid[tech_name]*(c.timestep/60))/1e3),2))+' MWh')
-                    
-            wind_surplus = wind_still_available
-            if print_ == True:
-                print('\nwind_autoconsumption     = '+str(round((sum(wind_autoconsumption*(c.timestep/60))/1e3),2))+' MWh')
-                print('wind_surplus             = '+str(round((sum(wind_surplus*(c.timestep/60))/1e3),2))+' MWh')
-
-                    
-        elif 'PV' in balances[loc]['electricity'] and 'wind' not in balances[loc]['electricity']:    
-            for tech_name in system: # (which is ordered py priority)
-                if tech_name == 'electricity demand':
-                    tech_name = 'demand'
-                if tech_name in balances[loc]['electricity'] and all(num <= 0 for num in balances[loc]['electricity'][tech_name]) and tech_name != 'collective self consumption':
-                    pvsc[tech_name] = np.zeros(c.timestep_number)  # initializing the array to store wind energy self consumption values for tech_name technology
-                    from_grid[tech_name] = np.zeros(c.timestep_number)
-                    for i in range(len(balances[loc]['electricity'][tech_name])):
-                        if balances[loc]['electricity'][tech_name][i] < 0:
-                            pvsc[tech_name][i] = np.minimum(pv_still_available[i],-balances[loc]['electricity'][tech_name][i])
-                            from_grid[tech_name][i] = -balances[loc]['electricity'][tech_name][i] - pvsc[tech_name][i]
-                            pv_still_available[i] = pv_still_available[i] - pvsc[tech_name][i]
-                            pv_autoconsumption[i] += pvsc[tech_name][i]
-                    if print_ == True:
-                        print('\npvsc_'+str(tech_name)+'      = '+str(round((sum(pvsc[tech_name]*(c.timestep/60))/1e3),2))+' MWh') 
-                        print('from_grid_'+str(tech_name)+' = '+str(round((sum(from_grid[tech_name]*(c.timestep/60))/1e3),2))+' MWh')
+    el_consumption = consumption[loc]['electricity']
+ 
+    # Iterate over the el_consumption dictionary
+    for tech_name, consumption_data in el_consumption.items():
+        # Only process 'electrolyzer' and 'mechanical compressor'
+        if tech_name in ['electrolyzer', 'mechanical compressor']:
                         
-            pv_surplus = pv_still_available
-            if print_ == True:
-                print('\npv_autoconsumption    = '+str(round((sum(pv_autoconsumption*(c.timestep/60))/1e3),2))+' MWh')
-                print('pv_surplus           = '+str(round((sum(pv_surplus)*(c.timestep/60)/1e3),2))+' MWh')
-
-
-        elif 'PV' in balances[loc]['electricity'] and 'wind' in balances[loc]['electricity']:
+            plt.figure(figsize=(10, 6), dpi=600)
+            # Loop through each supplying component (tech_name1)
+            for tech_name1, energy_supplied in consumption_data.items():
+                # Calculate cumulative sum for this component
+                cumulative_energy = np.cumsum(energy_supplied*c.timestep/60)
+                plt.plot(cumulative_energy, label=f'{tech_name1} to {tech_name}')
             
-            if list(system.keys()).index('PV') < list(system.keys()).index('wind'): # PV comes before wind
-                
-                for tech_name in system: # (which is ordered py priority)
-                    if tech_name == 'electricity demand':
-                        tech_name = 'demand'
-                    if tech_name in balances[loc]['electricity'] and all(num <= 0 for num in balances[loc]['electricity'][tech_name]) and tech_name != 'collective self consumption':
-                        pvsc[tech_name] = np.zeros(c.timestep_number)  # initializing the array to store pv energy self consumption values for tech_name technology
-                        windsc[tech_name] = np.zeros(c.timestep_number)  # initializing the array to store wind energy self consumption values for tech_name technology
-                        from_grid[tech_name] = np.zeros(c.timestep_number)
-                        for i in range(len(balances[loc]['electricity'][tech_name])):
-                            if balances[loc]['electricity'][tech_name][i] < 0:
-                                pvsc[tech_name][i] = np.minimum(pv_still_available[i],-balances[loc]['electricity'][tech_name][i])
-                                windsc[tech_name][i] = np.minimum(wind_still_available[i],-balances[loc]['electricity'][tech_name][i]-pvsc[tech_name][i])
-                                from_grid[tech_name][i] = -balances[loc]['electricity'][tech_name][i] - pvsc[tech_name][i] - windsc[tech_name][i]
-                                pv_still_available[i] = pv_still_available[i] - pvsc[tech_name][i]
-                                wind_still_available[i] = wind_still_available[i] - windsc[tech_name][i]
-                                pv_autoconsumption[i] += pvsc[tech_name][i]
-                                wind_autoconsumption[i] += windsc[tech_name][i]
-                        if print_ == True:
-                            print('\npvsc_'+str(tech_name)+'      = '+str(round((sum(pvsc[tech_name]*(c.timestep/60))/1e3),2))+' MWh')
-                            print('windsc_'+str(tech_name)+'    = '+str(round((sum(windsc[tech_name]*(c.timestep/60))/1e3),2))+' MWh') 
-                            print('from_grid_'+str(tech_name)+' = '+str(round((sum(from_grid[tech_name]*(c.timestep/60))/1e3),2))+' MWh')
-                             
-            else:
-                
-                for tech_name in system: # (which is ordered py priority)
-                    if tech_name == 'electricity demand':
-                        tech_name = 'demand'
-                    if tech_name in balances[loc]['electricity'] and all(num <= 0 for num in balances[loc]['electricity'][tech_name]) and tech_name != 'collective self consumption':
-                        pvsc[tech_name] = np.zeros(c.timestep_number)  # initializing the array to store pv energy self consumption values for tech_name technology
-                        windsc[tech_name] = np.zeros(c.timestep_number)  # initializing the array to store wind energy self consumption values for tech_name technology
-                        from_grid[tech_name] = np.zeros(c.timestep_number)
-                        for i in range(len(balances[loc]['electricity'][tech_name])):
-                            if balances[loc]['electricity'][tech_name][i] < 0:
-                                windsc[tech_name][i] = np.minimum(wind_still_available[i],-balances[loc]['electricity'][tech_name][i])
-                                pvsc[tech_name][i] = np.minimum(pv_still_available[i],-balances[loc]['electricity'][tech_name][i]-windsc[tech_name][i])
-                                from_grid[tech_name][i] = -balances[loc]['electricity'][tech_name][i] - windsc[tech_name][i] - pvsc[tech_name][i]
-                                pv_still_available[i] = pv_still_available[i] - pvsc[tech_name][i]
-                                wind_still_available[i] = wind_still_available[i] - windsc[tech_name][i]
-                                pv_autoconsumption[i] += pvsc[tech_name][i]
-                                wind_autoconsumption[i] += windsc[tech_name][i]
-                        if print_ == True:
-                            print('\nwindsc_'+str(tech_name)+'    = '+str(round((sum(windsc[tech_name]*(c.timestep/60))/1e3),2))+' MWh')
-                            print('pvsc_'+str(tech_name)+'      = '+str(round((sum(pvsc[tech_name]*(c.timestep/60))/1e3),2))+' MWh') 
-                            print('from_grid_'+str(tech_name)+' = '+str(round((sum(from_grid[tech_name]*(c.timestep/60))/1e3),2))+' MWh')
-
-            wind_surplus = wind_still_available
-            pv_surplus = pv_still_available
-            if print_ == True:
-                print('\nwind_autoconsumption     = '+str(round((sum(wind_autoconsumption*(c.timestep/60))/1e3),2))+' MWh')
-                print('pv_autoconsumption       = '+str(round((sum(pv_autoconsumption*(c.timestep/60))/1e3),2))+' MWh')
-                print('wind_surplus             = '+str(round((sum(wind_surplus*(c.timestep/60))/1e3),2))+' MWh')
-                print('pv_surplus               = '+str(round((sum(pv_surplus*(c.timestep/60))/1e3),2))+' MWh')
-            
-  
-        # Saving all technologies interacting with hydrogen
-        tech_name1 = []
-        tot_demand_for_hyd  = np.zeros(c.timestep_number)
-        el_from_grid_hyd    = np.zeros(c.timestep_number)
-        el_from_wind_hyd    = np.zeros(c.timestep_number)
-        el_from_pv_hyd      = np.zeros(c.timestep_number)
-        for tech_name in balances[loc]['hydrogen']:
-            if tech_name != 'grid' and tech_name != 'demand':
-                tech_name1.append(tech_name)
-        
-        # Calculating the electricity consumed to run the technologies interacting with hydrogen (only those having negative values, thus absorbing electricity)
-        for tech_name in tech_name1:
-            if tech_name in balances[loc]['electricity'] and all(num <= 0 for num in balances[loc]['electricity'][tech_name]):
-                for i in range(len(balances[loc]['electricity'][tech_name])):
-                    if balances[loc]['electricity'][tech_name][i] < 0:
-                        tot_demand_for_hyd[i] += -balances[loc]['electricity'][tech_name][i]
-                        el_from_grid_hyd[i] += from_grid[tech_name][i]
-                        if tech_name in windsc:
-                            el_from_wind_hyd[i] += windsc[tech_name][i]
-                        if tech_name in pvsc:
-                            el_from_pv_hyd[i] += pvsc[tech_name][i] 
-        
-        balances_pp = balances.copy()
-        balances_pp[loc]['electricity']['hyd tot electricity']          = tot_demand_for_hyd
-        balances_pp[loc]['electricity']['hyd grid electricity']         = el_from_grid_hyd
-        balances_pp[loc]['electricity']['tech from grid']               = from_grid
-        
-        if 'wind' in balances[loc]['electricity']:
-            balances_pp[loc]['electricity']['tech windsc']              = windsc
-            balances_pp[loc]['electricity']['hyd wind electricity']     = el_from_wind_hyd
-            balances_pp[loc]['electricity']['wind surplus']             = wind_surplus
-            balances_pp[loc]['electricity']['wind autoconsumption']     = wind_autoconsumption
-        if 'PV' in balances[loc]['electricity']:        
-            balances_pp[loc]['electricity']['tech pvsc']                = pvsc
-            balances_pp[loc]['electricity']['hyd pv electricity']       = el_from_pv_hyd
-            balances_pp[loc]['electricity']['pv surplus']               = pv_surplus
-            balances_pp[loc]['electricity']['pv autoconsumption']       = pv_autoconsumption
-        
-        if plot == True:
-            k=1
-            grid_cumulative_for_hyd     = np.cumsum(el_from_grid_hyd*(c.timestep/60))       # kW to kWh
-            demand_cumulative_for_hyd   = np.cumsum(tot_demand_for_hyd*(c.timestep/60))     # kW to kWh
-            if sum(el_from_wind_hyd) != 0:
-                wind_sc_cumulative_for_hyd  = np.cumsum(el_from_wind_hyd*(c.timestep/60))   # kW to kWh
-            if sum(el_from_pv_hyd) != 0:
-                pv_sc_cumulative_for_hyd    = np.cumsum(el_from_pv_hyd*(c.timestep/60))     # kW to kWh
-                
-            # Cumulative plot
-            fig, ax = plt.subplots(dpi=300)
-            ax.plot(demand_cumulative_for_hyd, label = 'Electricity Dem for H2 chain', linewidth=k, zorder = 2)
-            ax.plot(grid_cumulative_for_hyd, label = 'From grid', linewidth=k-0.2)
-            if sum(el_from_wind_hyd) != 0:
-                ax.plot(wind_sc_cumulative_for_hyd,  alpha = 1, zorder = 1, label = 'P$_{Wind SC}$', linewidth=k)
-            if sum(el_from_pv_hyd) != 0:
-                ax.plot(pv_sc_cumulative_for_hyd, label = 'P$_{PV SC}$', linewidth=k, zorder = 3)
-            ax.grid(alpha = 0.3, zorder = 0)
-            xticks = list(np.linspace(0, len(demand_cumulative_for_hyd) - 1, 13).astype(int))
-            xticklabels = ['          Jan','         Feb','          Mar','         Apr','         May','          Jun','         Jul','          Aug','           Sep','          Oct','          Nov','           Dec','']
-            ax.set_xticks(xticks)
-            ax.set_xticklabels(xticklabels)
-            ax.set_ylabel('Energy [kWh]')
-            ax.set_xlabel('Time [h]')
-            ax.legend()
+            plt.grid(alpha = 0.3, zorder = 0)
+            plt.xlabel('Timestep',fontsize=14)
+            plt.ylabel('Cumulative Energy [kWh]',fontsize=14)
+            plt.title(f'Cumulative Energy Supplied to {tech_name}',fontsize=14)
+            plt.xticks(fontsize=14)
+            plt.yticks(fontsize=14)
+            plt.legend(loc='upper left',fontsize=14)
             plt.show()
             
-            # Coloured areas
-            fig, ax = plt.subplots(dpi=300)
-            el_dem_H2_chain, = ax.plot(demand_cumulative_for_hyd, label='Electricity Dem for H2 chain', linewidth=k, zorder=2)
-            if sum(el_from_wind_hyd) != 0 and sum(el_from_pv_hyd) == 0:
-                ax.fill_between(range(len(demand_cumulative_for_hyd)), wind_sc_cumulative_for_hyd, color='green', alpha=0.3)
-                ax.fill_between(range(len(demand_cumulative_for_hyd)), wind_sc_cumulative_for_hyd+grid_cumulative_for_hyd, wind_sc_cumulative_for_hyd, color='red', alpha=0.3)
-                red_patch = mpatches.Patch(color='red', alpha=0.3, label='From grid')
-                green_patch = mpatches.Patch(color='green', alpha=0.3, label='Wind$_{SC}$')
-                ax.legend(handles=[el_dem_H2_chain, red_patch, green_patch])
-            if sum(el_from_pv_hyd) != 0 and sum(el_from_wind_hyd) == 0:
-                ax.fill_between(range(len(demand_cumulative_for_hyd)), pv_sc_cumulative_for_hyd, color='green', alpha=0.3)
-                ax.fill_between(range(len(demand_cumulative_for_hyd)), pv_sc_cumulative_for_hyd+grid_cumulative_for_hyd, pv_sc_cumulative_for_hyd, color='red', alpha=0.3)
-                red_patch = mpatches.Patch(color='red', alpha=0.3, label='From grid')
-                green_patch = mpatches.Patch(color='green', alpha=0.3, label='PV$_{SC}$')
-                ax.legend(handles=[el_dem_H2_chain, red_patch, green_patch])
-            if sum(el_from_wind_hyd) != 0 and sum(el_from_pv_hyd) != 0:
-                if list(system.keys()).index('PV') < list(system.keys()).index('wind'): # PV comes before wind
-                    ax.fill_between(range(len(demand_cumulative_for_hyd)), pv_sc_cumulative_for_hyd, color='green', alpha=0.3)
-                    ax.fill_between(range(len(demand_cumulative_for_hyd)), pv_sc_cumulative_for_hyd+wind_sc_cumulative_for_hyd, pv_sc_cumulative_for_hyd, color='orange', alpha=0.3)
-                    ax.fill_between(range(len(demand_cumulative_for_hyd)), pv_sc_cumulative_for_hyd+wind_sc_cumulative_for_hyd+grid_cumulative_for_hyd, pv_sc_cumulative_for_hyd+wind_sc_cumulative_for_hyd, color='red', alpha=0.3)
-                    red_patch = mpatches.Patch(color='red', alpha=0.3, label='From grid')
-                    green_patch = mpatches.Patch(color='green', alpha=0.3, label='PV$_{SC}$')
-                    orange_patch = mpatches.Patch(color='orange', alpha=0.3, label='Wind$_{SC}$')
-                    ax.legend(handles=[el_dem_H2_chain, red_patch, green_patch, orange_patch])
-                else:
-                    ax.fill_between(range(len(demand_cumulative_for_hyd)), wind_sc_cumulative_for_hyd, color='green', alpha=0.3)
-                    ax.fill_between(range(len(demand_cumulative_for_hyd)), wind_sc_cumulative_for_hyd+pv_sc_cumulative_for_hyd, wind_sc_cumulative_for_hyd, color='orange', alpha=0.3)
-                    ax.fill_between(range(len(demand_cumulative_for_hyd)), wind_sc_cumulative_for_hyd+pv_sc_cumulative_for_hyd+grid_cumulative_for_hyd, wind_sc_cumulative_for_hyd+pv_sc_cumulative_for_hyd, color='red', alpha=0.3)
-                    red_patch = mpatches.Patch(color='red', alpha=0.3, label='From grid')
-                    green_patch = mpatches.Patch(color='green', alpha=0.3, label='Wind$_{SC}$')
-                    orange_patch = mpatches.Patch(color='orange', alpha=0.3, label='PV$_{SC}$')
-                    ax.legend(handles=[el_dem_H2_chain, red_patch, green_patch, orange_patch])
-            
-            ax.grid(alpha=0.3, zorder=0)
-            xticks = list(np.linspace(0, len(demand_cumulative_for_hyd) - 1, 13).astype(int))
-            xticklabels = ['          Jan','         Feb','          Mar','         Apr','         May','          Jun','         Jul','          Aug','           Sep','          Oct','          Nov','           Dec','']
-            ax.set_xticks(xticks)
-            ax.set_xticklabels(xticklabels)
-            ax.set_ylabel('Energy [kWh]')
-            ax.set_xlabel('Time [h]')            
+   
+    # Function to extract priority from the studycase and sort tech_name1 components
+    def get_sorted_components(studycase, tech_name):
+        # Extract the system for the current location (assuming a generic loc)
+        system = studycase.get("industrial_facility", {})
+    
+        # Create a sorted list of tech_name1 based on priority for the given tech_name
+        sorted_tech_name1 = [
+            key for key, value in sorted(system.items(), key=lambda item: item[1].get('priority', float('inf')))
+            if key in el_consumption.get(tech_name, {})
+        ]
+        
+        return sorted_tech_name1
+
+    # stacked cumulative energy curves
+    # Iterate over the el_consumption dictionary
+    for tech_name, consumption_data in el_consumption.items():
+        # Only process 'electrolyzer' and 'mechanical compressor'
+        if tech_name in ['electrolyzer', 'mechanical compressor']:
+            plt.figure(figsize=(10, 6), dpi=600)
+
+            # Get sorted tech_name1 components based on priority from the studycase
+            sorted_tech_name1 = get_sorted_components(studycase, tech_name)
+
+            # Initialize an array to hold the sum of previous components for stacking
+            previous_cumulative = np.zeros(len(next(iter(consumption_data.values()))))
+
+            # Loop through each tech_name1 in priority order and plot
+            for tech_name1 in sorted_tech_name1:
+                # Calculate the cumulative energy for this component (tech_name1)
+                cumulative_energy = np.cumsum(consumption_data[tech_name1]*c.timestep/60)
+
+                # Plot the current cumulative energy stacked on the previous
+                plt.fill_between(
+                    range(len(cumulative_energy)),
+                    previous_cumulative,
+                    previous_cumulative + cumulative_energy,
+                    label=f'{tech_name1} to {tech_name}'
+                )
+
+                # Update the previous cumulative sum for stacking
+                previous_cumulative += cumulative_energy
+
+            # Set plot labels and title
+            plt.grid(alpha = 0.3, zorder = 0)
+            plt.xlabel('Timestep',fontsize=14)
+            plt.ylabel('Cumulative Energy [kWh]',fontsize=14)
+            plt.title(f'Stacked Cumulative Energy Supplied to {tech_name}',fontsize=14)
+            plt.legend(loc='upper left',fontsize=14)
+            plt.xticks(fontsize=14)
+            plt.yticks(fontsize=14)
             plt.show()
-                    
-        # saving post process results
-        with open('results/pkl/balances_pp_'+simulation_name+".pkl", 'wb') as f: pickle.dump(balances_pp, f)
+                   
+    return 
 
-    return balances_pp
-
-def ghg_emissions(simulation_name,loc,energy_market, print_= False):
+def ghg_emissions(simulation_name,path,loc,energy_market, print_= False):
     """
     GHG emissions profile (green index) calculation for hydrogen production.
     Dependent on energy_balance_results function output.
@@ -866,229 +487,121 @@ def ghg_emissions(simulation_name,loc,energy_market, print_= False):
             
     simulation_name : str - name of energy_balances file .pkl where balances_pp results are stored
         
-    loc : str - location_name
-
-    emission_intensity : dict
+    loc : str - location_name                            
     
-    ref_year: str -> necessary to specify the reference year for grid intensity
+    energy_market : dictionary
                         
     output: float - ghg emission value [kgCO2/kgH2]
     """      
 
-    with open('results/pkl/balances_pp_'+simulation_name+".pkl",'rb') as f: balances_pp = pickle.load(f) 
+    with open('results/pkl/consumption_'+simulation_name+'.pkl', 'rb')           as f: consumption  = pickle.load(f) 
+    with open('results/pkl/production_'+simulation_name+'.pkl', 'rb')           as f: production  = pickle.load(f)
 
-    el_from_grid_hyd_tot    = sum(balances_pp[loc]['electricity']['hyd grid electricity'])*c.timestep/60        # [kWh] total amount of electricity withdrown from grid to power hydrogen production chain
-    emission_factor         = energy_market['electricity']['emission intensity']                                # [gCO2/kWh] electric grid intensity depending on the selected area for the analysis
-    co2_tot                 = el_from_grid_hyd_tot*emission_factor/1000                                         # [kgCO2] total amount of carbon dioxide due to grid electricity utilization
-    produced_hyd            = sum(balances_pp[loc]['hydrogen']['electrolyzer']*(c.timestep*60))                 # [kgH2] total amount of produced hydrogen via in situ electorlysis
+    el_consumption = consumption[loc]['electricity']
     
+    # Number of steps per hour based on the timestep
+    steps_per_hour = 60 // c.timestep
+    # Determine the total number of hours in the simulation
+    total_hours = 8760 * c.simulation_years
+    # Prepare an array to store hourly grid electricity consumption
+    el_from_grid_hyd_tot = np.zeros(total_hours)
+    
+    # Load emission intensity, either a constant or a time series
+    if isinstance(energy_market['electricity']['emission intensity'], str):  # Check if it's a file path (string)
+        em_intensity = (pd.read_csv(path + '/grid_emission_intensity/' + energy_market['electricity']['emission intensity'])['0'].to_numpy()) / 1e3
+        if c.simulation_years > 1:
+            # Repeat the emission intensity series if the simulation lasts multiple years
+            em_intensity = np.tile(em_intensity, int(c.simulation_years))
+    else:
+        # If the emission intensity is constant (numeric), use that value for the whole simulation period
+        em_intensity = np.full(total_hours, energy_market['electricity']['emission intensity'] / 1e3)
+    
+    # Iterate over the electricity consumption dictionary
+    for tech_name, consumption_data in el_consumption.items():
+        # Only process 'electrolyzer' and 'mechanical compressor'
+        if tech_name in ['electrolyzer', 'mechanical compressor']:
+            for tech_name1, energy_supplied in consumption_data.items():
+                if tech_name1 == 'electricity grid':
+                    # Reshape and sum the consumption data to get hourly totals
+                    if c.timestep != 60:
+                        # Aggregate data into hourly intervals
+                        energy_supplied_hourly = energy_supplied.reshape(-1, steps_per_hour).sum(axis=1)*c.timestep/60
+                    else:
+                        # If timestep is 60 minutes, no aggregation is needed
+                        energy_supplied_hourly = energy_supplied
+    
+                    # Add the hourly grid consumption to the total
+                    el_from_grid_hyd_tot[:len(energy_supplied_hourly)] += energy_supplied_hourly  # [kWh]
+    
+    # Calculate the CO2 emissions by multiplying electricity consumption with emission intensity
+    co2_emissions = el_from_grid_hyd_tot * em_intensity
+    
+    # Total CO2 emissions over the entire simulation period
+    co2_tot = np.sum(co2_emissions)  # [kgCO2] total amount of carbon dioxide due to grid electricity utilization                
+    produced_hyd = sum(production[loc]['hydrogen']['electrolyzer']['Tot'])*(c.timestep*60)      # [kgH2] total amount of produced hydrogen via in situ electorlysis
     h2_ghg = round(co2_tot/produced_hyd,2)  # [kgCO2/kgH2] GHG intensity of the produced hydrogen
     if print_ == True:
         print(f"\nThe H2 GHG intensity calculated for the considered scenario results in {h2_ghg} kgCO2/kgH2")
-    
+
     return h2_ghg
+def plot_energy_balances(simulation_name,loc,first_day,last_day,carrier,width=0.9):
+    
+    with open('results/pkl/consumption_'+simulation_name+'.pkl', 'rb')           as f: consumption  = pickle.load(f) 
+    with open('results/pkl/production_'+simulation_name+'.pkl', 'rb')           as f: production  = pickle.load(f)
+    with open('results/pkl/balances_'+simulation_name+'.pkl', 'rb')             as f: balances = pickle.load(f)
+     
+    UM = {
+        'electricity': 'kW',
+        'heating water': 'kW',
+        'cooling water': 'kW',
+        'process heat': 'kW',
+        'process hot water': 'kW',
+        'process cold water': 'kW',
+        'process chilled water': 'kW',
+        'hydrogen': 'kg/s',
+        'LP hydrogen': 'kg/s',
+        'HP hydrogen': 'kg/s',
+        'oxygen': 'kg/s',
+        'process steam': 'kg/s',
+        'gas': 'Sm^3/s',
+        'water': 'm^3/s'
+    }
+    
+    x = np.arange(first_day*24*60/c.timestep,(last_day+1)*24*60/c.timestep)
+    hourly_steps = 60//c.timestep # number of simulation steps considered in 1 hour - depending on input parameters. If simulaton is on hourly basis, hourly_steps=1
 
-def hydrogen_production(simulation_name,loc,var=None):
-    """
-    Hydrogen production figures and plots
+    self_consumption = {}
+    surplus = {}
+    for tech_name in production[loc][carrier]:
+        self_consumption[tech_name] = np.zeros(len(x))
+        surplus[tech_name] = np.zeros(len(x))
+        for tech in production[loc][carrier][tech_name]:
+            if tech not in [f'{carrier} grid','Tot']:
+                self_consumption[tech_name] += production[loc][carrier][tech_name][tech][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps]
+            elif tech in [f'{carrier} grid']:
+                surplus[tech_name] += production[loc][carrier][tech_name][tech][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps]
     
-    simulationa_name : str 
-    loc : str 
-    var : str -> possibility of specifying **kargs
-    
-    """    
-    with open('results/pkl/balances_'+simulation_name+'.pkl', 'rb') as f: balances = pickle.load(f)
-    
-    simulation_steps    = len(balances[loc]['hydrogen']['electrolyzer'])
-    constantflow        = sum(balances[loc]['hydrogen']['electrolyzer'])/simulation_steps       # [kg/s] constant flow rate deliverable by the system if operated in supply-led mode
-    demand_constant     = np.array([constantflow * (i + 1) for i in range(simulation_steps)])   # [kg/s] fictitious constant demand 
-    # demand_variable     = -np.cumsum(balances[loc]['hydrogen']['demand'])
-    production          = np.cumsum(balances[loc]['hydrogen']['electrolyzer'])                  # [kg/s] actual production form electorlysis stack 
-    
-    fig, ax = plt.subplots(dpi=1000)
-    ax.plot(demand_constant*(c.timestep*60), label = 'constant demand')
-    # ax.plot(demand_variable, label = 'variable demand')
-    ax.plot(production*(c.timestep*60), label = 'production')
-    ax.grid(alpha = 0.3, zorder = 0)
-    ax.set_ylabel('Hydrogen [kg]')
-    ax.set_xlabel('Time [h]')
-    xticks = list(np.linspace(0, simulation_steps - 1, 13).astype(int))
-    # xticklabels = [str(value) for value in xticks]
-    xticklabels = ['         Jan','         Feb','          Mar','         Apr','         May','          Jun','        Jul','          Aug','           Sep','          Oct','          Nov','           Dec','']
-    ax.set_xticks(xticks)
-    ax.set_xticklabels(xticklabels)
-    ax.legend()
-    plt.title('Cumulative H$_\mathregular{2}$ production and demand')
-    plt.show()
-   
-    print("\nAnnual produced hydrogen is equal to "+str(round((sum(balances[loc]['hydrogen']['electrolyzer']*c.timestep*60)/1e3),2))+" t/y ensuring a deliverable hydrogen mass flow rate equal to "+str(round((constantflow),2))+" kg/s")
-    
-def plot_post_process(balances_pp,studycase,loc,first_day,last_day):
-    
-    """
-    Total balances figures and graphs
-    ----------
-    balances_pp : dictionary cointaining energy balances elaborated during post process
+    consumption_tech = {}    
+    for tech_name in consumption[loc][carrier]:
+        consumption_tech[tech_name] = {}
+        for tech in consumption[loc][carrier][tech_name]:
+            if tech not in ['Tot']:
+                consumption_tech[tech_name][tech] = np.zeros(len(x))
+                consumption_tech[tech_name][tech] += -consumption[loc][carrier][tech_name][tech][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps]
             
-    studycase : dictionary (all the inputs are optional)
-        'location_1_name': inputs required to create a location object (see Location.py)
-        'location_2_name': 
-            ...
-        'location_n_name':
-    
-    loc : str - location_name
-    
-    first_day : int - first day to start the balances bar plot
-    
-    last_day : int - last day to finish the balances bar plot
-
-    """     
-    
-    if 'wind' not in balances_pp[loc]['electricity'] and 'PV' not in balances_pp[loc]['electricity']:    # if no renewables are included in the location        
-        print("No renewable energy sources are present in the considered case study\nRES plots not available\n")
-        return
-    else:
-        balances = balances_pp[loc]['electricity']
-        x = np.arange(first_day*24*60/c.timestep,(last_day+1)*24*60/c.timestep)
-        x = x*(c.timestep/60) # ensuring values are presented on a hourly basis
-        width=0.9
-        system = dict(sorted(studycase[loc].items(), key=lambda item: item[1]['priority'])) # ordered by priority
-        hourly_steps = 60//c.timestep # number of simulation steps considered in 1 hour - depending on input parameters. If simulaton is on hourly basis, hourly_steps=1
+    tot_consumption_tech = {}
+    for tech_name in consumption[loc][carrier]:
+        tot_consumption_tech[tech_name] = np.zeros(len(x))
+        tot_consumption_tech[tech_name] +=  -consumption[loc][carrier][tech_name]['Tot'][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps]
         
-    if 'wind' in balances and 'PV' not in balances:
-        for tech_name_plot in balances['tech from grid']:                    
-            fig = plt.figure(dpi=300)
-            from mpl_toolkits.axisartist.axislines import SubplotZero
-            ax = SubplotZero(fig, 1, 1, 1)
-            fig.add_subplot(ax)
-            ax.axis["xzero"].set_visible(True)
-            ax.axis["xzero"].label.set_visible(False)
-            ax.axis["xzero"].major_ticklabels.set_visible(False)
-            for n in ["bottom","top", "right"]:ax.axis[n].set_visible(True)
-            ax.grid(axis='y', alpha = 0.5, zorder = -4)
-            ax.bar(x, balances['tech windsc'][tech_name_plot][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps], width,  label='Wind self consumption', color='yellowgreen')
-            ax.bar(x, balances['tech from grid'][tech_name_plot][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps], width, bottom=balances['tech windsc'][tech_name_plot][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps], label='From grid', color='tomato')
-            plt.title(tech_name_plot+' days '+str(first_day)+'-'+str(last_day))
-            plt.plot(x,-balances[tech_name_plot][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps],'k',label='load')     
-            plt.legend(ncol=2, bbox_to_anchor = (1.01,-0.11))
-            plt.ylabel("Power [kW] ")
-            plt.xlabel( "Time  [h] ")
-            if (last_day-first_day) <= 10: # in order to better visualize daily behaviour if short timespans are selected
-                plt.xticks(list(range(int(x[0]),int(np.ceil(x[-1]))+2,24)), [str(x) for x in list(range(first_day*24, ((last_day+1)*24)+1,24))], rotation=45) 
-            plt.show()
-            
-                
-    elif 'PV' in balances and 'wind' not in balances:
-        for tech_name_plot in balances['tech from grid']:      
-            fig = plt.figure(dpi=300)
-            from mpl_toolkits.axisartist.axislines import SubplotZero
-            ax = SubplotZero(fig, 1, 1, 1)
-            fig.add_subplot(ax)
-            ax.axis["xzero"].set_visible(True)
-            ax.axis["xzero"].label.set_visible(False)
-            ax.axis["xzero"].major_ticklabels.set_visible(False)
-            for n in ["bottom","top", "right"]: ax.axis[n].set_visible(True)
-            ax.grid(axis='y', alpha = 0.5, zorder = -4)
-            ax.bar(x, balances['tech pvsc'][tech_name_plot][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps], width,  label='PV self consumption', color='yellowgreen')
-            ax.bar(x, balances['tech from grid'][tech_name_plot][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps], width, bottom=balances['tech pvsc'][tech_name_plot][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps], label='From grid', color='tomato')
-            plt.title(tech_name_plot+' days '+str(first_day)+'-'+str(last_day))
-            plt.plot(x,-balances[tech_name_plot][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps],'k',label='load')     
-            plt.legend(ncol=2, bbox_to_anchor = (1.01,-0.11))
-            plt.ylabel("Power [kW] ")
-            plt.xlabel( "Time  [h] ")
-            if (last_day-first_day) <= 10: # in order to better visualize daily behaviour if short timespans are selected
-                plt.xticks(list(range(int(x[0]),int(np.ceil(x[-1]))+2,24)), [str(x) for x in list(range(first_day*24, ((last_day+1)*24)+1,24))], rotation=45) 
-            plt.show()
-
-
-    elif 'PV' in balances and 'wind' in balances:
-        
-        if list(system.keys()).index('PV') < list(system.keys()).index('wind'): # PV comes before wind
-            for tech_name_plot in balances['tech from grid']:
-                fig = plt.figure(dpi=300)
-                from mpl_toolkits.axisartist.axislines import SubplotZero
-                ax = SubplotZero(fig, 1, 1, 1)
-                fig.add_subplot(ax)
-                ax.axis["xzero"].set_visible(True)
-                ax.axis["xzero"].label.set_visible(False)
-                ax.axis["xzero"].major_ticklabels.set_visible(False)
-                for n in ["bottom","top", "right"]:
-                    ax.axis[n].set_visible(True)
-                ax.grid(axis='y', alpha = 0.5, zorder = -4)
-                ax.bar(x, balances['tech pvsc'][tech_name_plot][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps], width,  label='PV self consumption', color='yellowgreen')
-                ax.bar(x, balances['tech windsc'][tech_name_plot][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps], width, bottom=balances['tech pvsc'][tech_name_plot][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps], label='wind self consumption', color='orange')
-                ax.bar(x, balances['tech from grid'][tech_name_plot][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps], width, bottom=balances['tech pvsc'][tech_name_plot][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps]+balances['tech windsc'][tech_name_plot][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps], label='From grid', color='tomato')
-                plt.title(tech_name_plot+' days '+str(first_day)+'-'+str(last_day))
-                plt.plot(x,-balances[tech_name_plot][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps],'k',label='load')     
-                plt.legend(ncol=2, bbox_to_anchor = (1.01,-0.11))
-                plt.ylabel("Power [kW]")
-                plt.xlabel( "Time  [h] ")
-                if (last_day-first_day) <= 10: # in order to better visualize daily behaviour if short timespans are selected
-                    plt.xticks(list(range(int(x[0]),int(np.ceil(x[-1]))+2,24)), [str(x) for x in list(range(first_day*24, ((last_day+1)*24)+1,24))], rotation=45) 
-                plt.show()
-        
-        else:
-            for tech_name_plot in balances['tech from grid']:
-                fig = plt.figure(dpi=300)
-                from mpl_toolkits.axisartist.axislines import SubplotZero
-                ax = SubplotZero(fig, 1, 1, 1)
-                fig.add_subplot(ax)
-                ax.axis["xzero"].set_visible(True)
-                ax.axis["xzero"].label.set_visible(False)
-                ax.axis["xzero"].major_ticklabels.set_visible(False)
-                for n in ["bottom","top", "right"]:
-                    ax.axis[n].set_visible(True)
-                ax.grid(axis='y', alpha = 0.5, zorder = -4)
-                ax.bar(x, balances['tech windsc'][tech_name_plot][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps], width,  label='wind self consumption', color='orange')
-                ax.bar(x, balances['tech pvsc'][tech_name_plot][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps], width, bottom=balances['tech windsc'][tech_name_plot][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps], label='PV self consumption', color='yellowgreen')
-                ax.bar(x, balances['tech from grid'][tech_name_plot][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps], width, bottom=balances['tech pvsc'][tech_name_plot][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps]+balances['tech windsc'][tech_name_plot][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps], label='From grid', color='tomato')
-                plt.title(tech_name_plot+' days '+str(first_day)+'-'+str(last_day))
-                plt.plot(x,-balances[tech_name_plot][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps],'k',label='load')     
-                plt.legend(ncol=2, bbox_to_anchor = (1.01,-0.11))
-                plt.ylabel("Power [kW]")
-                plt.xlabel( "Time  [h] ")
-                if (last_day-first_day) <= 10: # in order to better visualize daily behaviour if short timespans are selected
-                    plt.xticks(list(range(int(x[0]),int(np.ceil(x[-1]))+2,24)), [str(x) for x in list(range(first_day*24, ((last_day+1)*24)+1,24))], rotation=45) 
-                plt.show()
-                
-            
-    # Hourly energy balances   
-    if 'PV' in balances:
-        pv = balances['PV'][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps]
-    
-    if 'wind' in balances:
-        wind = balances['wind'][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps]
-        
-    if 'grid' in balances:                
-        into_grid = np.zeros(24*(last_day-first_day+1)*hourly_steps)
-        from_grid = np.zeros(24*(last_day-first_day+1)*hourly_steps)
-        for i,e in enumerate(balances['grid'][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps]):
+    if 'collective self consumption' in balances[loc][carrier]:
+        to_csc = np.zeros(int(24*(last_day-first_day+1)*60//c.timestep))
+        from_csc = np.zeros(int(24*(last_day-first_day+1)*60//c.timestep))
+        for i,e in enumerate(balances[loc][carrier]['collective self consumption'][first_day*24*60//c.timestep:last_day*24*60//c.timestep+24*60//c.timestep]):
             if e > 0:
-                from_grid[i] = e
+                from_csc[i] = e
             else:
-                into_grid[i] = e 
-    
-    if 'battery' in balances:
-        charge_battery = np.zeros(24*(last_day-first_day+1)*hourly_steps)
-        discharge_battery = np.zeros(24*(last_day-first_day+1)*hourly_steps)
-        for i,e in enumerate(balances['battery'][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps]):
-            if e > 0:
-                discharge_battery[i] = e
-            else:
-                charge_battery[i] = e 
-    
-    if 'electrolyzer' in balances:
-        ele = balances['electrolyzer'][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps]
-    
-    if 'mechanical compressor' in balances:
-        compressor = balances['mechanical compressor'][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps]
-    
-    if 'fuel cell' in balances:
-        fc = balances['fuel cell'][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps]
-        
-    x = np.arange(first_day*24*60/c.timestep,(last_day+1)*24*60/c.timestep)        
-    x = x*(c.timestep/60) # ensuring values are presented on a hourly basis
-
+                to_csc[i] = e 
     fig = plt.figure(dpi=1000)
     from mpl_toolkits.axisartist.axislines import SubplotZero
     ax = SubplotZero(fig, 1, 1, 1)
@@ -1101,143 +614,327 @@ def plot_post_process(balances_pp,studycase,loc,first_day,last_day):
         ax.axis[n].set_visible(True)
     ax.grid(axis='y', alpha = 0.5, zorder = -4)
     
-    if 'demand' in balances:
-        load = -balances['demand'][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps]+balances['hyd tot electricity'][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps]
-        el_demand = balances['demand'][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps]
-        ax.bar(x, el_demand, width, label='To el-devices', color='grey')
-    else:
-        load = balances['hyd tot electricity'][first_day*24*hourly_steps:last_day*24*hourly_steps+24*hourly_steps] 
-        el_demand = np.zeros(24*(last_day-first_day+1)*hourly_steps)
-        
-    if 'PV' in balances and 'wind' in balances:
-        if list(system.keys()).index('PV') < list(system.keys()).index('wind'): # PV comes before wind
-            prioritised_res_1 = pv
-            label_res_1 = 'PV'
-            prioritised_res_2 = wind
-            label_res_2 = 'Wind'
-        else:
-            prioritised_res_1 = wind
-            label_res_1 = 'Wind'
-            prioritised_res_2 = pv
-            label_res_2 = 'PV'
- 
-        ax.bar(x, np.minimum(load,prioritised_res_1), width,  label= label_res_1+' self consumption', color='yellowgreen')
-        ax.bar(x, np.maximum(prioritised_res_1-load,np.zeros(len(prioritised_res_1))), width, bottom=load, label= label_res_1+' surplus', color='cornflowerblue')
-        ax.bar(x, np.maximum(np.minimum(prioritised_res_1+prioritised_res_2,load)-prioritised_res_1,np.zeros(len(prioritised_res_1))), width, bottom= prioritised_res_1, label= label_res_2+' self consumption', color='tab:green')
-        ax.bar(x, np.maximum(prioritised_res_1-load+prioritised_res_2,np.zeros(len(prioritised_res_1)))-np.maximum(prioritised_res_1-load,np.zeros(len(prioritised_res_1))), width, bottom=load+np.maximum(prioritised_res_1-load,np.zeros(len(prioritised_res_1))),label= label_res_2+' surplus', color='tab:blue')
-        
-        if not 'battery' in balances and not 'electrolyzer' in balances:
-            ax.bar(x, from_grid, width ,bottom=prioritised_res_1+prioritised_res_2, label='from grid', color='tomato')
-            ax.bar(x, into_grid, width, bottom=el_demand, label='into grid', color='orange')
+    custom_colors = ['tab:blue','tab:orange','tab:green','tab:red','tab:purple','tab:brown','tab:pink','tab:gray',
+                     'tab:olive','tab:cyan','lightgreen','tomato','deeppink','chocolate','gold','darkblue',
+                     'bisque','darkgreen','maroon','magenta']
+    ax.set_prop_cycle(color=custom_colors)
+
+    bottom = np.zeros(len(x))
+    for tech_name in self_consumption:
+        if np.sum(self_consumption[tech_name]) != 0:
+            if tech_name != f'{carrier} grid':
+                label=f'{tech_name} sc'
+            else:
+                label = 'from grid'
+            ax.bar(x,self_consumption[tech_name],bottom=bottom,width=width,label=label)
+            bottom += self_consumption[tech_name]
+    load = bottom.copy()
+    for tech_name in surplus:
+        if np.sum(surplus[tech_name]) != 0:  
+            ax.bar(x,surplus[tech_name],bottom=bottom,width=width,label=f'{tech_name} surplus')
+            bottom += surplus[tech_name]
             
-        if 'battery' in balances:
-            ax.bar(x, from_grid, width, bottom=prioritised_res_1+prioritised_res_2+discharge_battery, label='from grid', color='tomato')
-            ax.bar(x, discharge_battery, width, bottom = prioritised_res_1+prioritised_res_2, label='discharge battery',  color='purple')
-            ax.bar(x, into_grid, width, bottom=charge_battery+el_demand , label='into grid', color='orange')
-            ax.bar(x, charge_battery, width,  bottom=el_demand, label='charge battery',  color='violet')
- 
-        if 'electrolyzer' in balances and 'fuel cell' in balances:
-            ax.bar(x, from_grid, width ,bottom=prioritised_res_1+prioritised_res_2+fc, label='from grid', color='tomato')
-            ax.bar(x, fc, width, bottom = prioritised_res_1+prioritised_res_2, label='from fuel cell',  color='peru')
-            if 'mechanical compressor' in balances:
-                ax.bar(x, ele, width, bottom = el_demand, label='to electrolyzer',  color='chocolate')
-                ax.bar(x, compressor, width, bottom = ele+el_demand, label='to compressor',  color='maroon')
-                ax.bar(x, into_grid, width, bottom= ele+compressor +el_demand, label='into grid', color='orange')
-            else:
-                ax.bar(x, into_grid, width,bottom=ele+el_demand , label='into grid', color='orange')
-                ax.bar(x, ele, width, bottom = el_demand,  label='to electrolyzer',  color='chocolate')
-                                
-        if 'electrolyzer' in balances and not 'fuel cell' in balances:
-            ax.bar(x, from_grid, width ,bottom=prioritised_res_1+prioritised_res_2, label='from grid', color='tomato')
-            if 'mechanical compressor' in balances:
-                ax.bar(x, ele, width, bottom = el_demand, label='to electrolyzer',  color='chocolate')
-                ax.bar(x, compressor, width, bottom = ele+el_demand, label='to compressor',  color='maroon')
-                ax.bar(x, into_grid, width, bottom= ele+compressor+el_demand , label='into grid', color='orange')
-            else:
-                ax.bar(x, into_grid, width,bottom=ele+el_demand , label='into grid', color='orange')
-                ax.bar(x, ele, width, bottom = el_demand, label='to electrolyzer',  color='chocolate')
+    if 'collective self consumption' in balances[loc][carrier]:
+        if np.sum(from_csc) != 0:
+            bottom = sum(value for key,value in self_consumption.items() if key != 'electricity grid')
+            ax.bar(x,from_csc,bottom=bottom,width=width,label='Demand from CSC')
+
+    bottom = np.zeros(len(x))
+    for tech_name in consumption_tech:
+        for tech in consumption_tech[tech_name]:
+            if np.sum(consumption_tech[tech_name][tech]) != 0:  
+                if tech_name != f'{carrier} grid':
+                    if tech_name != 'mechanical compressor':
+                        label=f'{tech_name} from {tech}'
+                    else:
+                        label=f'compressor from {tech}'
+                else:
+                    label = f'{tech} into grid'
+                ax.bar(x,consumption_tech[tech_name][tech],bottom=bottom,width=width,label=label)
+                bottom += consumption_tech[tech_name][tech]
                 
-    elif 'PV' in balances and not 'wind' in balances:
-        ax.bar(x, np.minimum(load,pv), width,  label='PV self consumption', color='yellowgreen')
-        ax.bar(x, np.maximum(pv-load,np.zeros(len(pv))), width, bottom=load, label='PV surplus', color='cornflowerblue')
-        
-        if not 'battery' in balances and not 'electrolyzer' in balances:
-            ax.bar(x, from_grid, width ,bottom=pv, label='from grid', color='tomato')
-            ax.bar(x, into_grid, width, bottom=el_demand, label='into grid', color='orange')
-            
-        if 'battery' in balances:
-            ax.bar(x, from_grid, width, bottom=pv+discharge_battery, label='from grid', color='tomato')
-            ax.bar(x, discharge_battery, width, bottom = pv, label='discharge battery',  color='purple')
-            ax.bar(x, into_grid, width, bottom=charge_battery+el_demand , label='into grid', color='orange')
-            ax.bar(x, charge_battery, width, bottom=el_demand, label='charge battery',  color='violet')
-       
-        if 'electrolyzer' in balances and 'fuel cell' in balances:
-            ax.bar(x, from_grid, width ,bottom=pv+fc, label='from grid', color='tomato')
-            ax.bar(x, fc, width, bottom = pv, label='from fuel cell',  color='peru')
-            if 'mechanical compressor' in balances:
-                ax.bar(x, ele, width, bottom = el_demand, label='to electrolyzer',  color='chocolate')
-                ax.bar(x, compressor, width, bottom = ele+el_demand, label='to compressor',  color='maroon')
-                ax.bar(x, into_grid, width, bottom= ele+compressor+el_demand , label='into grid', color='orange')
-            else:
-                ax.bar(x, into_grid, width,bottom=ele+el_demand , label='into grid', color='orange')
-                ax.bar(x, ele, width, bottom=el_demand, label='to electrolyzer',  color='chocolate')
-                                
-        if 'electrolyzer' in balances and not 'fuel cell' in balances:
-            ax.bar(x, from_grid, width ,bottom=pv, label='from grid', color='tomato')
-            if 'mechanical compressor' in balances:
-                ax.bar(x, ele, width, bottom = el_demand,  label='to electrolyzer',  color='chocolate')
-                ax.bar(x, compressor, width, bottom = ele+el_demand, label='to compressor',  color='maroon')
-                ax.bar(x, into_grid, width, bottom= ele+compressor+el_demand , label='into grid', color='orange')
-            else:
-                ax.bar(x, into_grid, width,bottom=ele+el_demand, label='into grid', color='orange')
-                ax.bar(x, ele, width, bottom=el_demand, label='to electrolyzer',  color='chocolate')
-       
-    elif 'wind' in balances and not 'PV' in balances:
-        ax.bar(x, np.minimum(load,wind), width,  label='Wind self consumption', color='yellowgreen')
-        ax.bar(x, np.maximum(wind-load,np.zeros(len(wind))), width, bottom=load, label='Wind surplus', color='cornflowerblue')
-        
-        if not 'battery' in balances and not 'electrolyzer' in balances:
-            ax.bar(x, from_grid, width ,bottom=wind, label='from grid', color='tomato')
-            ax.bar(x, into_grid, width,  bottom=el_demand,label='into grid', color='orange')
-            
-        if 'battery' in balances:
-            ax.bar(x, from_grid, width, bottom=wind+discharge_battery, label='from grid', color='tomato')
-            ax.bar(x, discharge_battery, width, bottom = wind, label='discharge battery',  color='purple')
-            ax.bar(x, into_grid, width, bottom=charge_battery+el_demand , label='into grid', color='orange')
-            ax.bar(x, charge_battery, width, bottom=el_demand, label='charge battery',  color='violet')
-        
-        if 'electrolyzer' in balances and 'fuel cell' in balances:
-            ax.bar(x, from_grid, width ,bottom=wind+fc, label='from grid', color='tomato')
-            ax.bar(x, fc, width, bottom = wind, label='from fuel cell',  color='peru')
-            if 'mechanical compressor' in balances:
-                ax.bar(x, ele, width, bottom = el_demand,  label='to electrolyzer',  color='chocolate')
-                ax.bar(x, compressor, width, bottom = ele+el_demand, label='to compressor',  color='maroon')
-                ax.bar(x, into_grid, width, bottom= ele+compressor+el_demand , label='into grid', color='orange')
-            else:
-                ax.bar(x, into_grid, width,bottom=ele+el_demand , label='into grid', color='orange')
-                ax.bar(x, ele, width, bottom=el_demand, label='to electrolyzer',  color='chocolate')
-                                
-        if 'electrolyzer' in balances and not 'fuel cell' in balances:
-            ax.bar(x, from_grid, width ,bottom=wind, label='from grid', color='tomato')
-            if 'mechanical compressor' in balances:
-                ax.bar(x, ele, width,  bottom = el_demand,  label='to electrolyzer',  color='chocolate')
-                ax.bar(x, compressor, width, bottom = ele+el_demand, label='to compressor',  color='maroon')
-                ax.bar(x, into_grid, width, bottom= ele+compressor+el_demand , label='into grid', color='orange')
-            else:
-                ax.bar(x, into_grid, width,bottom=ele+el_demand , label='into grid', color='orange')
-                ax.bar(x, ele, width, bottom = el_demand, label='to electrolyzer',  color='chocolate')
-       
-       
-    plt.title(loc+' days '+str(first_day)+'-'+str(last_day))
+    if 'collective self consumption' in balances[loc][carrier]:
+        if np.sum(to_csc) != 0:
+            ax.bar(x,to_csc,bottom=-load,width=width,label='Surplus to CSC')
+      
+    plt.title(loc+' '+carrier+' balances days '+str(first_day)+'-'+str(last_day))
     plt.plot(x,load,'k',label='load')     
     plt.legend(ncol=2, bbox_to_anchor = (1.01,-0.11))
-    plt.ylabel("Power [kW]")
-    plt.xlabel("Time  [h]")
-    if (last_day-first_day) <= 10: # in order to better visualize daily behaviour if short timespans are selected
+    plt.ylabel(f"[{UM[carrier]}]")
+    if (last_day-first_day) <= 10 and c.timestep == 60: # in order to better visualize daily behaviour if short timespans are selected
         # plt.xticks(list(range(first_day*24*hourly_steps, ((last_day+1)*24*hourly_steps)+1,24*hourly_steps)), [str(x) for x in list(range(first_day*24, ((last_day+1)*24)+1,24))], rotation=45) 
         plt.xticks(list(range(int(x[0]),int(np.ceil(x[-1]))+2,24)), [str(x) for x in list(range(first_day*24, ((last_day+1)*24)+1,24))], rotation=45) 
+        plt.xlabel("Time  [h]")
+    else:
+        plt.xlabel("Timestep")
     # ax.xaxis.set_tick_params(bottom=True,labelbottom=True)
     #plt.xticks([0,6,12,18,24],['0','6','12','18','24'],fontsize=10,color='g')
     #plt.xticks([0,6,12,18,24,30,36,42,48],['0','6','12','18','24','30','36','42','48'],fontsize=10,color='g')
     #plt.yticks([-2,-1,0,1,2],['-2','-1','0','1','2'])
     plt.show() 
+    
+    fig = plt.figure(dpi=1000)
+    from mpl_toolkits.axisartist.axislines import SubplotZero
+    ax = SubplotZero(fig, 1, 1, 1)
+    fig.add_subplot(ax)
+    ax.axis["xzero"].set_visible(True)
+    ax.axis["xzero"].label.set_visible(False)
+    ax.axis["xzero"].major_ticklabels.set_visible(False)
+
+    for n in ["bottom","top", "right"]:
+        ax.axis[n].set_visible(True)
+    ax.grid(axis='y', alpha = 0.5, zorder = -4)
+    
+    custom_colors = ['tab:blue','tab:orange','tab:green','tab:red','tab:purple','tab:brown','tab:pink','tab:gray',
+                     'tab:olive','tab:cyan','lightgreen','tomato','deeppink','chocolate','gold','darkblue',
+                     'bisque','darkgreen','maroon','magenta']
+    ax.set_prop_cycle(color=custom_colors)
+
+    bottom = np.zeros(len(x))
+    for tech_name in self_consumption:
+        if np.sum(self_consumption[tech_name]) != 0:
+            if tech_name != f'{carrier} grid':
+                label=f'{tech_name} sc'
+            else:
+                label = 'from grid'
+            ax.bar(x,self_consumption[tech_name],bottom=bottom,width=width,label=label)
+            bottom += self_consumption[tech_name]
+    load = bottom.copy()
+    for tech_name in surplus:
+        if np.sum(surplus[tech_name]) != 0:  
+            ax.bar(x,surplus[tech_name],bottom=bottom,width=width,label=f'{tech_name} surplus')
+            bottom += surplus[tech_name]
+            
+    if 'collective self consumption' in balances[loc][carrier]:
+        if np.sum(from_csc) != 0:
+            bottom = sum(value for key,value in self_consumption.items() if key != 'electricity grid')
+            ax.bar(x,from_csc,bottom=bottom,width=width,label='Demand from CSC')
+              
+    bottom = np.zeros(len(x))
+    for tech_name in tot_consumption_tech:
+        if np.sum(tot_consumption_tech[tech_name]) != 0:  
+            if tech_name != f'{carrier} grid':
+                if tech_name != 'mechanical compressor':
+                    label=f'{tech_name}'
+                else:
+                    label='compressor'
+            else:
+                label = 'into grid'
+            ax.bar(x,tot_consumption_tech[tech_name],bottom=bottom,width=width,label=label)
+            bottom += tot_consumption_tech[tech_name]
+            
+    if 'collective self consumption' in balances[loc][carrier]:
+        if np.sum(to_csc) != 0:
+            ax.bar(x,to_csc,bottom=-load,width=width,label='Surplus to CSC')
+    plt.title(loc+' '+carrier+' balances days '+str(first_day)+'-'+str(last_day))
+    plt.plot(x,load,'k',label='load')     
+    plt.legend(ncol=2, bbox_to_anchor = (1.01,-0.11))
+    plt.ylabel(f"[{UM[carrier]}]")
+    if (last_day-first_day) <= 10 and c.timestep == 60: # in order to better visualize daily behaviour if short timespans are selected
+        # plt.xticks(list(range(first_day*24*hourly_steps, ((last_day+1)*24*hourly_steps)+1,24*hourly_steps)), [str(x) for x in list(range(first_day*24, ((last_day+1)*24)+1,24))], rotation=45) 
+        plt.xticks(list(range(int(x[0]),int(np.ceil(x[-1]))+2,24)), [str(x) for x in list(range(first_day*24, ((last_day+1)*24)+1,24))], rotation=45) 
+        plt.xlabel("Time  [h]")
+    else:
+        plt.xlabel("Timestep")
+    # ax.xaxis.set_tick_params(bottom=True,labelbottom=True)
+    #plt.xticks([0,6,12,18,24],['0','6','12','18','24'],fontsize=10,color='g')
+    #plt.xticks([0,6,12,18,24,30,36,42,48],['0','6','12','18','24','30','36','42','48'],fontsize=10,color='g')
+    #plt.yticks([-2,-1,0,1,2],['-2','-1','0','1','2'])
+    plt.show() 
+    
+
+
+def print_and_plot_annual_energy_balances(simulation_name, loc, print_= False):
+
+    # Load consumption and production data from pickle files
+    with open('results/pkl/consumption_'+simulation_name+'.pkl', 'rb') as f:
+        consumption = pickle.load(f)
+    with open('results/pkl/production_'+simulation_name+'.pkl', 'rb') as f:
+        production = pickle.load(f)
+    with open('results/pkl/balances_'+simulation_name+'.pkl', 'rb') as f:
+        balances = pickle.load(f)
+      
+    UM = {
+        'electricity': 'MWh',
+        'heating water': 'MWh',
+        'cooling water': 'MWh',
+        'process heat': 'MWh',
+        'process hot water': 'MWh',
+        'process cold water': 'MWh',
+        'process chilled water': 'MWh',
+        'hydrogen': 't',
+        'LP hydrogen': 't',
+        'HP hydrogen': 't',
+        'oxygen': 't',
+        'process steam': 't',
+        'gas': 'Sm^3',
+        'water': 'm^3'
+    }
+
+    # Plot production data
+    for carrier in production[loc]:
+        if print_ == True:
+            print(f"\n\nProduction: Annual balances {carrier} [{UM[carrier]}]")
+
+        tech_names = []
+        tech_totals = []
+
+        for tech_name in production[loc][carrier]:
+            for tech in production[loc][carrier][tech_name]:
+                # Calculate the total production for each tech_name and carrier
+                if carrier in ['hydrogen', 'LP hydrogen', 'HP hydrogen', 'oxygen', 'process steam']:
+                    tot = ((sum(production[loc][carrier][tech_name][tech]) * c.timestep / 60) * 3600) / c.simulation_years
+                else:
+                    tot = (sum(production[loc][carrier][tech_name][tech]) * c.timestep / 60) / c.simulation_years
+
+                if tot != 0:
+                    if carrier not in ['gas', 'water']:
+                        tot = round(tot / 1e3, 2)
+                    else:
+                        tot = round(tot, 2)
+
+                    if tech != 'Tot':
+                        if print_ == True:
+                            print(f"{tech_name} to {tech} = {tot} {UM[carrier]}")
+                        tech_names.append(f"{tech_name} to {tech}")
+                    else:
+                        if print_ == True:
+                            print(f"{tech_name} production = {tot} {UM[carrier]}")
+                        tech_names.append(f"{tech_name} production")
+                    
+                    tech_totals.append(tot)
+         
+        # Initialize CSC-related variables to avoid UnboundLocalError
+        csc_value = []
+        csc_index = []
+        csc_names = []
+        
+        if 'collective self consumption' in balances[loc][carrier]:
+            csc = balances[loc][carrier]['collective self consumption']
+            to_csc = round(-np.sum(csc, where=(csc < 0)) / 1e3, 2)
+            
+            if to_csc != 0:
+    
+                if print_ == True:
+                    print(f"surplus to CSC = {to_csc} {UM[carrier]}")
+                
+                remaining_csc= to_csc
+                csc_index = []
+                csc_value = []
+                csc_names = []
+                for tech_name in production[loc][carrier]:
+                    while remaining_csc > 0:
+                        index = tech_names.index(f"{tech_name} to electricity grid")
+                        
+                        tech_name_csc = np.min([tech_totals[index],remaining_csc])
+                        
+                        csc_index.append(index)
+                        csc_value.append(tech_name_csc)
+                        csc_names.append(f"{tech_name} to CSC")
+                        
+                        remaining_csc -= tech_name_csc
+        # Plotting the bar chart with updated configurations
+        if len(tech_totals) > 2 :  # Only plot if there are more than two bars
+            plt.figure(figsize=(10, 8),dpi=600)
+            
+            # Generate a color map for the bars
+            colors = cm.get_cmap('tab20', len(tech_totals)).colors
+            
+            # Plot bars with different colors
+            bars = plt.bar(np.arange(len(tech_totals)), tech_totals, color=colors, edgecolor='k')
+        
+            # Modify the legend labels to remove 'production' or 'consumption'
+            clean_tech_names = [name.replace(' production', 'tot').replace(' consumption', 'tot') for name in tech_names]
+            
+            if len(csc_value) > 0 and np.any(csc_value != 0):
+                csc_colors = np.array([colors[i % len(colors)] for i in csc_index])
+                csc_bars = plt.bar(csc_index, csc_value, color=csc_colors, edgecolor='k', hatch = '/')
+                plt.legend(bars + csc_bars, tech_names + csc_names, loc='upper center', bbox_to_anchor=(0.5, -0.15),
+                   fancybox=True, shadow=False, ncol=min(2, len(tech_names) + len(csc_names)), fontsize=14)
+            else:
+                plt.legend(bars, tech_names, loc='upper center', bbox_to_anchor=(0.5, -0.15),
+                           fancybox=True, shadow=False, ncol=min(2, len(tech_names)), fontsize=14)
+
+            # Remove xticks and set the fontsize for y-label and title
+            plt.xticks([])  # Remove xticks
+            plt.ylabel(f'Production [{UM[carrier]}]', fontsize=14)
+            plt.title(f'Production - {carrier} - {loc}', fontsize=14)
+            plt.yticks(fontsize=14)  # Set fontsize for yticks
+        
+            # Show the plot
+            plt.show()
+
+    # Plot consumption data
+    for carrier in consumption[loc]:
+        if print_ == True:
+            print(f"\n\nConsumption: Annual balances {carrier} [{UM[carrier]}]")
+
+        tech_names = []
+        tech_totals = []
+
+        for tech_name in consumption[loc][carrier]:
+            for tech in consumption[loc][carrier][tech_name]:
+                # Calculate the total consumption for each tech_name and carrier
+                if carrier in ['hydrogen', 'LP hydrogen', 'HP hydrogen', 'oxygen', 'process steam']:
+                    tot = ((sum(consumption[loc][carrier][tech_name][tech]) * c.timestep / 60) * 3600) / c.simulation_years
+                else:
+                    tot = (sum(consumption[loc][carrier][tech_name][tech]) * c.timestep / 60) / c.simulation_years
+
+                if tot != 0:
+                    if carrier not in ['gas', 'water']:
+                        tot = round(tot / 1e3, 2)
+                    else:
+                        tot = round(tot, 2)
+
+                    if tech != 'Tot':
+                        if print_ == True:
+                            print(f"{tech_name} from {tech} = {tot} {UM[carrier]}")
+                        tech_names.append(f"{tech_name} from {tech}")
+                    else:
+                        if print_ == True:
+                            print(f"{tech_name} consumption = {tot} {UM[carrier]}")
+                        tech_names.append(f"{tech_name} consumption")
+                    
+                    tech_totals.append(tot)
+          
+        if 'collective self consumption' in balances[loc][carrier]:
+            csc = balances[loc][carrier]['collective self consumption']
+            from_csc = round(np.sum(csc, where=(csc > 0)) / 1e3, 2)
+            
+            if from_csc != 0:
+                if print_ == True:
+                    print(f"CSC to demand = {from_csc} {UM[carrier]}")
+                               
+                grid_index = tech_names.index("electricity demand from electricity grid")
+                csc_name = ['electricity demand from csc']
+
+        if len(tech_totals) > 2 or from_csc != 0:  # Only plot if there are more than two bars
+            plt.figure(figsize=(10, 8),dpi=600)
+            
+            # Generate a color map for the bars
+            colors = cm.get_cmap('tab20', len(tech_totals)).colors
+            
+            # Plot bars with different colors
+            bars = plt.bar(np.arange(len(tech_totals)), tech_totals, color=colors, edgecolor='k')
+        
+            # Modify the legend labels to remove 'production' or 'consumption'
+            clean_tech_names = [name.replace(' production', 'tot').replace(' consumption', 'tot') for name in tech_names]
+        
+            # Add the legend below the plot with up to 4 columns
+            if from_csc != 0:
+                csc_bars = plt.bar(grid_index, from_csc, color=colors[grid_index], edgecolor='k', hatch='/')
+                plt.legend(bars + csc_bars, tech_names + csc_name, loc='upper center', bbox_to_anchor=(0.5, -0.15),
+                           fancybox=True, shadow=False, ncol=min(2, len(tech_names) + len(csc_name)), fontsize=14)
+            else:
+                plt.legend(bars, tech_names, loc='upper center', bbox_to_anchor=(0.5, -0.15),
+                           fancybox=True, shadow=False, ncol=min(2, len(tech_names)), fontsize=14)
+
+            # Remove xticks and set the fontsize for y-label and title
+            plt.xticks([])  # Remove xticks
+            plt.ylabel(f'Consumption [{UM[carrier]}]', fontsize=14)
+            plt.title(f'Consumption - {carrier} - {loc}', fontsize=14)
+            plt.yticks(fontsize=14)  # Set fontsize for yticks
+        
+            # Show the plot
+            plt.show()
+                                                                                  

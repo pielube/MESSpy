@@ -100,23 +100,21 @@ you should create your own postprocess_dev.py and create your own graphs
 
 # Here the main simulation results are read: balances, balances0 and economic. Balances are also available in the Variable Explorer panel: sim and sim0. Results are also available in .csv format in results/csv folder.
 with open('results/pkl/balances_'+name_studycase+'.pkl', 'rb')              as f: balances  = pickle.load(f)
+with open('results/pkl/consumption_'+name_studycase+'.pkl', 'rb')           as f: consumption  = pickle.load(f)
+with open('results/pkl/production_'+name_studycase+'.pkl', 'rb')            as f: production  = pickle.load(f)                                                                                                            
 with open('results/pkl/balances_'+name_refcase+'.pkl', 'rb')                as f: balances0 = pickle.load(f)
 with open('results/pkl/economic_assessment_'+name_economic+'.pkl', 'rb')    as f: economic  = pickle.load(f)
 
 # Here some examples of graphs
-pp.location_balance(name_refcase,'prosumer','electricity')
-pp.location_balance(name_studycase,'prosumer','electricity')
-pp.location_balance(name_refcase,'consumer 1','electricity')
-pp.location_balance(name_studycase,'consumer 1','electricity')
-#pp.location_balance(name_refcase,'consumer 2','electricity')
-#pp.location_balance(name_studycase,'consumer 2','electricity')
-
-pp.hourly_balances_electricity(name_studycase,'prosumer', 2, 3)
-pp.hourly_balances_electricity(name_studycase,'consumer 1', 2, 3)
-
 b = pp.REC_electricity_balance(name_studycase)
-pp.hist_12_balances_pc(name_studycase,1100)
+pp.plot_energy_balances(name_studycase,'prosumer',100,105,'electricity')
+pp.plot_energy_balances(name_studycase,'consumer 1',100,105,'electricity')
 
+pp.print_and_plot_annual_energy_balances(name_studycase, 'prosumer', print_=True)
+pp.print_and_plot_annual_energy_balances(name_studycase, 'consumer 1', print_=True)                                                                        
+pp.hist_12_balances_pc(name_studycase,1100)
+# Levelised Cost of Electricity calculation
+LCOE = eco.LCOE('prosumer',studycase,name_studycase,energy_market,path,revenues=False,refund=False,plot=True,print_=True)
 pp.csc_allocation_sum(name_studycase)
 pp.LOC_plot(name_studycase)
 pp.NPV_plot(name_economic)
@@ -146,10 +144,10 @@ for pv in pv_size:
     cs.save(name_studycase,'pkl') # save results in 'name_studycase.pkl'
     
     with open('results/pkl/balances_'+name_studycase+'.pkl', 'rb') as f: balances = pickle.load(f)
-    demand = -balances['prosumer']['electricity']['demand'].sum() # read from saved results .pkl
+    demand = -balances['prosumer']['electricity']['electricity demand'].sum() # read from saved results .pkl
     production = balances['prosumer']['electricity']['PV'].sum()
-    into_grid = balances['prosumer']['electricity']['grid'].sum(where=balances['prosumer']['electricity']['grid']<0)
-    from_grid = balances['prosumer']['electricity']['grid'].sum(where=balances['prosumer']['electricity']['grid']>0)
+    into_grid = balances['prosumer']['electricity']['electricity grid'].sum(where=balances['prosumer']['electricity']['electricity grid']<0)
+    from_grid = balances['prosumer']['electricity']['electricity grid'].sum(where=balances['prosumer']['electricity']['electricity grid']>0)
     
     # you can also read values from the python object rec. (in this case you do not need rec.save)
     # demand = -rec.locations['prosumer_1'].energy_balance['electricity']['demand'].sum() # read from python 

@@ -4,6 +4,10 @@
         "refund": { "rate": 50, "years": 10},
         "replacement": {"rate": 80, "years": 25}},
         
+"wind": {   "cost per unit": 1200, 
+            "OeM": 3, 
+            "refund": { "rate": 0, "years": 0},
+            "replacement": {"rate": 80, "years": 25}}, 
 "battery": {"cost per unit": 800, 
             "OeM": 1, 
             "refund": { "rate": 50, "years": 10},

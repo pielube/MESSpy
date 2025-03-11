@@ -39,7 +39,7 @@ class REC:
         
         """
         ### Add global variables to constants.py as c, to make them known to the other modules.
-        c.timestep          = general['timestep']                                           # [min] timestep 
+        c.timestep          = int(general['timestep'])                                           # [min] timestep 
         c.timestep_number   = int( general['simulation years']* 365*24*60 / c.timestep )    # [-] number of timestep 
         c.simulation_years  = general['simulation years']
         c.P2E               = c.timestep*60                                                 # conversion factor from kW to kJ or from kg/s to kg
@@ -95,8 +95,8 @@ class REC:
             updating REC power balances
         """
         ### initialise REC electricity balances
-        self.power_balance['electricity']['from grid'] = np.zeros(c.timestep_number) # array of electricity withdrawn from the grid from the whole rec
-        self.power_balance['electricity']['into grid'] = np.zeros(c.timestep_number) # array of electricity withdrawn from the grid
+        self.power_balance['electricity']['from electricity grid'] = np.zeros(c.timestep_number) # array of electricity withdrawn from the grid from the whole rec
+        self.power_balance['electricity']['into electricity grid'] = np.zeros(c.timestep_number) # array of electricity withdrawn from the grid
         self.power_balance['electricity']['collective self consumption'] = np.zeros(c.timestep_number) # array of collective self consumed electricity from the whole rec
         self.count = []
         
@@ -106,21 +106,21 @@ class REC:
                 self.locations[location_name].loc_power_simulation(step,self.weather) # simulate a single location updating its power balances
                 
             ### solve electricity grid 
-                if 'grid' in self.locations[location_name].power_balance['electricity']:
-                    if self.locations[location_name].power_balance['electricity']['grid'][step] < 0:
-                        self.power_balance['electricity']['into grid'][step] += self.locations[location_name].power_balance['electricity']['grid'][step] # electricity fed into the grid from the whole rec at step step
+                if 'electricity grid' in self.locations[location_name].power_balance['electricity']:
+                    if self.locations[location_name].power_balance['electricity']['electricity grid'][step] < 0:
+                        self.power_balance['electricity']['into electricity grid'][step] += self.locations[location_name].power_balance['electricity']['electricity grid'][step] # electricity fed into the grid from the whole rec at step step
                     else:                                                     
-                        self.power_balance['electricity']['from grid'][step] += self.locations[location_name].power_balance['electricity']['grid'][step] # electricity withdrawn from the grid the whole rec at step step
+                        self.power_balance['electricity']['from electricity grid'][step] += self.locations[location_name].power_balance['electricity']['electricity grid'][step] # electricity withdrawn from the grid the whole rec at step step
                           
             ### calculate collective self consumption and who contributed to it
-            self.power_balance['electricity']['collective self consumption'][step] = min(-self.power_balance['electricity']['into grid'][step],self.power_balance['electricity']['from grid'][step]) # calculate REC collective self consumption how regulation establishes      
+            self.power_balance['electricity']['collective self consumption'][step] = min(-self.power_balance['electricity']['into electricity grid'][step],self.power_balance['electricity']['from electricity grid'][step]) # calculate REC collective self consumption how regulation establishes      
             
             if self.power_balance['electricity']['collective self consumption'][step] > 0:
                 for location_name in self.locations:
-                    if self.locations[location_name].power_balance['electricity']['grid'][step] < 0: # contribution as producer
-                        self.locations[location_name].power_balance['electricity']['collective self consumption'][step] = - self.power_balance['electricity']['collective self consumption'][step] * self.locations[location_name].power_balance['electricity']['grid'][step] / self.power_balance['electricity']['into grid'][step]
+                    if self.locations[location_name].power_balance['electricity']['electricity grid'][step] < 0: # contribution as producer
+                        self.locations[location_name].power_balance['electricity']['collective self consumption'][step] = - self.power_balance['electricity']['collective self consumption'][step] * self.locations[location_name].power_balance['electricity']['electricity grid'][step] / self.power_balance['electricity']['into electricity grid'][step]
                     else: # contribution as consumer
-                        self.locations[location_name].power_balance['electricity']['collective self consumption'][step] = self.power_balance['electricity']['collective self consumption'][step] * self.locations[location_name].power_balance['electricity']['grid'][step] / self.power_balance['electricity']['from grid'][step]
+                        self.locations[location_name].power_balance['electricity']['collective self consumption'][step] = self.power_balance['electricity']['collective self consumption'][step] * self.locations[location_name].power_balance['electricity']['electricity grid'][step] / self.power_balance['electricity']['from electricity grid'][step]
 
             ###################################################################################################################################
             ### solve smart batteries (only available with timestep == 60)
@@ -135,15 +135,15 @@ class REC:
                         raise ValueError("Warning! Batteries with strategy collective == 1 only work with timestep == 60 ")
 
                     # how much energy can be absorbed or supplied by the batteries cause it's not usefull for collective-self-consumption
-                    E = - self.locations[location_name].power_balance['electricity']['grid'][step] + self.locations[location_name].power_balance['electricity']['collective self consumption'][step]
+                    E = - self.locations[location_name].power_balance['electricity']['electricity grid'][step] + self.locations[location_name].power_balance['electricity']['collective self consumption'][step]
                       
                     self.locations[location_name].power_balance['electricity']['battery'][step] = self.locations[location_name].technologies['battery'].use(step,E) # electricity absorbed(-) by battery
-                    self.locations[location_name].power_balance['electricity']['grid'][step] += - self.locations[location_name].power_balance['electricity']['battery'][step] # update grid balance (locatiom)
+                    self.locations[location_name].power_balance['electricity']['electricity grid'][step] += - self.locations[location_name].power_balance['electricity']['battery'][step] # update grid balance (locatiom)
                   
                     if self.locations[location_name].power_balance['electricity']['battery'][step] < 0:
-                        self.power_balance['electricity']['into grid'][step] += - self.locations[location_name].power_balance['electricity']['battery'][step] # update grid balance (rec)
+                        self.power_balance['electricity']['into electricity grid'][step] += - self.locations[location_name].power_balance['electricity']['battery'][step] # update grid balance (rec)
                     else:
-                        self.power_balance['electricity']['from grid'][step] += - self.locations[location_name].power_balance['electricity']['battery'][step] # update grid balance (rec)
+                        self.power_balance['electricity']['from electricity grid'][step] += - self.locations[location_name].power_balance['electricity']['battery'][step] # update grid balance (rec)
                 
 
     def save(self,simulation_name,f,sep=';',dec=','):
@@ -160,6 +160,8 @@ class REC:
         """
         
         balances = {}
+        consumption = {}
+        production = {}               
         LOC = {}
         ageing = {}
         electrolyzer = {}                 
@@ -169,6 +171,8 @@ class REC:
         
         for location_name in self.locations:
             balances[location_name] = self.locations[location_name].power_balance
+            consumption[location_name] = self.locations[location_name].consumption
+            production[location_name] = self.locations[location_name].production                                                                 
             # parameters[location_name] = self.locations[location_name].tech_param                                                                                
             
             LOC[location_name] = {}
@@ -193,13 +197,19 @@ class REC:
             tech_name = 'electrolyzer'
             if tech_name in self.locations[location_name].technologies:
                 parameters[location_name][tech_name] = {}      
-                if self.locations[location_name].technologies['electrolyzer'].model == 'PEM General':
+                ageing[location_name][tech_name] = {}                                                                           
+                if self.locations[location_name].technologies['electrolyzer'].model in ['PEM General','Alkaline']:
                     parameters[location_name][tech_name]['efficiency'] = self.locations[location_name].technologies[tech_name].EFF
                     parameters[location_name][tech_name]['hourly capacity factor'] =   ((-balances[location_name]['electricity'][tech_name])/             \
                                                                                 (self.locations[location_name].technologies[tech_name].MaxPowerStack))*100
                     parameters[location_name][tech_name]['capacity factor'] =   ((-balances[location_name]['electricity'][tech_name].sum())/             \
                                                                                 (self.locations[location_name].technologies[tech_name].MaxPowerStack*c.timestep_number))*100
-                    
+                    if hasattr(self.locations[location_name].technologies[tech_name], 'replacement'):
+                        ageing_el = self.locations[location_name].technologies[tech_name].stack
+                        ageing[location_name][tech_name]['ageing 1'] = ageing_el[0]
+                        if self.locations[location_name].technologies[tech_name].replacement:
+                            ageing[location_name][tech_name]['ageing 2'] = ageing_el[self.locations[location_name].technologies[tech_name].n_modules+1]  
+                            
             tech_name = 'fuel cell'
             if tech_name in self.locations[location_name].technologies:
                 if self.locations[location_name].technologies['fuel cell'].model == 'PEM General':
@@ -229,6 +239,8 @@ class REC:
             directory = './results/pkl'
             if not os.path.exists(directory): os.makedirs(directory)
             with open('results/pkl/balances_'+simulation_name+".pkl", 'wb') as f: pickle.dump(balances, f)
+            with open('results/pkl/consumption_'+simulation_name+".pkl", 'wb') as f: pickle.dump(consumption, f)
+            with open('results/pkl/production_'+simulation_name+".pkl", 'wb') as f: pickle.dump(production, f)                                                                                             
             with open('results/pkl/tech_params_'+simulation_name+".pkl", 'wb') as f: pickle.dump(parameters, f)
             with open('results/pkl/LOC_'+simulation_name+".pkl", 'wb') as f: pickle.dump(LOC, f)             
             with open('results/pkl/ageing_'+simulation_name+".pkl", 'wb') as f: pickle.dump(ageing, f)   

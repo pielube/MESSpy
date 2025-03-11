@@ -57,22 +57,10 @@ def NPV(file_studycase,
     with open('Results/pkl/balances_'+name_studycase+'.pkl', 'rb')  as f:        balances   = pickle.load(f)        
     with open('Results/pkl/balances_'+name_refcase+'.pkl', 'rb')    as f:        balances0  = pickle.load(f)
     
-    # List of energy carriers to be checked and updated in accordance with location.py file
-    # self.power_balance = {  'electricity'            : {},  # [kW]
-    #                         'heating water'          : {},  # [kW]
-    #                         'cooling water'          : {},  # [kW]
-    #                         'process heat'           : {},  # [kW]
-    #                         'process hot water'      : {},  # [kW]
-    #                         'process cold water'     : {},  # [kW]
-    #                         'process chilled water'  : {},  # [kW]
-    #                         'hydrogen'               : {},  # [kg/s]
-    #                         'LP hydrogen'            : {},  # [kg/s]
-    #                         'HP hydrogen'            : {},  # [kg/s]
-    #                         'oxygen'                 : {},  # [kg/s]
-    #                         'process steam'          : {},  # [kg/s]
-    #                         'gas'                    : {},  # [Sm^3/s]
-    #                         'water'                  : {}}  # [m^3/s]    
-                
+    # open detailed production balances of study and reference case
+    with open('results/pkl/production_'+name_studycase+'.pkl', 'rb')           as f: production  = pickle.load(f)
+    with open('results/pkl/production_'+name_refcase+'.pkl', 'rb')           as f: production0  = pickle.load(f)
+                 
     # check energy balances timestep and transforms the series into hourly values because the energy price is always given either on a hourly basis (electricity) or per unit of mass (gas and hydrogen)
     if c.timestep != 60:
         for location_name in balances:
@@ -185,15 +173,15 @@ def NPV(file_studycase,
        
         # energy sold and purchased in study case 
         for carrier in balances[location_name]:                           # for each carrier (electricity, hydrogen, gas, heat)     
-            if 'grid' in balances[location_name][carrier]:  
+            if carrier+' grid' in balances[location_name][carrier]:  
                                
                 if type(economic_data[carrier]['sale']) == str:     # if the price series is given
                     sale_series = pd.read_csv(path+'/energy_price/'+economic_data[carrier]['sale'])['0'].to_numpy()
                     if len(sale_series) < 8762:                      # it means that the serie must be repeated for the simulation_length selected
                         sale_series = np.tile(sale_series,int(c.simulation_years))                         
-                    sold = balances[location_name][carrier]['grid'] * sale_series
+                    sold = balances[location_name][carrier][carrier+' grid'] * sale_series
                 else:                                               # if the price is always the same 
-                    sold = balances[location_name][carrier]['grid']*economic_data[carrier]['sale'] 
+                    sold = balances[location_name][carrier][carrier+' grid'] * economic_data[carrier]['sale'] 
                
                 sold = np.tile(sold,years_factor)
                 sold = np.reshape(sold,(-1,8760))
@@ -204,31 +192,63 @@ def NPV(file_studycase,
                     purchase_serie = pd.read_csv(path+'/energy_price/'+economic_data[carrier]['purchase'])['0'].to_numpy()
                     if len(purchase_serie) < 8762: #It means that the serie must be repeated for the simulation_length selected
                         purchase_serie = np.tile(purchase_serie,int(c.simulation_years))                                     
-                    purchase = balances[location_name][carrier]['grid'] * purchase_serie
+                    purchase = balances[location_name][carrier][carrier+' grid'] * purchase_serie
                 else: # if the price is always the same 
-                    purchase = balances[location_name][carrier]['grid']*economic_data[carrier]['purchase']
+                    purchase = balances[location_name][carrier][carrier+' grid'] * economic_data[carrier]['purchase']
                
                 purchase = np.tile(purchase,years_factor)
                 purchase = np.reshape(purchase,(-1,8760))
                 results[location_name]['CF_studycase']['Purchase'][carrier]   = - purchase.sum(axis=1,where=purchase>0)
                 results[location_name]['CF']['Purchase'][carrier] = np.zeros(economic_data['investment years']) 
 
-            if carrier == 'electricity': # Purchased and sold electricity correction if RES plants are not owned
+            if carrier == 'electricity': # Electricity purchased even by PV and wind if not owned
             
-                if ('wind' in studycase[location_name] and studycase[location_name]['wind']['owned'] == False) or ('PV' in studycase[location_name] and studycase[location_name]['PV']['owned'] == False):
+                if 'wind' in studycase[location_name] and studycase[location_name]['wind']['owned'] == False:
+                    purchase_wind = np.zeros(8760*c.simulation_years)
+                    for tech_name in production[location_name][carrier]['wind']:
+                        if tech_name not in ['Tot']:   # I'm considering even the electricity injected from wind into grid because if not owned the electricity must be all purchased (PPA as produced contract)
+                                                        # If we'll decide to add the PPA simultaneous with wind production, which means buying only the needed electricity (at a higher price of course) carrier + ' grid' should be added to 'Tot'
+                            purchase_wind += production[location_name][carrier]['wind'][tech_name]
                     
-                    balances_pp = RES_autoconsumption(studycase,name_studycase,location_name)
+                    if type(economic_data['wind electricity']['purchase']) == str: # if the price series is given
+                        purchase_serie = pd.read_csv(path+'/energy_price/'+economic_data['wind electricity']['purchase'])['0'].to_numpy()
+                        if len(purchase_serie) < 8762:
+                            purchase_serie = np.tile(purchase_serie,int(c.simulation_years))                              
+                        purchase = purchase_wind * purchase_serie
+                    else: # if the price is always the same 
+                        purchase = purchase_wind * economic_data['wind electricity']['purchase']
+                   
+                    purchase = np.tile(purchase,years_factor)
+                    purchase = np.reshape(purchase,(-1,8760))
+                    results[location_name]['CF_studycase']['Purchase'][carrier] += - purchase.sum(axis=1)
                     
-                    results     = CF_electricity_correction(balances_pp,results,studycase,location_name,economic_data,path,carrier,years_factor,'CF_studycase')
+                if 'PV' in studycase[location_name] and studycase[location_name]['PV']['owned'] == False:
+                    purchase_PV = np.zeros(8760*c.simulation_years)
+                    for tech_name in production[location_name][carrier]['PV']:
+                        if tech_name not in ['Tot']:    # I'm considering even the electricity injected from PV into grid because if not owned the electricity must be all purchased (PPA as produced contract)
+                                                        # If we'll decide to add the PPA simultaneous with PV production contract, which means buying only the needed electricity (at a higher price of course) carrier + ' grid' should be added to 'Tot'                        
+                            purchase_PV += production[location_name][carrier]['PV'][tech_name]
+                    
+                    if type(economic_data['pv electricity']['purchase']) == str: # if the price series is given
+                        purchase_serie = pd.read_csv(path+'/energy_price/'+economic_data['pv electricity']['purchase'])['0'].to_numpy()
+                        if len(purchase_serie) < 8762:
+                            purchase_serie = np.tile(purchase_serie,int(c.simulation_years))                              
+                        purchase = purchase_PV * purchase_serie
+                    else: # if the price is always the same 
+                        purchase = purchase_PV * economic_data['pv electricity']['purchase']
+                   
+                    purchase = np.tile(purchase,years_factor)
+                    purchase = np.reshape(purchase,(-1,8760))
+                    results[location_name]['CF_studycase']['Purchase'][carrier] += - purchase.sum(axis=1)
 
         # energy sold and purchased in reference case 
         for carrier in balances0[location_name]: # for each carrier (electricity, hydrogen, gas, heat)
-            if 'grid' in balances0[location_name][carrier]: 
+            if carrier+' grid' in balances0[location_name][carrier]: 
                 
                 if type(economic_data[carrier]['sale']) == str:                           # if there is the price serie
-                    sold = balances0[location_name][carrier]['grid'] * sale_series
+                    sold = balances0[location_name][carrier][carrier+' grid'] * sale_series
                 else: # if the price is always the same 
-                    sold = balances0[location_name][carrier]['grid']*economic_data[carrier]['sale'] 
+                    sold = balances0[location_name][carrier][carrier+' grid']*economic_data[carrier]['sale'] 
                 
                 sold = np.tile(sold,years_factor)
                 sold = np.reshape(sold,(-1,8760))
@@ -236,24 +256,54 @@ def NPV(file_studycase,
                 results[location_name]['CF']['Sale'][carrier] = np.zeros(economic_data['investment years'])
 
                 if type(economic_data[carrier]['purchase']) == str: # if there is the price serie
-                    purchase = balances0[location_name][carrier]['grid'] * purchase_serie
+                    purchase = balances0[location_name][carrier][carrier+' grid'] * purchase_serie
                 else: # if the price is always the same 
-                    purchase = balances0[location_name][carrier]['grid']*economic_data[carrier]['purchase']
+                    purchase = balances0[location_name][carrier][carrier+' grid']*economic_data[carrier]['purchase']
               
                 purchase = np.tile(purchase,years_factor)
                 purchase = np.reshape(purchase,(-1,8760))
                 results[location_name]['CF_refcase']['Purchase'][carrier] = -purchase.sum(axis=1,where=purchase>0)
                 results[location_name]['CF']['Purchase'][carrier] = np.zeros(economic_data['investment years'])
          
-            if carrier == 'electricity': # Purchased and sold electricity correction if RES plants are not owned
+            if carrier == 'electricity': # Electricity purchased even by PV and wind if not owned
             
-                if ('wind' in refcase[location_name] and refcase[location_name]['wind']['owned'] == False) or ('PV' in studycase[location_name] and studycase[location_name]['PV']['owned'] == False):
+                if 'wind' in refcase[location_name] and refcase[location_name]['wind']['owned'] == False:
+                    purchase_wind = np.zeros(8760*c.simulation_years)
+                    for tech_name in production0[location_name][carrier]['wind']:
+                        if tech_name not in ['Tot']:   # I'm considering even the electricity injected from wind into grid because if not owned the electricity must be all purchased (PPA as produced contract)
+                                                        # If we'll decide to add the PPA simultaneous with wind production, which means buying only the needed electricity (at a higher price of course) carrier + ' grid' should be added to 'Tot'
+                            purchase_wind += production0[location_name][carrier]['wind'][tech_name]
                     
-                    balances0_pp = RES_autoconsumption(refcase,name_refcase,location_name)
+                    if type(economic_data['wind electricity']['purchase']) == str: # if the price series is given
+                        purchase_serie = pd.read_csv(path+'/energy_price/'+economic_data['wind electricity']['purchase'])['0'].to_numpy()
+                        if len(purchase_serie) < 8762:
+                            purchase_serie = np.tile(purchase_serie,int(c.simulation_years))                              
+                        purchase = purchase_wind * purchase_serie
+                    else: # if the price is always the same 
+                        purchase = purchase_wind * economic_data['wind electricity']['purchase']
+                   
+                    purchase = np.tile(purchase,years_factor)
+                    purchase = np.reshape(purchase,(-1,8760))
+                    results[location_name]['CF_refcase']['Purchase'][carrier] += - purchase.sum(axis=1)
                     
-                    results = CF_electricity_correction(balances0_pp,results,refcase,location_name,economic_data,path,carrier,years_factor,'CF_refcase')
-
-         
+                if 'PV' in refcase[location_name] and refcase[location_name]['PV']['owned'] == False:
+                    purchase_PV = np.zeros(8760*c.simulation_years)
+                    for tech_name in production0[location_name][carrier]['PV']:
+                        if tech_name not in ['Tot']:    # I'm considering even the electricity injected from PV into grid because if not owned the electricity must be all purchased (PPA as produced contract)
+                                                        # If we'll decide to add the PPA simultaneous with PV production contract, which means buying only the needed electricity (at a higher price of course) carrier + ' grid' should be added to 'Tot'                        
+                            purchase_PV += production[location_name][carrier]['PV'][tech_name]
+                    
+                    if type(economic_data['pv electricity']['purchase']) == str: # if the price series is given
+                        purchase_serie = pd.read_csv(path+'/energy_price/'+economic_data['pv electricity']['purchase'])['0'].to_numpy()
+                        if len(purchase_serie) < 8762:
+                            purchase_serie = np.tile(purchase_serie,int(c.simulation_years))                              
+                        purchase = purchase_PV * purchase_serie
+                    else: # if the price is always the same 
+                        purchase = purchase_PV * economic_data['pv electricity']['purchase']
+                   
+                    purchase = np.tile(purchase,years_factor)
+                    purchase = np.reshape(purchase,(-1,8760))
+                    results[location_name]['CF_refcase']['Purchase'][carrier] += - purchase.sum(axis=1)
         # REC incentives redistribution
         if 'REC' in economic_data:
             csc = balances[location_name]['electricity']['collective self consumption']
@@ -524,12 +574,10 @@ def NPV(file_studycase,
         
                 
 def LCOH (location_name,
-          balances_pp,
           structure,    
           name_studycase, 
           economic_data,
           path, 
-          name_output, 
           revenues    = False, 
           refund      = False,
           plot        = False,
@@ -537,7 +585,9 @@ def LCOH (location_name,
     """
     Levelized Cost Of Hydrogen Calculation
     ----------
-    balances_pp: dictionary containing total balances calculation after calling the post process function renewables_results 
+    location_name: str - location_name
+    
+    structure: dict - studycase                           
     
     name_studycase: str name of study case results file.pkl
 
@@ -554,8 +604,6 @@ def LCOH (location_name,
         'investment year': time horizon for which to evaluate the economic analysis (must be a multiple of simulation_year in general.json)
          
     path: str path of the input data folder 
-        
-    name_output: str name of the file where to save results of interest
     
     revenues: list/tuple of str/bool defining if generated revenues from excess energy streams have to be included in the calculation. In case the carrier name(s) is/are specified. Default = False
     
@@ -564,6 +612,11 @@ def LCOH (location_name,
     output:  [€/kgH2] float value of LCOH for the considered configuration
 
     """  
+
+    if 'electrolyzer' in structure[location_name]:
+        pass
+    else:
+        raise ValueError("Error: Electrolyzer is not employed in the system. Include it to calculate the LCOH.")
     years_factor = int(economic_data['investment years'] / c.simulation_years) # this factor is useful to match the length of the energy simulation with the length of the economic investment
     
     if economic_data['investment years'] % c.simulation_years != 0:
@@ -572,46 +625,43 @@ def LCOH (location_name,
     # open cost of componenets of studycase
     with open('results/pkl/tech_cost_'+name_studycase+'.pkl', 'rb') as f:       tc = pickle.load(f)   # !!! to be double-checked for sensitivity analysis  
     
+    with open('results/pkl/consumption_'+name_studycase+'.pkl', 'rb')           as f: consumption  = pickle.load(f) 
+    with open('results/pkl/production_'+name_studycase+'.pkl', 'rb')           as f: production  = pickle.load(f)
     # check for hydrogen carrier to be included in location balances
-    if len(balances_pp[location_name]['hydrogen']) != 0:    # if hydrogen dictionary has values for the considered location
+    if len(production[location_name]['hydrogen']['electrolyzer']['Tot']) != 0:    # if hydrogen dictionary has values for the considered location
         pass
     else:
         print("\nHydrogen carrier not included in "+location_name+" location - LCOH calculation not available")
         return    
     
-    # List of energy carriers to be checked and updated in accordance with location.py file
-    # self.power_balance = {  'electricity'            : {},  # [kW]
-    #                         'heating water'          : {},  # [kW]
-    #                         'cooling water'          : {},  # [kW]
-    #                         'process heat'           : {},  # [kW]
-    #                         'process hot water'      : {},  # [kW]
-    #                         'process cold water'     : {},  # [kW]
-    #                         'process chilled water'  : {},  # [kW]
-    #                         'hydrogen'               : {},  # [kg/s]
-    #                         'LP hydrogen'            : {},  # [kg/s]
-    #                         'HP hydrogen'            : {},  # [kg/s]
-    #                         'oxygen'                 : {},  # [kg/s]
-    #                         'process steam'          : {},  # [kg/s]
-    #                         'gas'                    : {},  # [Sm^3/s]
-    #                         'water'                  : {}}  # [m^3/s]    
-                
     # check energy balances timestep and transforms the series into hourly values because the energy price is always given either on a hourly basis (electricity) or per unit of mass (gas and hydrogen)
     if c.timestep != 60:
-        for carrier in balances_pp[location_name]:
-            for tech in balances_pp[location_name][carrier]:
-                if isinstance(balances_pp[location_name][carrier][tech], np.ndarray):
-                    balances_pp[location_name][carrier][tech] = balances_pp[location_name][carrier][tech].reshape(-1, int(60/c.timestep)).sum(axis=1)*(c.timestep/60)
-                elif isinstance(balances_pp[location_name][carrier][tech], dict):
-                    for key, value in balances_pp[location_name][carrier][tech].items():
-                        balances_pp[location_name][carrier][tech][key] = value.reshape(-1, int(60/c.timestep)).sum(axis=1)*(c.timestep/60)
+        # Number of steps per hour based on the timestep
+        steps_per_hour = 60 // c.timestep          
+        # Iterate over the electricity consumption dictionary
+        for carrier in consumption[location_name]:
+            for tech_name in consumption[location_name][carrier]:
+                for tech_name1 in consumption[location_name][carrier][tech_name]:
+                    consumption[location_name][carrier][tech_name][tech_name1] = consumption[location_name][carrier][tech_name][tech_name1].reshape(-1, steps_per_hour).sum(axis=1)*(c.timestep/60)
+        # Iterate over the electricity production dictionary
+        for carrier in production[location_name]:
+            for tech_name in production[location_name][carrier]:
+                for tech_name1 in production[location_name][carrier][tech_name]:
+                    production[location_name][carrier][tech_name][tech_name1] = production[location_name][carrier][tech_name][tech_name1].reshape(-1, steps_per_hour).sum(axis=1)*(c.timestep/60)
 
    
     # balances are now in the form of yearly arrays of 8760 values. Converting energy carriers and material streams expressed as mass flow rates into hourly values necessary for economic analysis purposes. kg/s to kg/h and Sm^3/s to Sm^3/h
-    for carrier in balances_pp[location_name]:
+    for carrier in consumption[location_name]:
         if carrier in ['hydrogen','LP hydrogen','HP hydrogen','oxygen','process steam','gas','water']:
-            for tech in balances_pp[location_name][carrier]:
-                balances_pp[location_name][carrier][tech] = balances_pp[location_name][carrier][tech]*3600
+            for tech_name in consumption[location_name][carrier]:
+                for tech_name1 in consumption[location_name][carrier][tech_name]:
+                    consumption[location_name][carrier][tech_name][tech_name1] = consumption[location_name][carrier][tech_name][tech_name1]*3600
     
+    for carrier in production[location_name]:
+        if carrier in ['hydrogen','LP hydrogen','HP hydrogen','oxygen','process steam','gas','water']:
+            for tech_name in production[location_name][carrier]:
+                for tech_name1 in production[location_name][carrier][tech_name]:
+                    production[location_name][carrier][tech_name][tech_name1] = production[location_name][carrier][tech_name][tech_name1]*3600
     results_pp  = {}    # dictionary initialising global lcoh results of each location
     lcoh        = {}    # dictionary initialising specific lcoh results of each location
         
@@ -673,81 +723,80 @@ def LCOH (location_name,
                 results_pp[location_name]['CF']['Tot'] += - results_pp[location_name]['CF']['Refund']
                 
     # energy sold and purchased in study case 
-    for carrier in balances_pp[location_name]:                           # for each carrier (electricity, hydrogen, gas, heat)
+    for carrier in production[location_name]:                           # for each carrier (electricity, hydrogen, gas, heat)
         
-        if 'grid' in balances_pp[location_name][carrier]:  
+        if carrier+' grid' in consumption[location_name][carrier]:  # in the hypotesis of having all grids interacting with hydrogen chain
             
             if type(economic_data[carrier]['sale']) == str: # if the price series is given
                 sale_serie = pd.read_csv(path+'/energy_price/'+economic_data[carrier]['sale'])['0'].to_numpy()
                 if len(sale_serie) < 8762: #It means that the serie must be repeated for the simulation_length selected
                     sale_serie = np.tile(sale_serie,int(c.simulation_years))                   
-                sold = balances_pp[location_name][carrier]['grid'] * sale_serie
+                sold = consumption[location_name][carrier][carrier+' grid']['Tot'] * sale_serie
             else: # if the price is always the same 
-                sold = balances_pp[location_name][carrier]['grid']*economic_data[carrier]['sale'] 
+                sold = consumption[location_name][carrier][carrier+' grid']['Tot'] * economic_data[carrier]['sale'] 
            
             sold = np.tile(sold,years_factor)
             sold = np.reshape(sold,(-1,8760))
-            results_pp[location_name]['CF']['Sale'][carrier]   = - sold.sum(axis=1,where=sold<0)
-            lcoh[location_name]['Opex'][carrier +' sold']   =   sold.sum(axis=1,where=sold<0) 
+            results_pp[location_name]['CF']['Sale'][carrier]   = sold.sum(axis=1)
+            lcoh[location_name]['Opex'][carrier +' sold']   =  - sold.sum(axis=1) 
             
-            if carrier != 'electricity':
-                if type(economic_data[carrier]['purchase']) == str: # if the price series is given
-                    purchase_serie = pd.read_csv(path+'/energy_price/'+economic_data[carrier]['purchase'])['0'].to_numpy()
-                    if len(purchase_serie) < 8762: #It means that the serie must be repeated for the simulation_length selected
-                        purchase_serie = np.tile(purchase_serie,int(c.simulation_years))                         
-                    purchase = balances_pp[location_name][carrier]['grid'] * purchase_serie
-                else: # if the price is always the same 
-                    purchase = balances_pp[location_name][carrier]['grid']*economic_data[carrier]['purchase']
-               
-                purchase = np.tile(purchase,years_factor)
-                purchase = np.reshape(purchase,(-1,8760))
-                results_pp[location_name]['CF']['Purchase'][carrier]   = - purchase.sum(axis=1,where=purchase>0)
-                lcoh[location_name]['Opex'][carrier +' purchased']  =   purchase.sum(axis=1,where=purchase>0) 
-            else:
-                if type(economic_data[carrier]['purchase']) == str: # if the price series is given
-                    purchase_serie = pd.read_csv(path+'/energy_price/'+economic_data[carrier]['purchase'])['0'].to_numpy()
-                    if len(purchase_serie) < 8762:
-                        purchase_serie = np.tile(purchase_serie,int(c.simulation_years))                                             
-                    el_purchased_hyd = balances_pp[location_name][carrier]['hyd grid electricity'] * purchase_serie
-                else: # if the price is always the same 
-                    el_purchased_hyd = balances_pp[location_name][carrier]['hyd grid electricity']*economic_data[carrier]['purchase']
-
-                el_purchased_hyd = np.tile(el_purchased_hyd,years_factor)
-                el_purchased_hyd = np.reshape(el_purchased_hyd,(-1,8760))
-                results_pp[location_name]['CF']['Purchase'][carrier]   = - el_purchased_hyd.sum(axis=1)
-                lcoh[location_name]['Opex'][carrier +' purchased']  =  el_purchased_hyd.sum(axis=1) 
-  
-        if carrier == 'electricity':
-            if 'hyd wind electricity' in balances_pp[location_name]['electricity'] and structure[location_name]['wind']['owned'] == False:   
-                
-                if type(economic_data['wind electricity']['purchase']) == str: # if the price series is given
-                    purchase_serie = pd.read_csv(path+'/energy_price/'+economic_data['wind electricity']['purchase'])['0'].to_numpy()
-                    if len(purchase_serie) < 8762:
-                        purchase_serie = np.tile(purchase_serie,int(c.simulation_years))                              
-                    purchase = balances_pp[location_name][carrier]['hyd wind electricity'] * purchase_serie
-                else: # if the price is always the same 
-                    purchase = balances_pp[location_name][carrier]['hyd wind electricity']*economic_data['wind electricity']['purchase']
-               
-                purchase = np.tile(purchase,years_factor)
-                purchase = np.reshape(purchase,(-1,8760))
-                results_pp[location_name]['CF']['Purchase'][carrier] += - purchase.sum(axis=1,where=purchase>0)
-                lcoh[location_name]['Opex']['wind electricity purchased']  =  purchase.sum(axis=1,where=purchase>0)
-            
-            if 'hyd pv electricity' in balances_pp[location_name]['electricity'] and structure[location_name]['PV']['owned'] == False:  
-
-                if type(economic_data['pv electricity']['purchase']) == str: # if the price series is given
-                    purchase_serie = pd.read_csv(path+'/energy_price/'+economic_data['pv electricity']['purchase'])['0'].to_numpy()
-                    if len(purchase_serie) < 8762:
-                        purchase_serie = np.tile(purchase_serie,int(c.simulation_years))                             
-                    purchase = balances_pp[location_name][carrier]['hyd pv electricity'] * purchase_serie
-                else: # if the price is always the same 
-                    purchase = balances_pp[location_name][carrier]['hyd pv electricity']*economic_data['pv electricity']['purchase']
-               
-                purchase = np.tile(purchase,years_factor)
-                purchase = np.reshape(purchase,(-1,8760))
-                results_pp[location_name]['CF']['Purchase'][carrier] += - purchase.sum(axis=1,where=purchase>0)
-                lcoh[location_name]['Opex']['pv electricity purchased']  =  purchase.sum(axis=1,where=purchase>0)
-    
+        purchase = {}                     
+        if carrier+' grid' in production[location_name][carrier]:  # Now it must be considered that not all electricity or water or hydrogen is purchased for the hydrogen chain
+            purchase[carrier] = np.zeros(8760*c.simulation_years)
+            for tech_name in production[location_name][carrier][carrier+' grid']:
+                if tech_name not in [carrier+' demand','Tot','fuel cell']:
+                    purchase[carrier] += production[location_name][carrier][carrier+' grid'][tech_name]
+            if type(economic_data[carrier]['purchase']) == str: # if the price series is given
+                purchase_serie = pd.read_csv(path+'/energy_price/'+economic_data[carrier]['purchase'])['0'].to_numpy()
+                if len(purchase_serie) < 8762: #It means that the serie must be repeated for the simulation_length selected
+                    purchase_serie = np.tile(purchase_serie,int(c.simulation_years))                         
+                purchase = purchase[carrier] * purchase_serie
+            else: # if the price is always the same 
+                purchase = purchase[carrier] * economic_data[carrier]['purchase']
+           
+            purchase = np.tile(purchase,years_factor)
+            purchase = np.reshape(purchase,(-1,8760))
+            results_pp[location_name]['CF']['Purchase'][carrier]   = - purchase.sum(axis=1)
+            lcoh[location_name]['Opex'][carrier +' purchased']  =   purchase.sum(axis=1) 
+      
+            if carrier == 'electricity':    # Electricity purchased even by PV and wind if not owned
+                if 'wind' in structure[location_name] and structure[location_name]['wind']['owned'] == False:
+                    purchase_wind = np.zeros(8760*c.simulation_years)
+                    for tech_name in production[location_name][carrier]['wind']:
+                        if tech_name not in [carrier+' demand',carrier+' grid','Tot','fuel cell']:
+                            purchase_wind += production[location_name][carrier]['wind'][tech_name]
+                    if type(economic_data['wind electricity']['purchase']) == str: # if the price series is given
+                        purchase_serie = pd.read_csv(path+'/energy_price/'+economic_data['wind electricity']['purchase'])['0'].to_numpy()
+                        if len(purchase_serie) < 8762:
+                            purchase_serie = np.tile(purchase_serie,int(c.simulation_years))                                             
+                        purchase = purchase_wind * purchase_serie
+                    else: # if the price is always the same 
+                        purchase = purchase_wind * economic_data['wind electricity']['purchase']
+                   
+                    purchase = np.tile(purchase,years_factor)
+                    purchase = np.reshape(purchase,(-1,8760))
+                    results_pp[location_name]['CF']['Purchase'][carrier]   += - purchase.sum(axis=1)
+                    lcoh[location_name]['Opex']['wind electricity purchased']  =  purchase.sum(axis=1) 
+                             
+                                    
+                if 'PV' in structure[location_name] and structure[location_name]['PV']['owned'] == False:
+                    purchase_PV = np.zeros(8760*c.simulation_years)
+                    for tech_name in production[location_name][carrier]['PV']:
+                        if tech_name not in [carrier+' demand',carrier+' grid','Tot','fuel cell']:
+                            purchase_PV += production[location_name][carrier]['PV'][tech_name]
+                    if type(economic_data['pv electricity']['purchase']) == str: # if the price series is given
+                        purchase_serie = pd.read_csv(path+'/energy_price/'+economic_data['pv electricity']['purchase'])['0'].to_numpy()
+                        if len(purchase_serie) < 8762:
+                            purchase_serie = np.tile(purchase_serie,int(c.simulation_years))                              
+                        purchase = purchase_PV * purchase_serie
+                    else: # if the price is always the same 
+                        purchase = purchase_PV * economic_data['pv electricity']['purchase']
+                   
+                    purchase = np.tile(purchase,years_factor)
+                    purchase = np.reshape(purchase,(-1,8760))
+                    results_pp[location_name]['CF']['Purchase'][carrier] += - purchase.sum(axis=1)
+                    lcoh[location_name]['Opex']['pv electricity purchased']  =  purchase.sum(axis=1)
+                  
     # CF update considering inflation for each carrier
     for carrier in economic_data['inflation rate']:
         f = economic_data['inflation rate'][carrier]
@@ -805,7 +854,7 @@ def LCOH (location_name,
     # LCOH calculation
     
     # Hydrogen produced each year via electrolysis
-    produced_hydrogen = [0] + [(sum(balances_pp[location_name]['hydrogen']['electrolyzer']))/c.simulation_years]*economic_data['investment years']  # [kg/y] - No H2 produced in period 0
+    produced_hydrogen = [0] + [(sum(production[location_name]['hydrogen']['electrolyzer']['Tot']))/c.simulation_years]*economic_data['investment years']  # [kg/y] - No H2 produced in period 0
     r       = economic_data['interest rate']                    # [%] interest rate 
     I0      = results_pp[location_name]['I0']['Tot']            # [€] Initial investment at time = 0
     CF      = np.zeros(economic_data['investment years'] +1)    # Creating an empty array of year_factor + 1 dimension for Cash Flows in order to insert only I0 as first element
@@ -1001,240 +1050,526 @@ def LCOH (location_name,
         print("\nThe LCOH calculated for the considered scenario for "+location_name+" location results in "+str(LCOH)+" €/kgH2")
     
     return(LCOH)                                      
+                
 
-
-def RES_autoconsumption(studycase,simulation_name,loc):
+def LCOE (location_name,
+         structure,
+         name_studycase,
+         economic_data,
+         path,
+         revenues = False,
+         refund = False,
+         plot = False,
+         print_ = False):
     
     """
-    RES_autoconsumption calculation
-    ----------
-    studycase : dictionary (all the inputs are optional)
-        'location_1_name': inputs required to create a location object (see Location.py)
-        'location_2_name': 
-            ...
-        'location_n_name':
-            
-    simulation_name : str
+    Levelized Cost of Electricity Calculation
+    -------------
+    location_name: str - location_name
     
-    simulation_length : str - years to be simulated
+    structure: dict - studycase
     
-    loc : str - location_name
+    name_studycase: str name of study case results file.pkl
                       
-    output:  balances_pp: dictionary containing total balances calculation useful for LCOH calculation, NPV calculation and post process plots
+                                                                                                                                              
 
-    """  
+         
 
-    with open('results/pkl/balances_'+simulation_name+'.pkl', 'rb') as f: balances = pickle.load(f)
+                                                                                                   
 
-    windsc = {}
-    pvsc = {}
-    from_grid = {}
-    wind_autoconsumption = np.zeros(c.simulation_years*8760)
-    pv_autoconsumption = np.zeros(c.simulation_years*8760)
+    economic_data: dictionary
+    'REC': dictionary REC economic parameters definition
+        'collective self consumption incentives': [€/kWh]
+        'incentives redistribution': 0-100 how the incentives are redistributed between prosumers, consumers and REC manger
+    'carrier_name': dictionary (repeat for reach considered carrier: electricity, hydrogen, gas)
+        'purchase': [€/kWh] electricity, [€/Sm^3] gas and [€/kg] hydrogen
+        'sales': [€/kWh] electricity, [€/Sm^3] gas and [€/kg] hydrogen
+    'interest rate': 0-1 [rate/year]
+    'inflation rate': -1-1 [rate/year] cost evolution of each carrier
+    'decommissioning': 0-1 [-] system dismantling as a % of initial construction costs (Total CAPEX)
+    'investment year': time horizon for which to evaluate the economic analysis (must be a multiple of simulation_year in general.json)
+     
+    path: str path of the input data folder 
     
-    if 'PV' in balances[loc]['electricity']:
-        pv_still_available = balances[loc]['electricity']['PV'].copy()
-    else:
-        pv_still_available = np.zeros(c.simulation_years*8760)
+    revenues: list/tuple of str/bool defining if generated revenues from excess energy streams have to be included in the calculation. In case the carrier name(s) is/are specified. Default = False
+                                                                      
+         
+                                                              
     
-    if 'wind' in balances[loc]['electricity']:
-        wind_still_available = balances[loc]['electricity']['wind'].copy()
-    else:
-        wind_still_available = np.zeros(c.simulation_years*8760)
+    refund: boolean value defining refund cash flows have to be included in the calculation. Default = False
+                                                                          
+         
+                                                                
     
-    system = dict(sorted(studycase[loc].items(), key=lambda item: item[1]['priority'])) # ordered by priority
-            
-        
-    if 'wind' in balances[loc]['electricity'] and 'PV' not in balances[loc]['electricity']:    
-        for tech_name in system: # (which is ordered py priority)
-            if tech_name == 'electricity demand':
-                tech_name = 'demand'
-            if tech_name in balances[loc]['electricity'] and all(num <= 0 for num in balances[loc]['electricity'][tech_name]) and tech_name != 'collective self consumption':
-                windsc[tech_name] = np.zeros(c.simulation_years*8760)  # initializing the array to store wind energy self consumption values for tech_name technology
-                from_grid[tech_name] = np.zeros(c.simulation_years*8760)
-                for i in range(len(balances[loc]['electricity'][tech_name])):
-                    if balances[loc]['electricity'][tech_name][i] < 0:
-                        windsc[tech_name][i] = np.minimum(wind_still_available[i],-balances[loc]['electricity'][tech_name][i])
-                        from_grid[tech_name][i] = -balances[loc]['electricity'][tech_name][i] - windsc[tech_name][i]
-                        wind_still_available[i] = wind_still_available[i] - windsc[tech_name][i]
-                        wind_autoconsumption[i] += windsc[tech_name][i]
-
-                # print('\nwindsc_'+str(tech_name)+' = '+str(round((sum(windsc[tech_name])/1e3),2))+' MWh') 
-                # print('from_grid_'+str(tech_name)+' = '+str(round((sum(from_grid[tech_name])/1e3),2))+' MWh')
-                
-        wind_surplus = wind_still_available
-        
-        # print('\nwind_autoconsumption = '+str(round((sum(wind_autoconsumption)/1e3),2))+' MWh')
-        # print('wind_surplus = '+str(round((sum(wind_surplus)/1e3),2))+' MWh')
-
-                
-    elif 'PV' in balances[loc]['electricity'] and 'wind' not in balances[loc]['electricity']:    
-        for tech_name in system: # (which is ordered py priority)
-            if tech_name == 'electricity demand':
-                tech_name = 'demand'
-            if tech_name in balances[loc]['electricity'] and all(num <= 0 for num in balances[loc]['electricity'][tech_name]) and tech_name != 'collective self consumption':
-                pvsc[tech_name] = np.zeros(c.simulation_years*8760)  # initializing the array to store wind energy self consumption values for tech_name technology
-                from_grid[tech_name] = np.zeros(c.simulation_years*8760)
-                for i in range(len(balances[loc]['electricity'][tech_name])):
-                    if balances[loc]['electricity'][tech_name][i] < 0:
-                        pvsc[tech_name][i] = np.minimum(pv_still_available[i],-balances[loc]['electricity'][tech_name][i])
-                        from_grid[tech_name][i] = -balances[loc]['electricity'][tech_name][i] - pvsc[tech_name][i]
-                        pv_still_available[i] = pv_still_available[i] - pvsc[tech_name][i]
-                        pv_autoconsumption[i] += pvsc[tech_name][i]
-
-                # print('\npvsc_'+str(tech_name)+' = '+str(round((sum(pvsc[tech_name])/1e3),2))+' MWh') 
-                # print('from_grid_'+str(tech_name)+' = '+str(round((sum(from_grid[tech_name])/1e3),2))+' MWh')
+    VALCOE: boolean, put True if you want to calculate the Value-Adjusted Levelized Cost of Electricity
                     
-        pv_surplus = pv_still_available
-
-        # print('\npv_autoconsumption = '+str(round((sum(pv_autoconsumption)/1e3),2))+' MWh')
-        # print('pv_surplus = '+str(round((sum(pv_surplus)/1e3),2))+' MWh')
-
-
-    elif 'PV' in balances[loc]['electricity'] and 'wind' in balances[loc]['electricity']:
-        
-        if list(system.keys()).index('PV') < list(system.keys()).index('wind'): # PV comes before wind
-            
-            for tech_name in system: # (which is ordered py priority)
-                if tech_name == 'electricity demand':
-                    tech_name = 'demand'
-                if tech_name in balances[loc]['electricity'] and all(num <= 0 for num in balances[loc]['electricity'][tech_name]) and tech_name != 'collective self consumption':
-                    pvsc[tech_name] = np.zeros(c.simulation_years*8760)  # initializing the array to store pv energy self consumption values for tech_name technology
-                    windsc[tech_name] = np.zeros(c.simulation_years*8760)  # initializing the array to store wind energy self consumption values for tech_name technology
-                    from_grid[tech_name] = np.zeros(c.simulation_years*8760)
-                    for i in range(len(balances[loc]['electricity'][tech_name])):
-                        if balances[loc]['electricity'][tech_name][i] < 0:
-                            pvsc[tech_name][i] = np.minimum(pv_still_available[i],-balances[loc]['electricity'][tech_name][i])
-                            windsc[tech_name][i] = np.minimum(wind_still_available[i],-balances[loc]['electricity'][tech_name][i]-pvsc[tech_name][i])
-                            from_grid[tech_name][i] = -balances[loc]['electricity'][tech_name][i] - pvsc[tech_name][i] - windsc[tech_name][i]
-                            pv_still_available[i] = pv_still_available[i] - pvsc[tech_name][i]
-                            wind_still_available[i] = wind_still_available[i] - windsc[tech_name][i]
-                            pv_autoconsumption[i] += pvsc[tech_name][i]
-                            wind_autoconsumption[i] += windsc[tech_name][i]
-
-                    # print('\npvsc_'+str(tech_name)+' = '+str(round((sum(pvsc[tech_name])/1e3),2))+' MWh')
-                    # print('windsc_'+str(tech_name)+' = '+str(round((sum(windsc[tech_name])/1e3),2))+' MWh') 
-                    # print('from_grid_'+str(tech_name)+' = '+str(round((sum(from_grid[tech_name])/1e3),2))+' MWh')
-                     
-        else:
-            
-            for tech_name in system: # (which is ordered py priority)
-                if tech_name == 'electricity demand':
-                    tech_name = 'demand'
-                if tech_name in balances[loc]['electricity'] and all(num <= 0 for num in balances[loc]['electricity'][tech_name]) and tech_name != 'collective self consumption':
-                    pvsc[tech_name] = np.zeros(c.simulation_years*8760)  # initializing the array to store pv energy self consumption values for tech_name technology
-                    windsc[tech_name] = np.zeros(c.simulation_years*8760)  # initializing the array to store wind energy self consumption values for tech_name technology
-                    from_grid[tech_name] = np.zeros(c.simulation_years*8760)
-                    for i in range(len(balances[loc]['electricity'][tech_name])):
-                        if balances[loc]['electricity'][tech_name][i] < 0:
-                            windsc[tech_name][i] = np.minimum(wind_still_available[i],-balances[loc]['electricity'][tech_name][i])
-                            pvsc[tech_name][i] = np.minimum(pv_still_available[i],-balances[loc]['electricity'][tech_name][i]-windsc[tech_name][i])
-                            from_grid[tech_name][i] = -balances[loc]['electricity'][tech_name][i] - windsc[tech_name][i] - pvsc[tech_name][i]
-                            pv_still_available[i] = pv_still_available[i] - pvsc[tech_name][i]
-                            wind_still_available[i] = wind_still_available[i] - windsc[tech_name][i]
-                            pv_autoconsumption[i] += pvsc[tech_name][i]
-                            wind_autoconsumption[i] += windsc[tech_name][i]
-
-                    # print('\nwindsc_'+str(tech_name)+' = '+str(round((sum(windsc[tech_name])/1e3),2))+' MWh')
-                    # print('pvsc_'+str(tech_name)+' = '+str(round((sum(pvsc[tech_name])/1e3),2))+' MWh') 
-                    # print('from_grid_'+str(tech_name)+' = '+str(round((sum(from_grid[tech_name])/1e3),2))+' MWh')
-
-        wind_surplus = wind_still_available
-        pv_surplus = pv_still_available
-
-        # print('\nwind_autoconsumption = '+str(round((sum(wind_autoconsumption)/1e3),2))+' MWh')
-        # print('pv_autoconsumption = '+str(round((sum(pv_autoconsumption)/1e3),2))+' MWh')
-        # print('wind_surplus = '+str(round((sum(wind_surplus)/1e3),2))+' MWh')
-        # print('pv_surplus = '+str(round((sum(pv_surplus)/1e3),2))+' MWh')
-
-    
-    balances_pp = balances.copy()
-
-    # balances_pp[loc]['electricity']['tech from grid'] = from_grid
-    
-    if 'wind' in balances[loc]['electricity']:
-        # balances_pp[loc]['electricity']['tech windsc']             = windsc
-        balances_pp[loc]['electricity']['wind surplus']            = wind_surplus
-        balances_pp[loc]['electricity']['wind autoconsumption']    = wind_autoconsumption
-    if 'PV' in balances[loc]['electricity']:        
-        # balances_pp[loc]['electricity']['tech pvsc']             = pvsc
-        balances_pp[loc]['electricity']['pv surplus']            = pv_surplus
-        balances_pp[loc]['electricity']['pv autoconsumption']    = pv_autoconsumption
-        
-    return (balances_pp)   
-
-        
-def CF_electricity_correction(balances_pp,results,studycase,location_name,economic_data,path,carrier,years_factor,name_CF):       
-
+    output:  [€/kWh] float value of LCOE for the considered configuration
     """
-    CF_electricity_correction calculation
-    ----------
-    balances_pp: dictionary containing updated energy balances
     
-    results: dictionary containing economic results
-                      
-    name_CF: str - CF_studycase or CF_refcase
-    
-    output:  results: dictionary containing updated economic results
+    technologies_of_interest = ['PV', 'wind', 'fuel cell']
+    present_technologies = []
 
-    """ 
-    
-    if 'wind autoconsumption' in balances_pp[location_name]['electricity'] and studycase[location_name]['wind']['owned'] == False:   
-        
-        # wind purchased electricity correction (to be encountered in energy purchased)
-        if type(economic_data['wind electricity']['purchase']) == str: # if the price series is given
-            purchase_serie = pd.read_csv(path+'/energy_price/'+economic_data['wind electricity']['purchase'])['0'].to_numpy()
-            if len(purchase_serie) < 8762:
-                purchase_serie = np.tile(purchase_serie,int(c.simulation_years))                                 
-            purchase = balances_pp[location_name][carrier]['wind autoconsumption'] * purchase_serie
-        else: # if the price is always the same 
-            purchase = balances_pp[location_name][carrier]['wind autoconsumption']*economic_data['wind electricity']['purchase']
-       
-        purchase = np.tile(purchase,years_factor)
-        purchase = np.reshape(purchase,(-1,8760))
-        results[location_name][name_CF]['Purchase'][carrier] -= purchase.sum(axis=1,where=purchase>0)
-        results[location_name]['CF']['Purchase'][carrier] = np.zeros(economic_data['investment years'])
-    
-        # wind sold electricity correction (not to be encountered in energy sold): Thus the electricity sold price must be considered, not the pv electricity sold price
-        if type(economic_data['electricity']['sale']) == str: # if the price series is given
-            sale_serie = pd.read_csv(path+'/energy_price/'+economic_data['electricity']['sale'])['0'].to_numpy()
-            if len(sale_serie) < 8762: #It means that the serie must be repeated for the simulation_length selected
-                sale_serie = np.tile(sale_serie,int(c.simulation_years))                            
-            sold = balances_pp[location_name][carrier]['wind surplus'] * sale_serie
-        else: # if the price is always the same 
-            sold = balances_pp[location_name][carrier]['wind surplus']*economic_data['electricity']['sale'] 
-       
-        sold = np.tile(sold,years_factor)
-        sold = np.reshape(sold,(-1,8760))
-        results[location_name][name_CF]['Sale'][carrier]   -= sold.sum(axis=1,where=sold>0)                    
-        
-    if 'pv autoconsumption' in balances_pp[location_name]['electricity'] and studycase[location_name]['PV']['owned'] == False:  
+    for tech_name in structure[location_name]:
+        if tech_name in technologies_of_interest:
+            present_technologies.append(tech_name)
 
-        # pv purchased electricity correction (to be encountered in energy purchased)
-        if type(economic_data['pv electricity']['purchase']) == str: # if the price series is given
-            purchase_serie = pd.read_csv(path+'/energy_price/'+economic_data['pv electricity']['purchase'])['0'].to_numpy()
-            if len(purchase_serie) < 8762:
-                purchase_serie = np.tile(purchase_serie,int(c.simulation_years))                               
-            purchase = balances_pp[location_name][carrier]['pv autoconsumption'] * purchase_serie
-        else: # if the price is always the same 
-            purchase = balances_pp[location_name][carrier]['pv autoconsumption']*economic_data['pv electricity']['purchase']
-       
-        purchase = np.tile(purchase,years_factor)
-        purchase = np.reshape(purchase,(-1,8760))
-        results[location_name][name_CF]['Purchase'][carrier] -= purchase.sum(axis=1,where=purchase>0)
-        results[location_name]['CF']['Purchase'][carrier] = np.zeros(economic_data['investment years'])
-        
-        # pv sold electricity correction (not to be encountered in energy sold): Thus the electricity sold price must be considered, not the pv electricity sold price
-        if type(economic_data['electricity']['sale']) == str: # if the price series is given
-            sale_serie = pd.read_csv(path+'/energy_price/'+economic_data['electricity']['sale'])['0'].to_numpy()
-            if len(sale_serie) < 8762: #It means that the serie must be repeated for the simulation_length selected
-                sale_serie = np.tile(sale_serie,int(c.simulation_years))                      
-            sold = balances_pp[location_name][carrier]['pv surplus'] * sale_serie
-        else: # if the price is always the same 
-            sold = balances_pp[location_name][carrier]['pv surplus']*economic_data['electricity']['sale'] 
-       
-        sold = np.tile(sold,years_factor)
-        sold = np.reshape(sold,(-1,8760))
-        results[location_name][name_CF]['Sale'][carrier]   -= sold.sum(axis=1,where=sold>0)
+    if present_technologies:
+        tech_string = ', '.join(present_technologies)
+        print(f"\nWarning: The LCOE takes into account at the numerator all the technologies and cash flows employed in the system: in this case electricity produced by {tech_string} is taken into consideration at the denominator")
+    else:
+        raise ValueError("Error: None of the specified technologies (PV, wind, fuel cell) are present in the system. Include at least one of them to calculate LCOE.")
 
-    return(results)
+
+    years_factor = int(economic_data['investment years'] / c.simulation_years) # this factor is useful to match the length of the energy simulation with the length of the economic investment
+    
+    if economic_data['investment years'] % c.simulation_years != 0:
+        raise ValueError(f"'simulation_years' has been set equal to {c.simulation_years} in general.py but the 'investement_years' has been set equal to {economic_data['investment years']} in energy_market.py. This is not correct because simulation_years must be a submultiple of investement_years.")
+        
+    # open cost of componenets of studycase
+    with open('results/pkl/tech_cost_'+name_studycase+'.pkl', 'rb') as f:       tc = pickle.load(f)   
+    
+    # check for hydrogen carrier to be included in location balances
+    with open('results/pkl/consumption_'+name_studycase+'.pkl', 'rb')           as f: consumption  = pickle.load(f) 
+    with open('results/pkl/production_'+name_studycase+'.pkl', 'rb')           as f: production  = pickle.load(f)
+
+                
+    # check for electricity carrier to be included in location balances
+    if 'wind' in structure[location_name] or 'PV' in structure[location_name] or 'fuel cell' in structure[location_name]:
+        pass
+    else:
+        print("\nElectricity carrier not included in "+location_name+" location - LCOE calculation not available")
+        return 
+                                 
+
+    # check energy balances timestep and transforms the series into hourly values because the energy price is always given either on a hourly basis (electricity) or per unit of mass (gas and hydrogen)
+    if c.timestep != 60:
+        # Number of steps per hour based on the timestep
+        steps_per_hour = 60 // c.timestep          
+        # Iterate over the electricity consumption dictionary
+        for carrier in consumption[location_name]:
+            for tech_name in consumption[location_name][carrier]:
+                for tech_name1 in consumption[location_name][carrier][tech_name]:
+                    consumption[location_name][carrier][tech_name][tech_name1] = consumption[location_name][carrier][tech_name][tech_name1].reshape(-1, steps_per_hour).sum(axis=1)*(c.timestep/60)
+        # Iterate over the electricity production dictionary
+        for carrier in production[location_name]:
+            for tech_name in production[location_name][carrier]:
+                for tech_name1 in production[location_name][carrier][tech_name]:
+                    production[location_name][carrier][tech_name][tech_name1] = production[location_name][carrier][tech_name][tech_name1].reshape(-1, steps_per_hour).sum(axis=1)*(c.timestep/60)
+
+    # balances are now in the form of yearly arrays of 8760 values. Converting energy carriers and material streams expressed as mass flow rates into hourly values necessary for economic analysis purposes. kg/s to kg/h and Sm^3/s to Sm^3/h
+    for carrier in consumption[location_name]:
+        if carrier in ['hydrogen','LP hydrogen','HP hydrogen','oxygen','process steam','gas','water']:
+            for tech_name in consumption[location_name][carrier]:
+                for tech_name1 in consumption[location_name][carrier][tech_name]:
+                    consumption[location_name][carrier][tech_name][tech_name1] = consumption[location_name][carrier][tech_name][tech_name1]*3600
+    
+    for carrier in production[location_name]:
+        if carrier in ['hydrogen','LP hydrogen','HP hydrogen','oxygen','process steam','gas','water']:
+            for tech_name in production[location_name][carrier]:
+                for tech_name1 in production[location_name][carrier][tech_name]:
+                    production[location_name][carrier][tech_name][tech_name1] = production[location_name][carrier][tech_name][tech_name1]*3600
+
+ 
+    results_pp  = {}    # dictionary initialising global lcoe results of each location
+    lcoe        = {}    # dictionary initialising specific lcoe results of each location
+        
+    results_pp[location_name]   = {}    # dictionary initialising economic results_pp
+    lcoe[location_name]         = {}    # dictionary initialising economic results_pp
+    
+    # initialise cash flow:     
+    results_pp[location_name]['CF'] = {'OeM'        : np.zeros(economic_data['investment years']),
+                                       'Purchase'   : {},
+                                       'Sale'       : {},
+                                       'Refund'     : np.zeros(economic_data['investment years']),
+                                       'Tot'        : np.zeros(economic_data['investment years'])} 
+ 
+    results_pp[location_name]['I0'] = {} # initialise initial investment
+    
+    lcoe[location_name]['Capex']    = {}
+    lcoe[location_name]['Opex']     = {}
+    
+    for tech_name in tc[location_name]:              # considering each technology in the location
+ 
+        results_pp[location_name]['I0'][tech_name] = tc[location_name][tech_name]['total cost'] # I0   
+        results_pp[location_name]['CF']['OeM'][:] += - tc[location_name][tech_name]['OeM'] # OeM
+        
+        lcoe[location_name]['Capex'][tech_name] = np.concatenate(([tc[location_name][tech_name]['total cost']], np.full(economic_data['investment years'], 0))) # Capex array
+        lcoe[location_name]['Opex'][tech_name]  = np.repeat(tc[location_name][tech_name]['OeM'],economic_data['investment years']) # Opex array  
+        
+        # replacements 
+        if tc[location_name][tech_name]['replacement']['years'] == "ageing": # if replacement year is calculated according to ageing
+            with open('results/pkl/ageing_'+name_studycase+'.pkl', 'rb') as f:
+                age = pickle.load(f)     
+                age = age[location_name][tech_name][0]
+                for a in age:
+                    rep_time = int(a/8760)
+                    results_pp[location_name]['CF']['OeM'][rep_time] += - results_pp[location_name]['I0'][tech_name] * tc[location_name][tech_name]['replacement']['rate']/100 # subtract technology replacement to location Cash Flow
+                    lcoe[location_name]['Capex'][tech_name] += lcoe[location_name]['Capex'][tech_name] * tc[location_name][tech_name]['replacement']['rate']/100 # subtract technology replacement to location Cash Flow
+        else: # if replacement time is given
+            rep_time = tc[location_name][tech_name]['replacement']['years']
+            while rep_time < economic_data['investment years']: # if tech_name replacement happens before the end of the simulation
+                results_pp[location_name]['CF']['OeM'][rep_time-1] += - np.float64(results_pp[location_name]['I0'][tech_name])*np.float64(tc[location_name][tech_name]['replacement']['rate'])/np.float64(100) # subtract technology replacement to location Cash Flow. -1 subtracted to index because the array is shifted of 1 position during LCOH calculation -> CF[1:]  = results_pp[location_name]['CF']['Tot'].copy()    # [€] Cash Flows
+                lcoe[location_name]['Capex'][tech_name][rep_time] += np.float64(lcoe[location_name]['Capex'][tech_name][0])*np.float64(tc[location_name][tech_name]['replacement']['rate'])/np.float64(100) # subtract technology replacement to location Cash Flow. np.float type added to avoid overflow problems 
+                rep_time += tc[location_name][tech_name]['replacement']['years']
+        
+        if refund: # if refund has to be included in LCOE calculation
+                
+            if tc[location_name][tech_name]['refund']['years'] == 0 and tc[location_name][tech_name]['refund']['rate'] == 0:  # no refunds considered
+                pass
+            elif tc[location_name][tech_name]['refund']['years'] == 0 and tc[location_name][tech_name]['refund']['rate'] != 0:
+                results_pp[location_name]['I0'][tech_name] = results_pp[location_name]['I0'][tech_name]*((100-tc[location_name][tech_name]['refund']['rate'])/100)
+                lcoe[location_name]['Capex'][tech_name] = lcoe[location_name]['Capex'][tech_name]*((100-tc[location_name][tech_name]['refund']['rate'])/100)
+            else:
+                yearly_refund = results_pp[location_name]['I0'][tech_name]*tc[location_name][tech_name]['refund']['rate']/100 / tc[location_name][tech_name]['refund']['years'] # yearly refund [€]
+                refunds = np.zeros(economic_data['investment years']) # array initialise
+                refunds[:min(economic_data['investment years'],tc[location_name][tech_name]['refund']['years'])] = yearly_refund # array repeat yearly refund 
+                results_pp[location_name]['CF']['Refund'] += refunds # add refund to Cash Flow
+                lcoe[location_name]['Opex'][tech_name] -= refunds # add refund to Opex expenditures
+            
+            results_pp[location_name]['CF']['Tot'] += - results_pp[location_name]['CF']['Refund']
+      
+
+    # energy sold and purchased in study case 
+    for carrier in production[location_name]:                           # for each carrier (electricity, hydrogen, gas, heat)
+        
+        if carrier+' grid' in consumption[location_name][carrier]:  
+
+            if type(economic_data[carrier]['sale']) == str: # if the price series is given
+                sale_serie = pd.read_csv(path+'/energy_price/'+economic_data[carrier]['sale'])['0'].to_numpy()
+                if len(sale_serie) < 8762: #It means that the serie must be repeated for the simulation_length selected
+                    sale_serie = np.tile(sale_serie,int(c.simulation_years))                   
+                sold = consumption[location_name][carrier][carrier+' grid']['Tot'] * sale_serie
+            else: # if the price is always the same 
+                sold = consumption[location_name][carrier][carrier+' grid']['Tot'] * economic_data[carrier]['sale'] 
+           
+            sold = np.tile(sold,years_factor)
+            sold = np.reshape(sold,(-1,8760))
+            results_pp[location_name]['CF']['Sale'][carrier] = sold.sum(axis=1)
+            lcoe[location_name]['Opex'][carrier +' sold'] = - sold.sum(axis=1) 
+        
+        purchase = {}
+        if carrier+' grid' in production[location_name][carrier]:
+            purchase[carrier] = np.zeros(8760*c.simulation_years)
+            for tech_name in production[location_name][carrier][carrier+' grid']:
+                if tech_name not in ['Tot']:
+                    purchase[carrier] += production[location_name][carrier][carrier+' grid'][tech_name]
+                     
+            if type(economic_data[carrier]['purchase']) == str: # if the price series is given
+                purchase_serie = pd.read_csv(path+'/energy_price/'+economic_data[carrier]['purchase'])['0'].to_numpy()
+                if len(purchase_serie) < 8762: #It means that the serie must be repeated for the simulation_length selected
+                    purchase_serie = np.tile(purchase_serie,int(c.simulation_years))                         
+                purchase = purchase[carrier] * purchase_serie
+            else: # if the price is always the same 
+                purchase = purchase[carrier] * economic_data[carrier]['purchase']
+           
+            purchase = np.tile(purchase,years_factor)
+            purchase = np.reshape(purchase,(-1,8760))
+            results_pp[location_name]['CF']['Purchase'][carrier] = - purchase.sum(axis=1)
+            lcoe[location_name]['Opex'][carrier +' purchased'] = purchase.sum(axis=1) 
+      
+            if carrier == 'electricity':    # Electricity purchased even by PV and wind if not owned
+                if 'wind' in structure[location_name] and structure[location_name]['wind']['owned'] == False:
+                    purchase_wind = np.zeros(8760*c.simulation_years)
+                    for tech_name in production[location_name][carrier]['wind']:
+                        if tech_name not in ['Tot']:    # I'm considering even the electricity injected from wind into grid because if not owned the electricity must be all purchased (PPA as produced contract)
+                                                        # If we'll decide to add the PPA simultaneous with wind production, which means buying only the needed electricity (at a higher price of course) carrier + ' grid' should be added to 'Tot'
+                            purchase_wind += production[location_name][carrier]['wind'][tech_name]
+                    
+                    if type(economic_data['wind electricity']['purchase']) == str: # if the price series is given
+                        purchase_serie = pd.read_csv(path+'/energy_price/'+economic_data['wind electricity']['purchase'])['0'].to_numpy()
+                        if len(purchase_serie) < 8762:
+                            purchase_serie = np.tile(purchase_serie,int(c.simulation_years))                              
+                        purchase = purchase_wind * purchase_serie
+                    else: # if the price is always the same 
+                        purchase = purchase_wind * economic_data['wind electricity']['purchase']
+                   
+                    purchase = np.tile(purchase,years_factor)
+                    purchase = np.reshape(purchase,(-1,8760))
+                    results_pp[location_name]['CF']['Purchase'][carrier] += - purchase.sum(axis=1)
+                    lcoe[location_name]['Opex']['wind electricity purchased']  =  purchase.sum(axis=1)
+                             
+                if 'PV' in structure[location_name] and structure[location_name]['PV']['owned'] == False:
+                    purchase_PV = np.zeros(8760*c.simulation_years)
+                    for tech_name in production[location_name][carrier]['PV']:
+                        if tech_name not in ['Tot']:    # I'm considering even the electricity injected from PV into grid because if not owned the electricity must be all purchased (PPA as produced contract)
+                                                        # If we'll decide to add the PPA simultaneous with PV production contract, which means buying only the needed electricity (at a higher price of course) carrier + ' grid' should be added to 'Tot'                        
+                            purchase_PV += production[location_name][carrier]['PV'][tech_name]
+                    
+                    if type(economic_data['pv electricity']['purchase']) == str: # if the price series is given
+                        purchase_serie = pd.read_csv(path+'/energy_price/'+economic_data['pv electricity']['purchase'])['0'].to_numpy()
+                        if len(purchase_serie) < 8762:
+                            purchase_serie = np.tile(purchase_serie,int(c.simulation_years))                              
+                        purchase = purchase_PV * purchase_serie
+                    else: # if the price is always the same 
+                        purchase = purchase_PV * economic_data['pv electricity']['purchase']
+                   
+                    purchase = np.tile(purchase,years_factor)
+                    purchase = np.reshape(purchase,(-1,8760))
+                    results_pp[location_name]['CF']['Purchase'][carrier] += - purchase.sum(axis=1)
+                    lcoe[location_name]['Opex']['pv electricity purchased']  =  purchase.sum(axis=1)
+
+
+    # CF update considering inflation for each carrier
+    for carrier in economic_data['inflation rate']:
+        f = economic_data['inflation rate'][carrier]
+        
+        if carrier in results_pp[location_name]['CF']['Purchase']:
+            for y in range(economic_data['investment years']):
+                results_pp[location_name]['CF']['Purchase'][carrier][y] = results_pp[location_name]['CF']['Purchase'][carrier][y]*(1+f)**y
+                
+        if carrier in results_pp[location_name]['CF']['Sale']:
+            for y in range(economic_data['investment years']):
+                results_pp[location_name]['CF']['Sale'][carrier][y] = results_pp[location_name]['CF']['Sale'][carrier][y]*(1+f)**y
+    
+        for k in lcoe[location_name]['Opex']: 
+            if carrier in k:
+                for y in range(economic_data['investment years']):
+                    lcoe[location_name]['Opex'][k][y] = lcoe[location_name]['Opex'][k][y]*(1+f)**y
+                    
+    # Building Cash Flow final array while changing sign to revenews and expenditures as needed in LCOH formula
+    for carrier in results_pp[location_name]['CF']['Purchase']:
+        results_pp[location_name]['CF']['Tot'] -= results_pp[location_name]['CF']['Purchase'][carrier]
+        
+    if revenues:        # if revenues have to be included in LCOH calculation
+        for carrier in results_pp[location_name]['CF']['Sale']:
+            if carrier in revenues:
+                results_pp[location_name]['CF']['Tot'] -= results_pp[location_name]['CF']['Sale'][carrier]
+        # lcoh dictionary
+        keys_to_remove = []
+        for carrier in list(lcoe[location_name]['Opex'].keys()):
+            if 'sold' in carrier and not any(word in revenues for word in carrier.split()):  # deleting revenues array not included in the analysis
+                keys_to_remove.append(carrier)
+        for key in keys_to_remove:
+            lcoe[location_name]['Opex'].pop(key)
+    else:
+        keys_to_remove = []
+        for carrier in lcoe[location_name]['Opex']:
+            if 'sold' in carrier:
+                keys_to_remove.append(carrier)
+        for key in keys_to_remove:
+                del lcoe[location_name]['Opex'][key]   
+                            
+    results_pp[location_name]['CF']['Tot'] +=  - results_pp[location_name]['CF']['OeM']       
+                                        
+    # calculate I0
+    results_pp[location_name]['I0']['Tot'] = 0
+    for tech_name in results_pp[location_name]['I0']:
+        if tech_name != 'Tot':
+            results_pp[location_name]['I0']['Tot'] += results_pp[location_name]['I0'][tech_name]   
+            
+    for key in lcoe[location_name]['Opex']:
+        lcoe[location_name]['Opex'][key] = np.insert(lcoe[location_name]['Opex'][key], 0, 0) # shifting Opex value to year 1 while only Capex is considered in year 0.
+        
+    lcoe[location_name]['Capex']['Total'] = sum(lcoe[location_name]['Capex'].values())  # Adding Capex total values to dictionary
+    lcoe[location_name]['Opex']['Total'] = sum(lcoe[location_name]['Opex'].values())    # Adding Opex total values to dictionary
+   
+    # LCOE calculation
+    
+    # Electricity produced each year 
+
+    produced_electricity_pv, produced_electricity_wind, produced_electricity_fuelcell = [[],[],[]]
+
+    if 'PV' in structure[location_name]:
+        produced_electricity_pv = [0] + [(sum(production[location_name]['electricity']['PV']['Tot']))/c.simulation_years]*economic_data['investment years']  # [kWh/y] - No electricity produced in period 0
+    if 'wind' in structure[location_name]:
+        produced_electricity_wind = [0] + [(sum(production[location_name]['electricity']['wind']['Tot']))/c.simulation_years]*economic_data['investment years']  # [kWh/y] - No electricity produced in period 0
+    if 'fuel cell' in structure[location_name]:
+        produced_electricity_fuelcell = [0] + [(sum(production[location_name]['electricity']['fuel cell']['Tot']))/c.simulation_years]*economic_data['investment years']  # [kWh/y] - No electricity produced in period 0
+
+    produced_electricity = produced_electricity_pv+produced_electricity_wind+produced_electricity_fuelcell
+    
+    r       = economic_data['interest rate']                    # [%] interest rate 
+    I0      = results_pp[location_name]['I0']['Tot']            # [€] Initial investment at time = 0
+    CF      = np.zeros(economic_data['investment years'] +1)    # Creating an empty array of year_factor + 1 dimension for Cash Flows in order to insert only I0 as first element
+    CF[1:]  = results_pp[location_name]['CF']['Tot'].copy()     # [€] Cash Flows
+    CF[0]   = I0
+    if economic_data['decommissioning'] > 0:
+        CF = np.append(CF, I0*economic_data['decommissioning'])
+        produced_electricity.append(0)
+        lcoe[location_name]['Capex']['Total'] = np.append(lcoe[location_name]['Capex']['Total'], I0*economic_data['decommissioning'])
+        
+    num=[]  # numerator
+    den=[]  # denominator
+    
+    for i in range(len(CF)):
+ 
+        num.append((CF[i])*(1/(1+r)**i))
+        den.append(produced_electricity[i]*(1/(1+r)**i))
+    
+    LCOE = round(sum(num)/sum(den),3)
+    # LCOE = sum(num)/sum(den)                          
+    
+    results_pp[location_name]['LCOE'] = {'Value [€/kgH2]'          : LCOE,
+                                         'Discounted Expenditures' : num,
+                                         'Discounted Production'   : den}
+            
+    for key in lcoe[location_name]['Opex']:
+        for i in range(len(lcoe[location_name]['Opex'][key])):
+            lcoe[location_name]['Opex'][key][i] = lcoe[location_name]['Opex'][key][i]*(1/(1+r)**i)
+    
+    for key in lcoe[location_name]['Capex']:
+        for i in range(len(lcoe[location_name]['Capex'][key])):
+            lcoe[location_name]['Capex'][key][i] = lcoe[location_name]['Capex'][key][i]*(1/(1+r)**i)
+    
+    # specific costs associated with each technology. Data handling.
+    capex   = {}
+    opex    = {}
+    
+    for key, value in lcoe[location_name]['Capex'].items():
+        capex[key] = np.sum(value)
+    for key, value in lcoe[location_name]['Opex'].items():
+        opex[key] = np.sum(value)
+        
+    electricity_prod = sum(den)   # actualized electricity production
+ 
+    # Building DataFrame for data visualization      
+    df = pd.DataFrame([capex, opex], index=['Capex', 'Opex'])
+    df = df.fillna(0)
+    df = df.reindex(columns=[col for col in df.columns if col != 'Total'] + ['Total'])  # index 'Total' must be the last of the column
+     
+    
+    df1 = df.copy()
+    df1 = df1/electricity_prod
+    df1 = df1.round(4)
+    df1 = df1.drop(columns=df1.columns[(df1.loc['Capex'] == 0) & (df1.loc['Opex'] == 0)])    # removing elements not contributing to final LCOH value
+    
+    if plot == True:
+      
+        if revenues:
+            for key in df.loc['Opex'].index.tolist():
+                if key.replace(' sold', '') in revenues and 'sold' in key:
+                    df.loc['Opex']['Total'] -= df.loc['Opex'][key]
+        
+        df = df.drop(columns=df.columns[(df.loc['Capex'] == 0) & (df.loc['Opex'] == 0)])    # removing elements not contributing to final LCOH value
+        df = df.drop(columns=[col for col in df.columns if 'sold' in col])
+        df = df/electricity_prod
+        df = df.round(4)
+  
+        colors = ['#0e4d92', '#2380b2', '#5da5c5', '#9cc2a5', '#c8e0a1', '#ebd279', '#e18b4f', '#ff0000', '#00ff00', '#0000ff']
+        colors1 = ['#7fcdbb', '#edf8b1']       
+ 
+        labels_capex    = [col for col in df.columns if col != 'Total' and df.loc['Capex', col] != 0]
+        labels_opex     = [col for col in df.columns if col != 'Total' and df.loc['Opex', col] != 0]
+        labels_outer    = labels_capex + labels_opex
+ 
+        values_capex = df.loc['Capex', labels_capex].tolist()
+        values_opex = df.loc['Opex', labels_opex].tolist()
+        values_outer = values_capex + values_opex
+ 
+        repeated_labels = [label for label in labels_outer if labels_outer.count(label) > 1]
+ 
+        label_colors = dict(zip(repeated_labels, colors[:len(repeated_labels)]))
+        label_colors = {label: colors.pop(0) if label not in label_colors else label_colors[label] for label in labels_outer}
+        
+        labels_inner = ['Capex','Opex']
+        values_inner = [df.loc['Capex','Total'],df.loc['Opex','Total']]
+                
+        # Data to plot
+        explode = [0.] * len(labels_outer)
+        explode1 = [0.] * len(labels_inner)
+                                  
+        #Plot
+        plt.figure(dpi=300)
+        plt.pie(values_outer, 
+                labels=labels_outer, 
+                startangle=180,
+                frame=True,
+                radius=5,
+                colors=[label_colors[label] for label in labels_outer],
+                explode = explode, 
+                wedgeprops={'linewidth': 1, 'edgecolor': 'black'},
+                autopct='%1.1f%%',
+                pctdistance=1.15,
+                labeldistance=1.32,
+                textprops={'fontsize': 8})
+ 
+        prop = fm.FontProperties(weight='bold')
+        plt.pie(values_inner,
+                labels=labels_inner,
+                startangle=180, 
+                radius=3.5,
+                colors = colors1,
+                explode=explode1,
+                autopct='%1.1f%%',
+                labeldistance=0.04,
+                pctdistance=0.82,
+                textprops={'fontproperties': prop, 'fontsize':9} )
+        
+        #Draw circle
+        centre_circle = plt.Circle((0,0),1.75,color='black', fc='white',linewidth=0)
+        fig = plt.gcf()
+        fig.gca().add_artist(centre_circle)
+        
+        column_labels = [label + " [€/kWh]" for label in df.index]
+        table = plt.table(cellText=df1.T.values,  
+                  colLabels=column_labels,    
+                  rowLabels=df1.columns,  
+                  cellLoc='center',
+                  loc='center',
+                  bbox=[0.325, -1.25, 0.75, 0.8])  # table dimensions and position
+        table.auto_set_font_size(True)
+        table.scale(1, 1.)
+        
+        plt.suptitle(f'LCOE = {LCOE} €/kWh', y=0.05, fontsize=12, fontweight='bold', ha='center')
+        plt.subplots_adjust(bottom=0.18)    
+ 
+        plt.axis('equal')
+        # plt.tight_layout()
+        plt.show()        
+    
+    # saving results_pp in results/pkl
+    with open(f"results/pkl/LCOE_assessment.pkl", 'wb') as f:  pickle.dump(results_pp,f)
+    
+    # saving results_pp in results/pkl
+    
+    results_to_csv = dict(results_pp)
+    def dict_arrays_to_lists(d):
+        for key, value in d.items():
+            if isinstance(value, dict):
+                d[key] = dict_arrays_to_lists(value)
+            elif isinstance(value, np.ndarray):
+                d[key] = value.tolist()
+        return d
+    
+    results_to_csv = dict_arrays_to_lists(results_to_csv)
+    
+    #COMMENTO
+    def max_item_length(d):
+        max_ = 0
+        for value in d.values():
+            if isinstance(value, list):
+                max_ = max(max_, len(value))
+            elif isinstance(value, dict):
+                max_ = max(max_, max_item_length(value))
+        return max_
+ 
+    max_length = max_item_length(results_to_csv)
+    
+    for i in results_to_csv.keys():
+        for j in results_to_csv[i].keys():
+            for k in results_to_csv[i][j].keys():
+                if isinstance(results_to_csv[i][j][k], list):
+                    a = results_to_csv[i][j][k]
+                    results_to_csv[i][j][k] = {None:a}
+                elif isinstance(results_to_csv[i][j][k], (int,float)):
+                    a = [results_to_csv[i][j][k]] + [0]*(max_length-1)
+                    results_to_csv[i][j][k] = {None:a}
+    
+    data = {(i, j, k, l): results_to_csv[i][j][k][l]
+                                  if isinstance(results_to_csv[i][j][k][l], (int, str))
+                                  else np.array(results_to_csv[i][j][k][l])
+                                  for i in results_to_csv.keys()
+                                  for j in results_to_csv[i].keys()
+                                  for k in results_to_csv[i][j].keys()
+                                  for l in results_to_csv[i][j][k].keys()}
+    
+    df_ = pd.DataFrame.from_dict(data,orient='index')
+ 
+    df_.index = pd.MultiIndex.from_tuples(df_.index, names=['level_1', 'level_2', 'level_3', 'values'])
+    df_ = df_.transpose()
+    df_.to_csv('results/csv/LCOE_assessment.csv',index=False,sep=';',decimal=',')
+    
+    if print_ == True:
+        print("\nThe LCOE calculated for the considered scenario for "+location_name+" location results in "+str(LCOE)+" €/kWh")
+
+    return(LCOE)   

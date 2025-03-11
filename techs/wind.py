@@ -4,26 +4,28 @@ import math
 import warnings
 import os
 import sys 
+import pvlib
+import pickle    
 sys.path.append(os.path.abspath(os.path.join(os.getcwd(),os.path.pardir)))   # temorarily adding constants module path 
 from core import constants as c
 import matplotlib.pyplot as plt
 
 class wind:    
     
-    def __init__(self,parameters,path=False,timestep_number=False,timestep=False,simulation_years=False):
+    def __init__(self, parameters, location_name, path, check, file_structure, file_general):
         """
         Create a wind object based on the specified model
     
         parameters : dictionary
             'model': str type of model to be used for wind
-                    betz -> simple model based on Betz theory
-                    detailed -> more detailed model based on
+                    - power curve -> based on https://doi.org/10.1016/j.est.2021.103893.
+                                    If a series is given, [in kW/kWpeak], wind production data can be retrieved from https://www.renewables.ninja/.
+                                    If a series is given, only one parameter needs to be defined: 'Npower'.                                                                 
+                    - betz -> simple model based on Betz theory
+                    - detailed -> more detailed model based on
                     Saint-Drenan, Yves-Marie, et al. 
                     "A parametric model for wind turbine power curves incorporating environmental conditions." 
                     Renewable Energy 157 (2020): 754-768.
-                    simple -> wind production data retrieved from https://www.renewables.ninja/.
-                              When using this model, only one more parameter needs 
-                              to be defined: 'Npower'.
                               
             'area': float swept area [m2] e.g. 39.6 m^2 (Aircon 10/10 kW)
             'efficiency': float total efficiency = Betz*efficiency [-] default: 0.45 (ca. 0.593*0.76, i.e. Betz*efficiency)
@@ -38,72 +40,296 @@ class wind:
             'cp_max': [-] OPTIONAL default = 0.44; values from 0.4 to 0.5
             'idx': [-] e.g. 5; values from 0 to 5
             
-            'z_i': [m] wind turbine height, (?)
+            'z_i': [m] wind turbine height
             'z_hub': [m] hub height, e.g. 30 m (Aircon 10/10 kW)
-            'alpha': [-] Hellman or shear coefficient, values from 0 to 0.4
+            'alpha': [-] Hellman or shear coefficient, values from 0 to 0.4, default 0.4
             'Vu': [°/m] Veer coefficient, values from 0 to 0.75 °/m
             'Nbands': [-] Number of horizontal bands
-              
-        timestep_number : int number of timesteps considered in the simulation
-
-        general: dictionary
-            see rec.py
-
+            
+            'serie': if "TMY" production series based on typical meteorological year, or a specific year, or a custom CSV file
+            'ageing': bool, if wind turbine performance degradation must be considered
+            'degradation_factor': float, [%] of performance loss every year
         output : wind object able to:
             produce electricity .use(step)
         """
-        self.parameters         = parameters
-        self.Npower             = self.parameters['Npower']     # [kW] wind technology nominal power
-        self.model              = self.parameters['model']      # [-]  wind technology model
-        self.cost               = False                         # will be updated with tec_cost()
-        self.property           = self.parameters['owned']      # bool value to take into account if the plant is owned or only electricity purchase is considered. It only impacts impact on economic assessment and key parameters
-        if __name__ == "__main__":                          # if code is being executed from chp_gt.py script
-            self.timestep           = timestep              # [min] simulation timestep if launched from main
-            self.timestep_number    = timestep_number       # [-] number of timesteps considered in the simulation
-            self.simulation_years   = 1                     # [-] time horizon for the considered data series - important when reading production data from a file. For the sake of simplicity, in functional test, only one year of power production data is considered. Regardless of the selected timestep
-        else:
-            self.timestep           = c.timestep            # [min] simulation timestep if script is launched from wind.py
-            self.timestep_number    = c.timestep_number     # [-] number of timesteps considered in the simulation
-            self.simulation_years   = c.simulation_years 
+        self.parameters         = parameters                                                                                          
+        self.model              = self.parameters['model']      # [-]  wind technology model                                                     
         
-        if self.model not in ['betz','detailed','simple']:
+        if self.model not in ['betz','detailed','power curve']:
             raise ValueError("Warning: selected model for wind techonology is not among the available options.\n\
             Option to fix the problem: \n\
-                (a) - In studycase.py file choose one among 'betz','detailed' and 'simple' models.")
+                (a) - In studycase.py file choose one among 'betz','detailed' and 'power curve' models.")
 
-        if self.model == 'simple':
-            if self.simulation_years != 1: 
-                warning_message = f"Warning: In current case study {self.simulation_years} have been specified. \n\
-                                    Model 'simple' is selected for wind power: power production data series is provided as input data \n\
-                                    If analysis aim is to include wind power production and variation over more than one year, a multi-year data set must be provided. \n\
-                                    Check consistency."
-                warnings.warn(warning_message, UserWarning)
-            self.series = self.parameters["series"]  # selected dataset for wind hourly production
-                           
-            'Data Extraction - Wind power generation'
-            main = False                        # check
-            if __name__ == "__main__":          # if code is being executed from wind.py file
-                directory = r'../input_dev'     # check for input folder
-                if os.path.exists(directory):   # if 'input_dev' exists
-                    pass
-                else:                           # if not check in 'input_test'
-                    directory = r'../input_test'
-                os.chdir(directory +'/production')          
-            else: 
-                os.chdir(f"{path}\\production") # if code is being executed from main
-                main = True
+        self.cost               = False                         # will be updated with tech_cost()
+        self.property           = self.parameters['owned']      # bool value to take into account if the plant is owned or only electricity purchase is considered. It only impacts impact on economic assessment and key parameters
+        self.vw_ci              = self.parameters['WScutin']    # Cut-in wind speed (m/s)
+        self.vw_r               = self.parameters['WSrated']    # Rated wind speed (m/s)                                                        
+        self.vw_co              = self.parameters['WScutoff']   # Cut-out wind speed (m/s)
+        
+        if self.model == 'power curve':            
+            self.Npower             = self.parameters['Npower']     # [kW] wind technology nominal power
+            self.z_i                = self.parameters['z_i']        # Height of the wind turbine (m)
+            self.href               = 10                            # Reference height for wind speed data from PVGIS (m)
+            self.alpha              = self.parameters.get('alpha', 0.4)    # Exponent law coefficient (default to 0.14)                        
             
-            self.wind_prod  = (pd.read_csv(self.series,usecols=["kW"]).values).reshape(-1,)             # [-] power production. Importing wind production data series for the selected location. Expressed as ratio kWprod/1KWrated
-            if self.timestep < 60 and len(self.wind_prod) != self.timestep_number:                      # check if selected timestep is smaller than hourly and if the provided production series (csv file) is already in the desired form (number of timestep)
-                self.wind_prod = np.repeat(self.wind_prod, 60/self.timestep)                            # [-] creating a production series alligned with selected timestep 
-            self.prod_1kw   = np.tile(self.wind_prod,int(self.timestep_number*self.timestep/60/8760))   # [-] creating the production series needed for the entire simulation in case 1 typical year for production is considered. From 1 year to the duration of the simulation
-            self.wprod      = self.prod_1kw*self.Npower                                                 # [kW] wind power production data series
+        if self.model == 'betz':
+            self.z_i                = self.parameters['z_i']    # Height of the wind turbine (m)
+            self.href               = 10                        # Reference height for wind speed data from PVGIS (m)
+            self.alpha              = self.parameters.get('alpha', 0.14)    # Exponent law coefficient (default to 0.14)        
+            self.rho                     = c.AIRSDENSITY             # [kg/m3] air density assumed constant. Must be upgraded to be a function of external weather conditions. 
+            self.area               = self.parameters['area']
+            self.efficiency         = self.parameters['efficiency']
+            # Nominal power calculation                
+            self.Npower = 0.5*self.rho*self.area*self.vw_r**3*self.efficiency/1000
+            print(f"The size of the wind turbine is: {round(self.Npower,2)} kW")
+                    
+        if self.model == 'detailed':   
+            self.z_i                = self.parameters['z_i']    # Height of the wind turbine (m)
+            self.alpha              = self.parameters.get('alpha', 0.14)    # Exponent law coefficient (default to 0.14) 
+            self.rho                     = c.AIRSDENSITY             # [kg/m3] air density assumed constant. Must be upgraded to be a function of external weather conditions. 
+            self.area               = self.parameters['area']
+            self.Nbands             = self.parameters['Nbands']
+            self.cp_max                  = self.parameters.get('cp_max', 0.44)        # Consider 0.44 if not specified
+            self.beta               = self.parameters.get('beta', 0)        # Consider 0.44 if not specified
+            self.idx                = self.parameters.get('idx', 5)        # Consider 5 if not specified
+            self.z_hub              = self.parameters.get('z_hub', 30)        # Consider 30m if not specified
+            self.Vu                 = self.parameters.get('Vu', 0.5)        # Consider 0.5°/m if not specified
+            # Nominal power calculation
+            nominal_power_coefficent = self.cpfunc(self.vw_r,self.area,self.beta,self.idx,self.cp_max) 
+            self.Npower = 0.5*self.rho*self.area*self.vw_r**3*nominal_power_coefficent/1000
+            print(f"The size of the wind turbine is: {round(self.Npower,2)} kW")
             
-            if main ==  True:                 # if code is being executed from main, change directory back to main
-                os.chdir(r'../..')
+        self.timestep           = c.timestep            # [min] simulation timestep 
+        self.timestep_number    = c.timestep_number     # [-] number of timesteps considered in the simulation
+        self.simulation_years   = c.simulation_years    # [-] simulation years
+        self.latitude           = c.latitude
+        self.longitude          = c.longitude
 
         
-    def use(self,step,ws_input):
+        if self.parameters['serie'] == "TMY" or type(self.parameters['serie']) == int:
+            ### If wind serie has already been downloaded and saved as file.csv, this file is used
+            ### Otherwise new serie is downloaded from PVGIS
+            
+            # check = True # True if no wind parameters are changed from the old simulation
+                
+            # Directory for storing previous simulation data
+            directory = './previous_simulation'
+            if not os.path.exists(directory):
+                os.makedirs(directory)
+    
+            # Checking if the previous simulation exists
+            if os.path.exists(f"{directory}/wind_{file_structure}_{location_name}.pkl"):
+                with open(f"{directory}/wind_{file_structure}_{location_name}.pkl", 'rb') as f:
+                    ps_parameters = pickle.load(f)  # Load previous simulation parameters
+                    par_to_check = ['model', 'WScutin', 'WSrated', 'WScutoff', 'z_i', 'alpha', 'serie', 'area', 'efficiency', 'Nbands', 'cp_max', 'beta', 'idx', 'z_hub', 'Vu']
+                    for par in par_to_check:
+                        if par in ps_parameters and par in self.parameters:  # Some parameters haven't to be defined
+                            if ps_parameters[par] != self.parameters[par]:
+                                check = False
+    
+            else:
+                check = False
+
+            name_serie = f"Wind_{self.parameters['serie']}_{location_name}_{file_general}_{file_structure}.csv"
+            if check and os.path.exists(path + '/production/' + name_serie):  # If previous wind series can be used
+                wind_data = pd.read_csv(path + '/production/' + name_serie)['P'].to_numpy()
+                
+                if self.model == 'power curve':
+                    wind_data = wind_data * self.Npower
+    
+            else:  # Download new wind data from PVGIS
+                print(f"Downloading new wind series from PVGIS for {location_name}_{file_general}_{file_structure}")
+                # Retrieve wind speed data from PVGIS based on selected 'serie'
+                if self.parameters['serie'] == "TMY":
+                    weather = pvlib.iotools.get_pvgis_tmy(self.latitude, self.longitude, map_variables=True)[0]
+                    res = pvlib.iotools.get_pvgis_hourly(self.latitude, self.longitude)
+                    wind_speed_data = res[0]['wind_speed']  # Wind speed at 10m height
+                    refindex = weather.index
+                    shift_minutes = int(str(wind_speed_data.index[0])[14:16])
+                    refindex = refindex.shift(shift_minutes,'min')
+                    wind_speed_data = wind_speed_data[refindex]
+           
+                else:  # If specific year 
+                    year = self.parameters['serie']
+                    res = pvlib.iotools.get_pvgis_hourly(self.latitude, self.longitude, start=year, end=year)
+                    wind_speed_data = res[0]['wind_speed']
+
+                # Remove 29th of february if present
+                wind_speed_data = wind_speed_data[~((wind_speed_data.index.month == 2) & (wind_speed_data.index.day == 29))]
+                
+                wind_speed_data = pd.DataFrame(wind_speed_data)
+
+                # Time correction (UTC, DST)
+                if c.UTC > 0:
+                    wind_speed_data_index = wind_speed_data.index
+                    wind_speed_data_index = wind_speed_data_index.shift(c.UTC * 60, 'min')
+                    wind_speed_data.index = wind_speed_data_index
+        
+                    wind_speed_data2 = pd.DataFrame(data=wind_speed_data[-c.UTC:], index=None, columns=wind_speed_data.columns)
+                    wind_speed_data = wind_speed_data[:-c.UTC]
+                    
+                    reindex = wind_speed_data.index[:c.UTC]
+                    reindex = reindex.shift(-c.UTC*60,'min')
+                    wind_speed_data2.index = reindex  
+                    wind_speed_data = pd.concat([wind_speed_data2,wind_speed_data])
+                    
+                    wind_speed_data['Local time']=wind_speed_data.index
+                    wind_speed_data.set_index('Local time',inplace=True)
+
+                # Daily saving time (DST) correction
+                # Is CEST (Central European Summertime) observed? if yes it means that State is applying DST
+                # DST lasts between last sunday of march at 00:00:00+UTC+1 and last sunday of october at 00:00:00+UTC+2
+                # For example in Italy DST in 2022 starts in March 27th at 02:00:00 and finishes in October 30th at 03:00:00
+                if c.DST==True:
+                
+                    zzz_in=wind_speed_data[wind_speed_data.index.month==3]
+                    zzz_in=zzz_in[zzz_in.index.weekday==6]
+                    zzz_in=zzz_in[zzz_in.index.hour==1+c.UTC]
+                    zzz_in = pd.Series(zzz_in.index).unique()[-1]
+                  
+                    zzz_end=wind_speed_data[wind_speed_data.index.month==10]
+                    zzz_end=zzz_end[zzz_end.index.weekday==6]
+                    zzz_end=zzz_end[zzz_end.index.hour==1+c.UTC]
+                    zzz_end = pd.Series(zzz_end.index).unique()[-1]
+                    
+                    wind_speed_data.loc[zzz_in:zzz_end] = wind_speed_data.loc[zzz_in:zzz_end].shift(60,'min')
+                    wind_speed_data=wind_speed_data.interpolate(method='linear')
+                
+                    wind_speed_data['Local time - DST']=wind_speed_data.index
+                    wind_speed_data.set_index('Local time - DST',inplace=True)
+   
+    
+                if self.model == 'power curve':  # https://doi.org/10.1016/j.est.2021.103893
+                    # Step 2: Correct wind speed for the turbine's height using the power law
+                    corrected_wind_speed = wind_speed_data * (self.z_i / self.href) ** self.alpha
+                    # Step 3: Calculate the power output based on the corrected wind speed
+                    hourly_power_output_1kW = []
+                    for vw in corrected_wind_speed['wind_speed']:
+                        if vw <= self.vw_ci or vw >= self.vw_co:
+                            hourly_power_output_1kW.append(0)
+                        elif self.vw_ci < vw <= self.vw_r:
+                            # Power output between cut-in and rated wind speed (cubic interpolation)
+                            power = 1 * ((vw ** 3 - self.vw_ci ** 3) / (self.vw_r ** 3 - self.vw_ci ** 3))
+                            hourly_power_output_1kW.append(power)
+                        elif self.vw_r < vw <= self.vw_co:
+                            # Power output at rated wind speed
+                            hourly_power_output_1kW.append(1)
+                        else:
+                            hourly_power_output_1kW.append(0)
+        
+                    wind_data = pd.DataFrame(hourly_power_output_1kW, columns=['P'])
+                    wind_speed_index = corrected_wind_speed.index
+                    wind_data.set_index(wind_speed_index, inplace=True)
+                    # save series .csv Saving power per kW installed
+                    wind_data.to_csv(path + '/production/' + name_serie)
+                    # Save new parameters in previous_simulation
+                    wind_data = np.array(wind_data['P'])
+                    with open(f"{directory}/wind_{file_structure}_{location_name}.pkl", 'wb') as f:
+                        pickle.dump(self.parameters, f)
+
+                    wind_data = wind_data * self.Npower
+                 
+            
+                if self.model == 'betz':
+                    
+                    # Step 2: Correct wind speed for the turbine's height using the power law
+                    corrected_wind_speed = wind_speed_data * (self.z_i / self.href) ** self.alpha
+
+                    # Calculate the power output based on the corrected wind speed
+                    hourly_power_output = []
+                    for vw in corrected_wind_speed['wind_speed']:
+                        if vw < self.vw_ci:
+                            vw = 0
+                            hourly_power_output.append(0)
+                        elif self.vw_ci < vw <= self.vw_r:
+                            vw = vw
+                            hourly_power_output.append(0.5*self.rho*self.area*vw**3*self.efficiency/1000) # [kW] power generation in the considered timestep
+                        elif self.vw_r < vw < self.vw_co:
+                            vw = self.vw_r
+                            hourly_power_output.append(0.5*self.rho*self.area*vw**3*self.efficiency/1000) # [kW] power generation in the considered timestep
+                        elif vw > self.vw_co:
+                            vw = 0
+                            hourly_power_output.append(0)
+                     
+                    wind_data = pd.DataFrame(hourly_power_output, columns=['P'])
+                    wind_speed_index = corrected_wind_speed.index
+                    wind_data.set_index(wind_speed_index, inplace=True)
+                    # save series .csv In betz model it is saved the total power produced by the turbine (not the power per kW)
+                    wind_data.to_csv(path + '/production/' + name_serie)
+                    wind_data = np.array(wind_data['P'])
+                    # Save new parameters in previous_simulation
+                    with open(f"{directory}/wind_{file_structure}_{location_name}.pkl", 'wb') as f:
+                        pickle.dump(self.parameters, f)
+
+
+                if self.model == 'detailed':
+
+                    # Step 2: Correct wind speed for the turbine's height using the power law
+                    corrected_wind_speed = []
+                    for vw in wind_speed_data['wind_speed']:
+                        corrected_wind_speed.append(self.eqspeed(vw,self.z_i,self.z_hub,self.alpha,self.area,self.Vu,self.Nbands))                    
+                    corrected_wind_speed = pd.DataFrame(corrected_wind_speed,columns=['wind_speed'])
+                    wind_speed_index = wind_speed_data.index
+                    corrected_wind_speed.set_index(wind_speed_index, inplace=True)
+
+                    # Calculate the power output based on the corrected wind speed
+                    hourly_power_output = []
+                    for vw in corrected_wind_speed['wind_speed']:
+                        if vw < self.vw_ci:
+                            vw = 0                            
+                            hourly_power_output.append(0)
+                        elif self.vw_ci < vw <= self.vw_r:
+                            vw = vw
+                            powercoeff = self.cpfunc(vw,self.area,self.beta,self.idx,self.cp_max)
+                            power_output = 0.5*self.rho*self.area*vw**3*powercoeff/1000
+                            if power_output < 0:
+                                power_output = 0
+                            hourly_power_output.append(power_output) # [kW] power generation in the considered timestep
+                        elif self.vw_r < vw < self.vw_co:
+                            vw = self.vw_r
+                            power_output = 0.5*self.rho*self.area*vw**3*powercoeff/1000
+                            if power_output < 0:
+                                power_output = 0
+                            hourly_power_output.append(power_output) # [kW] power generation in the considered timestep
+                        elif vw > self.vw_co:
+                            vw = 0
+                            hourly_power_output.append(0)
+
+                    wind_data = pd.DataFrame(hourly_power_output, columns=['P'])
+                    wind_speed_index = corrected_wind_speed.index
+                    wind_data.set_index(wind_speed_index, inplace=True)
+                    # save series .csv In betz model it is saved the total power produced by the turbine (not the power per kW)
+                    wind_data.to_csv(path + '/production/' + name_serie)
+                    wind_data = np.array(wind_data['P'])
+                    # Save new parameters in previous_simulation
+                    with open(f"{directory}/wind_{file_structure}_{location_name}.pkl", 'wb') as f:
+                        pickle.dump(self.parameters, f)
+             
+        else:
+            # read a specific production serie expressed as kW/kWpeak
+            wind_data = pd.read_csv(path+'/production/'+self.parameters['serie'])['P'].to_numpy()
+            wind_data = wind_data * self.Npower                          # kWh
+            self.production = np.tile(wind_data,int(c.timestep_number*c.timestep/60/8760))
+            if len(self.production) != c.timestep_number:
+                raise ValueError(f"Warning! Checks the length and timestep of the wind production you input for {location_name}.")
+
+        # Aging calculation
+        if parameters['ageing'] == False:
+            # electricity produced every hour in the reference_year [kWh] [kW]
+            self.production = np.tile(wind_data,int(c.timestep_number*c.timestep/60/8760)) # from 1 year to simlation length years
+        else:
+            self.degradation = parameters['degradation factor']
+            n_years = int(c.timestep_number*c.timestep/60/8760)
+            annual_ts_number = 60*8760/c.timestep
+            self.production = np.tile(wind_data,n_years)   # no degradation
+            for i in range(1,n_years+1):
+                self.production[int(i*annual_ts_number):int((i+1)*annual_ts_number)] *= ((1-self.degradation/100)**i)  # apply degradation
+        # from hourly to timestep
+        if c.timestep < 60 and (self.parameters['serie'] == "TMY" or type(self.parameters['serie']) == int):
+            self.production =  np.repeat(self.production, 60/c.timestep) # [kW] creating a production series alligned with selected timestep 
+
+        
+    def use(self,step):
         """
         Produce electricity
         
@@ -113,47 +339,12 @@ class wind:
         output : float electricity produced that timestep [kW]
     
         """
-        if self.model == 'simple':
-            power_output = self.wprod[step]
-        
-        else:
-            ws_turbine=ws_input
-            rho=1.225 # [kg/m3] air density assumed constant. Must be upgraded to be a function of external weather conditions. 
-            
-            if self.model == 'betz':
-                            
-                if ws_turbine<self.parameters['WScutin']:
-                    ws_turbine = 0
-                elif self.parameters['WSrated']<ws_turbine<self.parameters['WScutout']:
-                    ws_turbine = self.parameters['WSrated']
-                elif ws_turbine>self.parameters['WScutout']:
-                   ws_turbine = 0
-                
-                power_output = 0.5*rho*self.parameters['area']*ws_turbine**3*self.parameters['efficiency']/1000 # [kW] power generation in the considered timestep
-                
-            elif self.model == 'detailed':
-                
-                if ws_turbine<self.parameters['WScutin']:
-                    ws_turbine = 0.
-                elif self.parameters['WSrated']<ws_turbine<self.parameters['WScutout']:
-                    ws_turbine = self.parameters['WSrated']
-                elif ws_turbine>self.parameters['WScutout']:
-                   ws_turbine = 0.
-                
-                cp_max = 0.44
-                
-                if 'cp_max' in self.parameters:
-                    cp_max = self.parameters['cp_max']
-                    
-                powercoeff = self.cpfunc(ws_turbine,self.parameters['area'],self.parameters['beta'],self.parameters['idx'],cp_max=cp_max)
-                wseq = self.eqspeed(ws_turbine,self.parameters['z_i'],self.parameters['z_hub'],self.parameters['alpha'],self.parameters['area'],self.parameters['Vu'],self.parameters['Nbands'])
-                
-                power_output = 0.5*rho*self.parameters['area']*wseq**3*powercoeff/1000 # [kW] power generation in the considered timestep
-                
+
+        power_output = self.production[step]               
         return(power_output)
 
 
-    def cpfunc(self,ws,area,beta,idx,cp_max=0.44):
+    def cpfunc(self,ws,area,beta,idx,cp_max):
         
         c1 = [0.73, 0.5, 0.5176, 0.77, 0.5,  0.22]
         c2 = [151., 116.,116.,151.,116.,120.]
@@ -312,27 +503,4 @@ if __name__ == "__main__":
     """
     Functional test
     """
-    
-    inp_test = {  "model"   : "simple",
-                  "series"  : "15windproduction.csv",
-                  "Npower"  : 2000,
-                  "owned"   : True}
-    
-    timestep        = 15                # [min] selected timestep for the simulation
-    timestep_number = 60/timestep*8760  # [-] number of steps for the simulation                 
-    
-    wind = wind(inp_test,timestep_number=timestep_number,timestep=timestep)         # creating wind turbine/wind park object
-    
-    if inp_test['model'] == 'simple':
-        fig, ax = plt.subplots(figsize=(10,5),dpi=600)
-        ax.plot(wind.wprod,linewidth=1)
-        ax.set_ylabel('Produced power [kW]')
-        ax.set_xlabel('Time [year]')
-        ax.set_title('Wind production over time')
-        xticks = list(np.linspace(0, len(wind.wprod), 13).astype(int))
-        xticklabels = ['            Jan','            Feb','             Mar','            Apr','            May','             Jun','           Jul','             Aug','           Sep','          Oct','          Nov','           Dec','']
-        ax.set_xticks(xticks)
-        ax.set_xticklabels(xticklabels)
-        ax.grid(alpha=0.3)
-        
-    
+

@@ -14,8 +14,10 @@ class battery:
             'nominal capacity': float [kWh]
             'max charging power': maximum input power [kW]
             'max discharging power': maximum output power [kW]
-            'charging efficiency': float
-            'discharging efficiency': float
+            'charging efficiency': float efficiency of charging process
+            'discharging efficiency': float efficiency of discharging process
+            'depth of discharge': minimum SOC float
+            'self discharge rate': hourly SOC loss for self-discharge float                                                        
         
             'ageing': bool true if aging has to be calculated
             'life cycles': int number of life cycles to reach the end of battery life
@@ -40,19 +42,36 @@ class battery:
         self.MpowerC = parameters['max charging power'] # float [kW]
         self.MpowerD = parameters['max discharging power'] # float [kW]
         
+        self.DoD = parameters['depth of discharge']  # float 
+        
+        self.self_discharge = parameters['self discharge rate'] / 100 # float [%]                                                                                        
         self.ageing = parameters['ageing'] # bool true if aging has to be calculated
         self.LC = parameters['life cycles'] # int number of life cycles to reach the end of battery life
-        self.deg = self.max_capacity*(100-parameters['end life capacity'])/100 # float capacity that is going to be degradated in life cycles
+        self.EOL = parameters['end life capacity'] # end of life capacity                                                                 
+        self.deg = self.max_capacity*(100-self.EOL)/100 # float capacity that is going to be degradated in life cycles
         self.ageing_day = 7 # How often ageing has to bee calculated? [days]
         self.completed_cycles = 0 # float initialise completed_cycles, this parameter is usefull to calculate replacements
         self.replacements = [] # list initialise: h at which replecaments occur
-        self.ageing_history = [[0],[self.max_capacity]] # list initialise ageing history. [completed_cycles],[max_capacity]
-    
+
         self.LOC = np.zeros(c.timestep_number+1) # array battery level of Charge 
         self.used_capacity = 0 # battery used capacity <= max_capacity [kWh]
       
         self.collective = parameters['collective'] # int 0: no collective rules. 1: priority to csc and then charge or discharge the battery.
-
+       
+        self.T = 52.5 # °C Operative temperature
+        
+        self.SOH = np.zeros(int(c.timestep_number/(self.ageing_day*60*24/c.timestep))+1) # % state of health
+        self.SOH[0] = 1
+        self.SOH_cal = np.zeros(len(self.SOH))
+        self.SOH_cal[0] = 1
+        self.SOH_cyc = np.zeros(len(self.SOH))
+        self.SOH_cyc[0] = 1
+        self.D_cal = np.zeros(len(self.SOH))
+        self.D_cyc = np.zeros(len(self.SOH))
+        self.D_tot = np.zeros(len(self.SOH))
+        
+        self.ageing_history = [[0],[self.max_capacity],[self.SOH],[self.SOH_cal],[self.SOH_cyc]] # list initialise ageing history. [completed_cycles],[max_capacity]            
+        
     def use(self,step,p):
         """
         The battery can supply or absorb electricity
@@ -63,7 +82,9 @@ class battery:
       
         output : electricity supplied or absorbed that step [kW]
         """
+        #Apply self_discharge 
 
+        self.LOC[step] = self.LOC[step]*(1-self.self_discharge)
         if self.ageing and (step*c.timestep/60/24%self.ageing_day == 0) and step!=0: # if aeging == True and it's time to calculate it
             self.calculate_ageing(step)
             
@@ -72,8 +93,9 @@ class battery:
             if p > self.MpowerC:
                 p = self.MpowerC
                               
-            if p*self.etaC*c.P2E < (self.max_capacity-self.LOC[step]): # if battery can't be full charged [kWh]
-                self.LOC[step+1] = self.LOC[step]+p*self.etaC*c.P2E # charge [kWh]
+            charge = p*self.etaC*c.P2E
+            if charge < (self.max_capacity-self.LOC[step]): # if battery can't be full charged [kWh]
+                self.LOC[step+1] = self.LOC[step]+charge # charge [kWh]
             
             else: # if batter can be full charged
                 self.LOC[step+1] = self.max_capacity
@@ -88,35 +110,69 @@ class battery:
         else: # discharge battery (this logic allows to back-calculate the LOC[0], it's useful for long term storage systems)
             
             p = p/self.etaD # how much power is really required
-            if(self.used_capacity==self.nom_capacity):  # the nom_capacity has been reached, so LOC[step+1] can't become negative 
-                   
-                discharge = min(-p,self.LOC[step]/c.P2E,self.max_capacity*self.MpowerD) # how much power can battery supply? [kW]         
-                self.LOC[step+1] = self.LOC[step]-discharge*c.P2E # discharge battery
-                
-            else: # the max_capacity has not yet been reached, so LOC[step+1] may become negative and then the past LOC may be translated   
-                                                  
-                discharge = min(-p,(self.LOC[step]+self.max_capacity-self.used_capacity)/c.P2E,self.max_capacity*self.MpowerD) # how much power can battery supply?
-                self.LOC[step+1] = self.LOC[step]-discharge*c.P2E # discharge battery
-                if self.LOC[step+1] < 0: # if the level of charge has become negative
-                    self.used_capacity += - self.LOC[step+1] # incrase the used capacity
-                    self.LOC[:step+2] += - self.LOC[step+1]  # traslate the past LOC array
             
-            return(discharge*self.etaD) # return electricity supplied
+            min_LOC = self.max_capacity*self.DoD
+            
+            if self.LOC[step] + (self.nom_capacity-self.used_capacity) > min_LOC:
+                
+                if(self.used_capacity==self.nom_capacity):  # the nom_capacity has been reached, so LOC[step+1] can't become negative 
+                       
+                    discharge = min(-p,(self.LOC[step]-min_LOC)/c.P2E,self.max_capacity*self.MpowerD) # how much power can battery supply? [kW]         
+                    self.LOC[step+1] = self.LOC[step]-discharge*c.P2E # discharge battery
+                    
+                else: # the max_capacity has not yet been reached, so LOC[step+1] may become negative and then the past LOC may be translated   
+                                                      
+                    discharge = min(-p,(self.LOC[step]-min_LOC+self.max_capacity-self.used_capacity)/c.P2E,self.max_capacity*self.MpowerD) # how much power can battery supply
+                    self.LOC[step+1] = self.LOC[step]-discharge*c.P2E # discharge battery
+                    if self.LOC[step+1] < min_LOC: # if the level of charge has become negative
+                        self.used_capacity += (min_LOC - self.LOC[step+1]) # incrase the used capacity
+                        self.LOC[:step+2] += (min_LOC - self.LOC[step+1])  # traslate the past LOC array
+              
+                return(discharge*self.etaD) # return electricity supplied
+            
+            else:
+                #Battery is below minimum SOC, can't be discharged further
+                self.LOC[step+1] = self.LOC[step]
+                return 0                                            
         
     def calculate_ageing(self,step):      
         
         # degradation (equivalent number of cycles, life cycles, end of life capacity)
         cycles = self.rainflow(step,c.timestep) # number of equivalent cycles completed
-        self.max_capacity += - (cycles / self.LC) * self.deg      
+                                                                  
         self.completed_cycles += cycles
+        
+        SOH_step = int(step/(self.ageing_day*60*24/c.timestep))
+        
+        k_ageing = 0.003273 + 0.00155*((self.T-52.5)/7.5) + 0.0000640*((self.T-52.5)/7.5)**2 + 0.00146*((self.LOC[step]/self.max_capacity-0.6)/0.2) + 0.000163*((self.LOC[step]/self.max_capacity-0.6)/0.2)**2 + 0.000687*((self.T-52.5)/7.5)*((self.LOC[step]/self.max_capacity-0.6)/0.2)
+        alpha = 0.000323*c.NEPERO**(3586.3/(self.T+273.15))
+        
+        # delta_t = (self.ageing_day*60*24/c.timestep)
+        
+        D_cal = k_ageing*((2-self.SOH[SOH_step-1])**(-alpha))
+
+        D_cyc = cycles/self.LC
+        
+        D_tot = D_cal + D_cyc
+        
+        self.SOH[SOH_step] = self.SOH[SOH_step-1] - D_tot*(1-self.EOL/100)
+        
+        self.SOH_cal[SOH_step] = self.SOH_cal[SOH_step-1] - D_cal*(1-self.EOL/100)
+        
+        self.SOH_cyc[SOH_step] = self.SOH_cyc[SOH_step-1] - D_cyc*(1-self.EOL/100)
+        
+        self.max_capacity = self.nom_capacity * (self.SOH[SOH_step])
         self.ageing_history[0].append(self.completed_cycles)
         self.ageing_history[1].append(self.max_capacity)
-
+        self.ageing_history[2] = self.SOH
+        self.ageing_history[3] = self.SOH_cal
+        self.ageing_history[4] = self.SOH_cyc
         
-        if self.completed_cycles > self.LC: # replacement
+        if self.SOH[SOH_step] <= self.EOL/100:
             self.replacements.append(step)
             self.completed_cycles = 0
             self.max_capacity = self.nom_capacity
+            self.SOH[SOH_step] = 1                                  
         
     def rainflow(self,step,timestep):
         

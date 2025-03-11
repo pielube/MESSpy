@@ -1,6 +1,20 @@
 "simulation years": int (if no ageing effetcs have to be considered, we suggest to set simulation years = 1)
-"latitude": flaot
-"longitude": float
+"timestep": int 1-60 (is the timestep expressed in minutes). To run hourly simulations set it at 60
+"latitude": flaot (useful for weather conditions extraction as well as PV and wind production)
+"longitude": float (useful for weather conditions extraction as well as PV and wind production)
 "UTC time zone": int 0,1,2 [UTC] es. Italy is in UTC+1 time zone EUROPEAN DATABASE
 "DST": true or false (daylight saving time)
 "weather": "TMY" or filetoread.csv (typical metereological year downoladed from PVgis or local database to be placed in input_test/weather
+
+
+Below is given an example (Italy); copy-paste in general.json if you want to use these inputs:
+
+{
+"simulation years": 1,
+"timestep": 60,
+"latitude": 43.6,
+"longitude": 10.3,
+"UTC time zone": 1,
+"DST": true,
+"weather": "TMY"
+}

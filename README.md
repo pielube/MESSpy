@@ -5,7 +5,7 @@ An open-source model for simulating multy-energy systems such as Renewable Energ
 
 
 ### Authors
-**Mattia Pasqui**, **Alessandro Mati**, **Andrea Ademollo**, **Pietro Lubello**,  and **Carlo Carcasci**\
+**Mattia Pasqui**, **Alessandro Mati**, **Andrea Ademollo**,**Mattia Calabrese**, **Pietro Lubello**,  and **Carlo Carcasci**\
 Department of Industrial Engineering (DIEF), University of Florence (UNIFI), Italy
 
 ## Overview
@@ -19,11 +19,12 @@ Models of different technologies are avialable and still under development to in
 - Wind turbines
 - Batteries
 - Electrolyzers
+- Steam Methane Reformer
 - Fuel Cells
 - Hydrogen tanks
-- Hydrogen compressor
+- Hydrogen compressors
 - Heat pumps
-- Boilers (ng, ele or H2)
+- Boilers (NG, electric or H2)
 - CHP (combined heat and power)
 
 ### MESS needs the load profiles as input as a .csv file
@@ -53,19 +54,21 @@ https://github.com/pielube/MESS-Fortran
 ## Quick start
 Download Anaconda from https://www.anaconda.com/download: recommended to handle virtual environments and package versions.
 
-From Anaconda Prompt, choose folder and clone repository
+From Anaconda Prompt, install git, choose folder, clone repository, create the virtual environment and install Spyder (Authors usually use Spyder as IDE)
+- conda install git
+- cd path/to/your/folder
 - git clone https://github.com/pielube/MESSpy.git
 - cd MESSpy/env
 - conda env create -f MES.yaml
 - conda activate MES
-Authors usually use Spyder as IDE, so:
 - conda install spyder
 - spyder
 
 You can run examples now. Three examples analysis are available:
 - "run_test_1" A small energy community composed by two consumers and one prosumer with PV and battery. A sensisivety analysi is also carried out.
 - "run_test_2" A residential building replaces the gas boiler with a heat pump
-- "run_test_3" Supercool hydrogen things
+- "run_test_3" On-site hydrogen production plant for an industrial facility 
+
 Choose one of these, read it and press run!
 
 ### Input files
@@ -83,6 +86,8 @@ Results are saved in both .pkl and .csv
 We suggest you to create your own run_dev.py, input_dev/ and post_process_dev.py and to work on them instead of modifying the existing file used as initial test. 
 
 ## Related works
+- "Exploring the role of hydrogen in decarbonizing energy-intensive industries: A techno-economic analysis of a solid oxide fuel cell cogeneration system"\
+https://doi.org/10.1016/j.jclepro.2024.143254
 - "Optimal sizing of a distributed energy system with thermal load electrification"\
 https://www.e3s-conferences.org/articles/e3sconf/abs/2020/57/e3sconf_ati2020_01006/e3sconf_ati2020_01006.html
 - "The potential of simulating energy systems: The multi energy systems simulator model"\

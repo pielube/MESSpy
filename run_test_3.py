@@ -61,6 +61,7 @@ SOLVER - studycase simulation
 ======
 """
 
+
 sim = rec.REC(studycase,general,file_studycase,file_general,path) # create REC object
 sim.REC_power_simulation() # simulate REC power balances
 sim.tech_cost(tech_cost) # calculate the cost of all technologies 
@@ -98,20 +99,30 @@ you should create your own postprocess_dev.py and create your own graphs
 
 # Here the main simulation results are read: balances, balances0 and economic. Balances are also available in the Variable Explorer panel: sim and sim0. Results are also available in .csv format in results/csv folder.
 with open('results/pkl/balances_'+name_studycase+'.pkl', 'rb')              as f: balances  = pickle.load(f)
+with open('results/pkl/production_'+name_studycase+'.pkl', 'rb')            as f: production  = pickle.load(f)
+with open('results/pkl/consumption_'+name_studycase+'.pkl', 'rb')           as f: consumption  = pickle.load(f)                                                                                                        
 with open('results/pkl/balances_'+name_refcase+'.pkl', 'rb')                as f: balances0 = pickle.load(f)
 with open('results/pkl/economic_assessment_'+name_economic+'.pkl', 'rb')    as f: economic  = pickle.load(f)
 
-# Total balances figures and hydrogen-related ghg emissions calculation in post-process. 'balance_pp': dictionary containing total balances calculation useful for LCOH calculation, NPV calculation and post process plots
-balances_pp = pp.energy_balance_results(studycase,name_studycase,'industrial_facility',print_=True,plot=True)
-ghg         = pp.ghg_emissions(name_studycase,'industrial_facility',energy_market,print_= True)
-
 # Levelised Cost of Hydrogen calculation
-LCOH = eco.LCOH('industrial_facility',balances_pp,studycase,name_studycase,energy_market,path,name_economic,revenues=False,refund=True,plot=True,print_=True)
+LCOH = eco.LCOH('industrial_facility',studycase,name_studycase,energy_market,path,revenues=False,refund=False,plot=True,print_=True)
+# Levelised Cost of Electricity calculation
+LCOE = eco.LCOE('industrial_facility',studycase,name_studycase,energy_market,path,revenues=False,refund=False,plot=True,print_=True)
 
 # Some plot examples
-pp.hydrogen_production(name_studycase,'industrial_facility')   
-pp.plot_post_process(balances_pp,studycase,'industrial_facility',80,90)
+pp.hydrogen_chain_curves(studycase,name_studycase,'industrial_facility',print_=True,plot=True) # Hydrogen production chain cumulative curves
+
+ghg = pp.ghg_emissions(name_studycase,path,'industrial_facility',energy_market,print_= True) # greenhouse gas emission calculation
 pp.LOC_plot(name_studycase)
+pp.RES_plot(name_studycase,'industrial_facility')
+pp.demand_plot(name_studycase,'industrial_facility')  
+
+pp.plot_energy_balances(name_studycase,'industrial_facility',200,205,'hydrogen')
+pp.plot_energy_balances(name_studycase,'industrial_facility',200,205,'electricity')
+pp.plot_energy_balances(name_studycase,'industrial_facility',90,92,'hydrogen')
+pp.plot_energy_balances(name_studycase,'industrial_facility',90,92,'electricity')
+
+pp.print_and_plot_annual_energy_balances(name_studycase,'industrial_facility',print_= True)
 pp.NPV_plot(name_economic)
     
 
@@ -144,9 +155,8 @@ pp.NPV_plot(name_economic)
 #     cs.save(name_studycase,'pkl') # save results in 'name_studycase.pkl'
 #     
 #     with open('results/pkl/balances_'+name_studycase+'.pkl', 'rb') as f: balances = pickle.load(f)
-#     balances_pp = pp.energy_balance_results(studycase,name_studycase,'industrial_facility')
-#     lcoh.append(eco.LCOH('industrial_facility',balances_pp,studycase,name_studycase,energy_market,path,name_economic)) 
-#     ghg.append(pp.ghg_emissions(name_studycase,'industrial_facility',energy_market))
+#     lcoh.append(eco.LCOH('industrial_facility',studycase,name_studycase,energy_market,path,revenues=False,refund=False,plot=True,print_=True)) 
+#     ghg.append(pp.ghg_emissions(name_studycase,path,'industrial_facility',energy_market,print_ = True))
 #     
 # # Plotting the results
 # fig, ax1 = plt.subplots(dpi=1000)   

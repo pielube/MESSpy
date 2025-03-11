@@ -117,7 +117,7 @@ pp.location_balance(name_studycase,'prosumer','heating water')
 
 pp.LOC_plot(name_studycase)
 pp.cop(sim.locations['prosumer'].technologies['heatpump'].cop_story)
-pp.heating_demand( -sim.locations['prosumer'].power_balance['heating water']['demand'])
+pp.heating_demand( -sim.locations['prosumer'].power_balance['heating water']['heating water demand'])
 
 pp.satisfaction_story(sim.locations['prosumer'].technologies['heatpump'].satisfaction_story) 
 

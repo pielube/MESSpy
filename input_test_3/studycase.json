@@ -2,40 +2,79 @@
 "industrial_facility": { "hydrogen demand": {    "series"   : "hydrogen_demand_test.csv",
                                                  "priority" : 1,
                                                  "strategy" : "demand-led"  },
-	    
+                                                 
+                        "electricity demand": {   "series": "electric_load_test.csv",
+                                                                         "priority" : 2},
                             "electricity grid": { "draw"    : true,
                                                   "feed"    : true,
-                                                  "priority":6      },
+                                                  "priority":11      },
                                                   
                             "water grid": {       "draw"    : true,
                                                   "feed"    : false,
-                                                  "priority":8      },
+                                                  "priority":9      },
                             
-                            "hydrogen grid": {       "draw"     : true,
-                                                     "feed"     : true,
-                                                     "priority" :9      },
+                            "hydrogen grid": {       "draw"     : false,
+                                                     "feed"     : false,
+                                                     "priority" :10      },
                                                    
                             "oxygen grid": { "draw"     : false,
                                              "feed"     : true,
-                                             "priority" :  7    },
+                                             "priority" :  12    },
 							                     				
-							      "wind": 	  {  "model"   : "simple",
-                							     "series"  : "windproduction.csv",
-                                                 "Npower"  : 100000,
-                                                 "priority": 2, 
-                                                 "owned"   : true   },
-
+                            "wind":    {  "model"   : "power curve",
+                                          "Npower"  : 100000,
+                                          "WScutin": 3.0,
+                                          "WSrated": 13.0,
+                                          "WScutoff": 25.0,
+                                          "z_i": 100,
+                                          "alpha": 0.4,
+                                          "area": 40,
+                                          "efficiency": 0.45,
+                                          "Nbands": 40,
+                                          "serie": "TMY",
+                                          "priority": 3,
+                                          "ageing": true,
+                                          "degradation factor": 1,
+                                          "owned"   : true},
+										  
+                	    "PV"         : { "peakP"                  : 100000,            
+                				         "tilt"                   : 30,               
+                				         "azimuth"                : 0,                
+                    					 "optimal angles"         : true,            
+                    					 "losses"                 : 10,             
+                    					 "trackingtype"           : 1,               
+                				         "serie"                  : 2015,             										    
+                    					 "ageing"                 : false,            
+                    					 "degradation factor"     : 1,                
+                				         "owned"                  : true,             
+                				         "priority"               : 4},	
+                				            
                   		       "electrolyzer": { 
-                                      		     "Npower"            : 1000,
-                                  	             "number of modules" : 100,
+                                      		     "Npower"            : 100,
+                                  	             "number of modules" : 600,
                                       	         "stack model"       : "PEM General",
+                                      	         "efficiency"        :  false,																		   
                                       	         "strategy"          : "hydrogen-first",
                                       	         "only_renewables"   : false,
                                       	         "minimum_load"      : false,
+                                      	         "min power module"  : 0.1,
+                                      	         "ageing"            : false,
+                                      	         "power distribution": "parallel",	 
                                       	         "operational_period": "01-01,31-12",
                                       	         "state"             : "on",
-                                              	 "priority"          : 3  },
-                                              	 
+                                              	 "priority"          : 5  },
+                                                                                                                               
+            				"fuel cell": {	"Npower": 100,
+            								"number of modules": 550,
+            								"stack model": "PEM General",
+                							"electric efficiency":  false,
+                							"thermal efficiency":  false,
+            								"ageing" : false,
+            								"min power module" : 0.1,
+                        	    	        "operational_period": "01-01,31-12",
+                              	            "state": "on",
+                							"priority": 6},
+                                                                             	 
                             "mechanical compressor":{
                                  		            "P_out"             : 300,
                                                     "P_in"              : 30,
@@ -45,11 +84,12 @@
                                                     "pressure losses IC": 0.02,
                                                     "T_IC"              : 308.15,
                                                     "n_stages"          : 3,
-                                                    "only_renewables"   : false,
-                                                    "priority"          : 4  },
+                                                    "only_renewables"   : true,
+                                                    "priority"          : 7  },
+								                																		
                              "H tank":{
-                                       "max capacity"   : 60000,
+                                       "max capacity"   : 6000,
                                        "pressure"       : 300,
-                                       "priority"       :5  }               				      		
+                                       "priority"       :8  }               				      		
                            }
 }   

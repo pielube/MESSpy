@@ -25,6 +25,8 @@ class PV:
                 in this case 'peakP', 'azimuth' and 'tilt' are ignored
             'Max field width': optional: float >0
             'Max field length': optional: float >0
+            'ageing': bool, if PV performance degradation must be considered
+            'degradation factor': float, [%] of performance loss every year                                                                                                                       
             
         general: dictironary
             see rec.py
@@ -47,9 +49,9 @@ class PV:
             directory = './previous_simulation'
             if not os.path.exists(directory): os.makedirs(directory)
            
-            if os.path.exists(f"previous_simulation/{file_structure}_{location_name}.pkl"):
-                with open(f"previous_simulation/{file_structure}_{location_name}.pkl", 'rb') as f: ps_parameters = pickle.load(f) # previous simulation location parameters
-                par_to_check = ['tilt','azimuth','losses','serie']
+            if os.path.exists(f"previous_simulation/pv_{file_structure}_{location_name}.pkl"):
+                with open(f"previous_simulation/pv_{file_structure}_{location_name}.pkl", 'rb') as f: ps_parameters = pickle.load(f) # previous simulation location parameters
+                par_to_check = ['tilt','azimuth','losses','serie','trackingtype','optimal angles','ageing','degradation factor']
                 for par in par_to_check:
                     if ps_parameters[par] != parameters[par]:
                         check = False
@@ -67,12 +69,14 @@ class PV:
                 losses = parameters['losses']
                 tilt = parameters['tilt']
                 azimuth = parameters['azimuth']
+                tracking_type = parameters['trackingtype']
+                opt_angles = parameters['optimal angles']                                                                       
                 
                 
                 if parameters['serie'] == 'TMY':
                     weather = pvlib.iotools.get_pvgis_tmy(c.latitude, c.longitude, map_variables=True)[0]
                     # Actual production calculation (extract all available data points)
-                    res = pvlib.iotools.get_pvgis_hourly(c.latitude,c.longitude,surface_tilt=tilt,surface_azimuth=azimuth,pvcalculation=True,peakpower=1,loss=losses,optimalangles=False)
+                    res = pvlib.iotools.get_pvgis_hourly(c.latitude,c.longitude,surface_tilt=tilt,surface_azimuth=azimuth,pvcalculation=True,peakpower=1,trackingtype=tracking_type,loss=losses,optimalangles=opt_angles)
                     # Index to select TMY relevant data points
                     pv = res[0]['P']
                     refindex = weather.index
@@ -82,9 +86,11 @@ class PV:
                     
                 else: # INT
                     year = parameters['serie']
-                    res = pvlib.iotools.get_pvgis_hourly(c.latitude,c.longitude,start=year,end=year,surface_tilt=tilt,surface_azimuth=azimuth,pvcalculation=True,peakpower=1,loss=losses,optimalangles=False)
+                    res = pvlib.iotools.get_pvgis_hourly(c.latitude,c.longitude,start=year,end=year,surface_tilt=tilt,surface_azimuth=azimuth,pvcalculation=True,peakpower=1,trackingtype=tracking_type,loss=losses,optimalangles=opt_angles)
                     pv = res[0]['P']
                 
+                # Remove 29th of february if present
+                pv = pv[~((pv.index.month == 2) & (pv.index.day == 29))]
                 pv = pd.DataFrame(pv)
                 
                 # time zone correction
@@ -128,31 +134,38 @@ class PV:
                 
                 # save series .csv
                 pv.to_csv(path+'/production/'+name_serie)
-            
+                pv = np.array(pv['P'])
                 # save new parameters in previous_simulation
-                with open(f"previous_simulation/{file_structure}_{location_name}.pkl", 'wb') as f:
+                with open(f"previous_simulation/pv_{file_structure}_{location_name}.pkl", 'wb') as f:
                     pickle.dump(parameters, f)            
-            
+                    
             self.peakP = parameters['peakP']
             pv = pv * self.peakP/1000
-            
-            # electricity produced every hour in the reference_year [kWh] [kW]
-            self.production = np.tile(pv,int(c.timestep_number*c.timestep/60/8760)) # from 1 year to simlation length years
-        
-            # from hourly to timestep
-            if c.timestep < 60:
-                self.production =  np.repeat(self.production, 60/c.timestep) # [kW] creating a production series alligned with selected timestep 
+
         else:
             # read a specific production serie expressed as kW/kWpeak
             self.peakP = parameters['peakP']
             pv = pd.read_csv(path+'/production/'+parameters['serie'])['P'].to_numpy()
             pv = pv * (1-parameters['losses']/100)      # add losses if to be added
             pv = pv*self.peakP                          # kWh
-            self.production = np.tile(pv,c.timestep_number*c.timestep/60/8760)
-            if len(self.production != c.timestep_number):
+            self.production = np.tile(pv,int(c.timestep_number*c.timestep/60/8760))
+            if len(self.production) != c.timestep_number:
                 raise ValueError(f"Warning! Checks the length and timestep of the PV production you input for {location_name}.")
 
-
+        if parameters['ageing'] == False:
+            # electricity produced every hour in the reference_year [kWh] [kW]
+            self.production = np.tile(pv,int(c.timestep_number*c.timestep/60/8760)) # from 1 year to simlation length years
+        else:
+            self.degradation = parameters['degradation factor']
+            n_years = int(c.timestep_number*c.timestep/60/8760)
+            annual_ts_number = 60*8760/c.timestep
+            self.production = np.tile(pv,n_years)   # no degradation
+            for i in range(1,n_years+1):
+                self.production[int(i*annual_ts_number):int((i+1)*annual_ts_number)] *= ((1-self.degradation/100)**i)  # apply degradation
+        
+        # from hourly to timestep
+        if c.timestep < 60 and (parameters['serie'] == "TMY" or type(parameters['serie']) == int):
+            self.production =  np.repeat(self.production, 60/c.timestep) # [kW] creating a production series alligned with selected timestep 
     def use(self,step):
         """
         Produce electricity
