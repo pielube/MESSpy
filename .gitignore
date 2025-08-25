@@ -5,5 +5,5 @@ input_dev/
 postprocess_dev.py
 preprocess_dev.py
 run_dev.py
-
-
+*venv*
+*.DS_Store*

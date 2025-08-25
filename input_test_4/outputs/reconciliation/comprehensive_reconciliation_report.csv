@@ -1,0 +1,65 @@
+Check_Type,Metric,Value,Status
+data_quality,load_data_total_files,6,Valid
+data_quality,load_data_missing_values,0,Valid
+data_quality,load_data_negative_values,0,Valid
+data_quality,load_data_zero_values,0,Valid
+data_quality,load_data_data_completeness,144,Valid
+data_quality,production_data_total_sources,10,Valid
+data_quality,production_data_solar_sources,2,Valid
+data_quality,production_data_wind_sources,8,Valid
+data_quality,production_data_data_completeness,7556095,Valid
+data_quality,configuration_total_components,18,Valid
+data_quality,configuration_missing_capacities,11,Valid
+data_quality,configuration_invalid_priorities,0,Valid
+data_quality,economic_data_total_technologies,7,Valid
+data_quality,economic_data_missing_costs,0,Valid
+data_quality,economic_data_invalid_prices,0,Valid
+input_output_consistency,load_profiles_total_electricity_demand,533500,Valid
+input_output_consistency,load_profiles_total_heat_demand,331000,Valid
+input_output_consistency,load_profiles_total_hydrogen_demand,22950,Valid
+input_output_consistency,load_profiles_demand_variability,0.3701312496132539,Valid
+input_output_consistency,production_data_total_solar_production,24524140.251000002,Valid
+input_output_consistency,production_data_total_wind_production,289502548.6143254,Valid
+input_output_consistency,production_data_production_variability,1.127377064512802,Valid
+input_output_consistency,system_configuration_total_renewable_capacity,90000.0,Valid
+input_output_consistency,system_configuration_total_storage_capacity,20000.0,Valid
+input_output_consistency,system_configuration_total_conversion_capacity,30000.0,Valid
+input_output_consistency,system_configuration_capacity_balance,89939.09817351599,Valid
+energy_balance,total_demand_electricity_MWh,533.5,Valid
+energy_balance,total_demand_heat_MWh,331.0,Valid
+energy_balance,total_demand_hydrogen_MWh,764.9235,Valid
+energy_balance,total_production_solar_MWh,2452.4140251,Valid
+energy_balance,total_production_wind_MWh,289502.54861432547,Valid
+energy_balance,balance_metrics_total_demand_MWh,1629.4234999999999,Valid
+energy_balance,balance_metrics_total_production_MWh,291954.9626394255,Valid
+energy_balance,balance_metrics_net_energy_balance_MWh,290325.5391394255,Valid
+energy_balance,balance_metrics_energy_sufficiency_percent,17917.684545449694,Valid
+economic_consistency,cost_analysis_total_capital_cost,440000,Valid
+economic_consistency,cost_analysis_total_om_cost,8850,Valid
+economic_consistency,cost_analysis_average_cost_per_kw,3.0136986301369864,Valid
+economic_consistency,cost_analysis_cost_distribution,"{'PV': 45000, 'wind': 65000, 'battery': 75000, 'electrolyzer': 135000, 'hydrogen_compressor': 35000, 'hydrogen_storage': 60000, 'ammonia_production': 25000}",Valid
+economic_consistency,price_analysis_electricity_purchase_price,0.12,Valid
+economic_consistency,price_analysis_electricity_sale_price,0.08,Valid
+economic_consistency,price_analysis_hydrogen_purchase_price,2.5,Valid
+economic_consistency,price_analysis_hydrogen_sale_price,2.0,Valid
+economic_consistency,price_analysis_price_spread_electricity,0.039999999999999994,Valid
+economic_consistency,price_analysis_price_spread_hydrogen,0.5,Valid
+economic_consistency,incentive_analysis_green_hydrogen_incentive,1.5,Valid
+economic_consistency,incentive_analysis_ammonia_incentive,0.05,Valid
+economic_consistency,incentive_analysis_rec_incentive,0.15,Valid
+economic_consistency,incentive_analysis_total_incentives,1.7,Valid
+temporal_consistency,load_temporal_daily_patterns,"{'electric_load_hybrid.csv': {0: 15000.0, 1: 12000.0, 2: 10000.0, 3: 9500.0, 4: 9000.0, 5: 11000.0, 6: 14000.0, 7: 18000.0, 8: 22000.0, 9: 25000.0, 10: 26000.0, 11: 27000.0, 12: 28000.0, 13: 29000.0, 14: 30000.0, 15: 31000.0, 16: 32000.0, 17: 33000.0, 18: 32000.0, 19: 30000.0, 20: 28000.0, 21: 25000.0, 22: 20000.0, 23: 17000.0}}",Valid
+temporal_consistency,load_temporal_seasonal_patterns,{},Valid
+temporal_consistency,load_temporal_peak_hours,"{'electric_load_hybrid.csv': [17, 16, 18, 15]}",Valid
+temporal_consistency,load_temporal_off_peak_hours,"{'electric_load_hybrid.csv': [4, 3, 2, 5]}",Valid
+temporal_consistency,production_temporal_solar_daily_pattern,"{0: 0.0, 1: 0.0, 2: 0.0, 3: 0.0, 4: 0.0, 5: 0.10962567142063345, 6: 5.2449405390386215, 7: 28.19952898684942, 8: 72.73149222078163, 9: 121.82700305612151, 10: 155.8450526169265, 11: 177.3228752187126, 12: 179.4871965190165, 13: 172.17545670596905, 14: 145.13656729351032, 15: 105.89303594710374, 16: 59.509232560305485, 17: 19.02689219261337, 18: 1.5158946288698247, 19: 0.003874183311554975, 20: 0.0, 21: 0.0, 22: 0.0, 23: 0.0}",Valid
+temporal_consistency,production_temporal_wind_daily_pattern,"{0: 1364.1147670962882, 1: 1311.4631952830132, 2: 1259.0067977564001, 3: 1209.431264596417, 4: 1146.6838735468223, 5: 1122.8050949776543, 6: 1087.076773209322, 7: 995.4493369003909, 8: 1043.7322352944814, 9: 1095.2015609253722, 10: 1159.2956400365788, 11: 1290.5638409036844, 12: 1573.732492131893, 13: 1828.4908573161745, 14: 1991.8983613161322, 15: 2195.0588539283603, 16: 2261.224778264693, 17: 2232.6401945728207, 18: 2023.9801321753632, 19: 1865.5856370748504, 20: 1771.4357201510877, 21: 1595.5408180526108, 22: 1463.8664536187136, 23: 1405.9660874233539}",Valid
+temporal_consistency,production_temporal_seasonal_variation,{},Valid
+physical_constraints,capacity_constraints_max_electricity_demand,33000,Valid
+physical_constraints,capacity_constraints_max_heat_demand,22000,Valid
+physical_constraints,capacity_constraints_max_hydrogen_demand,1700,Valid
+physical_constraints,capacity_constraints_total_renewable_capacity,90000.0,Valid
+physical_constraints,capacity_constraints_capacity_margin,63.33333333333333,Valid
+physical_constraints,storage_constraints_battery_capacity_kwh,20000.0,Valid
+physical_constraints,storage_constraints_hydrogen_storage_kg,5000.0,Valid
+physical_constraints,storage_constraints_storage_duration_hours,0.6060606060606061,Valid

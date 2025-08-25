@@ -1,0 +1,29 @@
+{
+"hybrid_plant": { 
+    "electricity grid": { 
+        "draw": true,
+        "feed": true,
+        "priority": 3 
+    },
+    "gas grid": { 
+        "draw": true,
+        "feed": false,
+        "priority": 2 
+    },
+    "water grid": { 
+        "draw": true,
+        "feed": false,
+        "priority": 4 
+    },
+    "hydrogen grid": { 
+        "draw": false,
+        "feed": true,
+        "priority": 5 
+    },
+    "oxygen grid": { 
+        "draw": false,
+        "feed": true,
+        "priority": 6 
+    }
+}
+}

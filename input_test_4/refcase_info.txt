@@ -1,0 +1,51 @@
+REFERENCE CASE CONFIGURATION FOR INDIA
+======================================
+
+This file defines the reference case configuration for the Indian hybrid plant simulation.
+
+SYSTEM INTEGRATION APPROACH:
+The reference case establishes the baseline grid integration strategy for the hybrid plant
+in the Indian energy market context.
+
+GRID CONNECTION PRIORITIES:
+
+1. ELECTRICITY GRID (Priority: 3)
+   - Draw: Enabled - Import electricity during renewable energy shortfall
+   - Feed: Enabled - Export excess renewable electricity to grid
+   - Purpose: Grid balancing and revenue generation through power trading
+
+2. GAS GRID (Priority: 2)
+   - Draw: Enabled - Import natural gas for backup power generation
+   - Feed: Disabled - No gas export capability
+   - Purpose: Backup fuel for CHP systems and emergency power
+
+3. WATER GRID (Priority: 4)
+   - Draw: Enabled - Import process water for electrolysis and industrial use
+   - Feed: Disabled - No water export capability
+   - Purpose: Essential resource for hydrogen production and industrial processes
+
+4. HYDROGEN GRID (Priority: 5)
+   - Draw: Disabled - No external hydrogen import
+   - Feed: Enabled - Export excess green hydrogen to market
+   - Purpose: Revenue generation and market penetration for green hydrogen
+
+5. OXYGEN GRID (Priority: 6)
+   - Draw: Disabled - No external oxygen import
+   - Feed: Enabled - Export oxygen byproduct from electrolysis
+   - Purpose: Additional revenue stream from industrial oxygen sales
+
+INDIAN MARKET CONTEXT:
+- Grid stability support through renewable energy integration
+- Green hydrogen market development and export
+- Industrial oxygen supply for steel and chemical industries
+- Backup power capability for grid reliability
+- Water resource management for arid regions
+
+OPERATIONAL STRATEGY:
+- Maximize renewable energy utilization
+- Minimize grid dependency during normal operation
+- Provide grid services during renewable energy shortfall
+- Generate revenue through multiple energy carrier exports
+- Support India's energy transition goals
+
+Note: This configuration aligns with Indian energy policy objectives and market conditions.

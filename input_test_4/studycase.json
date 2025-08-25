@@ -1,0 +1,171 @@
+{
+  "hybrid_plant": {
+    "electricity demand": {
+      "series": "electric_load_hybrid.csv",
+      "priority": 1
+    },
+    "heat demand": {
+      "series": "heat_load_hybrid.csv",
+      "priority": 2
+    },
+    "hydrogen demand": {
+      "series": "hydrogen_demand_hybrid.csv",
+      "priority": 3,
+      "strategy": "demand-led"
+    },
+    "electricity grid": {
+      "draw": true,
+      "feed": true,
+      "priority": 11
+    },
+    "gas grid": {
+      "draw": true,
+      "feed": false,
+      "priority": 12
+    },
+    "water grid": {
+      "draw": true,
+      "feed": false,
+      "priority": 13
+    },
+    "hydrogen grid": {
+      "draw": false,
+      "feed": true,
+      "priority": 14
+    },
+    "oxygen grid": {
+      "draw": false,
+      "feed": true,
+      "priority": 15
+    },
+    "wind": {
+      "model": "detailed",
+      "Npower": 50000.0,
+      "WScutin": 3.0,
+      "WSrated": 13.0,
+      "WScutoff": 25.0,
+      "z_i": 100.0,
+      "alpha": 0.4,
+      "area": 20,
+      "efficiency": 0.45,
+      "Nbands": 40,
+      "serie": "TMY",
+      "priority": 4,
+      "ageing": true,
+      "degradation factor": 1.0,
+      "owned": true
+    },
+    "PV": {
+      "peakP": 40000.0,
+      "tilt": 28.0,
+      "azimuth": 0.0,
+      "optimal angles": true,
+      "losses": 12.0,
+      "trackingtype": "fixed",
+      "serie": "TMY",
+      "ageing": false,
+      "degradation factor": 1.0,
+      "owned": true,
+      "priority": 5
+    },
+    "battery": {
+      "capacity": 20000.0,
+      "max power": 10000.0,
+      "min SOC": 0.1,
+      "max SOC": 0.9,
+      "efficiency": 0.9,
+      "self discharge": 0.001,
+      "priority": 6,
+      "owned": true,
+      "max charging power": 10000.0,
+      "max discharging power": 10000.0,
+      "depth of discharge": 90.0,
+      "ageing": false,
+      "life cycles": 4000.0,
+      "end life capacity": 80.0
+    },
+    "electrolyzer": {
+      "Npower": 25000.0,
+      "number of modules": 250.0,
+      "stack model": "PEM General",
+      "efficiency": 0.0,
+      "strategy": "load_following",
+      "only_renewables": true,
+      "minimum_load": 0.0,
+      "min power module": 0.1,
+      "ageing": false,
+      "power distribution": "parallel",
+      "operational_period": "01-01,31-12",
+      "state": "on",
+      "priority": 8
+    },
+    "hydrogen_compressor": {
+      "P_out": 300.0,
+      "P_in": 30.0,
+      "T_in": 343.15,
+      "compressor model": "normal",
+      "fluid": "Hydrogen",
+      "pressure losses IC": 0.02,
+      "T_IC": 308.15,
+      "n_stages": 3.0,
+      "only_renewables": true,
+      "priority": 10,
+      "Npower": 5000.0,
+      "efficiency": 75.0,
+      "flow_rate": 100.0
+    },
+    "hydrogen_storage": {
+      "max capacity": 5000.0,
+      "pressure": 300.0,
+      "priority": 16,
+      "owned": true,
+      "min level": 10.0,
+      "max level": 95.0,
+      "temperature": 298.0
+    },
+    "ammonia_production": {
+      "electricity demand": {
+        "series": "ammonia_electric_load.csv",
+        "priority": 20
+      },
+      "hydrogen demand": {
+        "series": "ammonia_hydrogen_load.csv",
+        "priority": 21
+      },
+      "heat demand": {
+        "series": "ammonia_heat_load.csv",
+        "priority": 22
+      },
+      "capacity": 1000.0,
+      "efficiency": 85.0,
+      "owned": true,
+      "h2_consumption": 177.0,
+      "n2_consumption": 823.0,
+      "heat_consumption": 500.0,
+      "operation_hours": 8000.0,
+      "startup_time": 24.0,
+      "min_load": 30.0
+    },
+    "heat_pump": {
+      "nom Pth": 1000.0,
+      "type": "air_water",
+      "COP": 3.5,
+      "t rad heat": 45.0,
+      "t rad cool": 7.0,
+      "owned": true
+    },
+    "chp": {
+      "Ppeak": 2000.0,
+      "Qpeak": 2500.0,
+      "fuel_type": "natural_gas",
+      "efficiency_el": 35.0,
+      "efficiency_th": 45.0,
+      "owned": true
+    },
+    "system": {
+      "simulation_hours": 8760.0,
+      "time_step": "1min",
+      "optimization": false
+    }
+  }
+}

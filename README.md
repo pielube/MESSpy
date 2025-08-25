@@ -83,7 +83,39 @@ You can modify them from a python interface or simply from notepad. The "Input_t
 Results are saved in both .pkl and .csv
 
 ### How to continue
-We suggest you to create your own run_dev.py, input_dev/ and post_process_dev.py and to work on them instead of modifying the existing file used as initial test. 
+We suggest you to create your own run_dev.py, input_dev/ and post_process_dev.py and to work on them instead of modifying the existing file used as initial test.
+
+## Comprehensive Documentation
+
+For detailed understanding of the model capabilities and limitations, comprehensive documentation is available:
+
+### 📋 Model Inputs Documentation
+Located in `input_test_4/MODEL_INPUTS_DOCUMENTATION.md`
+- Complete overview of all 127 explicit input parameters
+- Analysis of 23 implicit assumptions
+- Identification of 15 unused variables
+- Model controllability and realism assessment
+
+### 🔧 Technology Components Analysis
+Located in `input_test_4/TECHNOLOGY_COMPONENTS_ANALYSIS.md`
+- Detailed analysis of all 16 technology components
+- Input/output specifications for each component
+- Capabilities and limitations assessment
+- Modeling approaches and use cases
+
+### 📊 Output Generation System
+Located in `input_test_4/OUTPUT_GENERATION_DOCUMENTATION.md`
+- Comprehensive CSV output generation system
+- 22+ CSV files across 3 categories (intermediate, final, reconciliation)
+- 7-step reconciliation exercise for data validation
+- Automated quality assessment with recommendations
+
+### 🚀 Interactive Documentation
+Access the comprehensive documentation through the Streamlit app:
+```bash
+streamlit run streamlit_app.py
+```
+Then navigate to the "Documentation" tab for interactive access to all documentation. 
 
 ## Related works
 - "Exploring the role of hydrogen in decarbonizing energy-intensive industries: A techno-economic analysis of a solid oxide fuel cell cogeneration system"\

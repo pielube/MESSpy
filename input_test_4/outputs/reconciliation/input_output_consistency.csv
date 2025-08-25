@@ -1,0 +1,4 @@
+,total_electricity_demand,total_heat_demand,total_hydrogen_demand,demand_variability,total_solar_production,total_wind_production,production_variability,total_renewable_capacity,total_storage_capacity,total_conversion_capacity,capacity_balance
+load_profiles,533500.0,331000.0,22950.0,0.3701312496132539,,,,,,,
+production_data,,,,,24524140.251000002,289502548.6143254,1.127377064512802,,,,
+system_configuration,,,,,,,,90000.0,20000.0,30000.0,89939.09817351599

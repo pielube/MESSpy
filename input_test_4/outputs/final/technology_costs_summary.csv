@@ -1,0 +1,8 @@
+Technology,Cost_per_Unit,OeM_Cost,Replacement_Rate,Replacement_Years
+PV,45000,900,80,25
+wind,65000,1950,80,25
+battery,75000,1500,60,20
+electrolyzer,135000,1350,30,15
+hydrogen_compressor,35000,700,30,20
+hydrogen_storage,60000,1200,80,30
+ammonia_production,25000,1250,100,40

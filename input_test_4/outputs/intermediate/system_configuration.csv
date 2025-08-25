@@ -1,0 +1,19 @@
+Component,Capacity_Value,Capacity_Unit,Priority,Owned,Model,Strategy
+electricity demand,,,1,N/A,N/A,N/A
+heat demand,,,2,N/A,N/A,N/A
+hydrogen demand,,,3,N/A,N/A,demand-led
+electricity grid,,,11,N/A,N/A,N/A
+gas grid,,,12,N/A,N/A,N/A
+water grid,,,13,N/A,N/A,N/A
+hydrogen grid,,,14,N/A,N/A,N/A
+oxygen grid,,,15,N/A,N/A,N/A
+wind,50000.0,Npower,4,True,detailed,N/A
+PV,40000.0,peakP,5,True,N/A,N/A
+battery,20000.0,capacity,6,True,N/A,N/A
+electrolyzer,25000.0,Npower,8,N/A,N/A,load_following
+hydrogen_compressor,5000.0,Npower,10,N/A,N/A,N/A
+hydrogen_storage,5000.0,max capacity,16,True,N/A,N/A
+ammonia_production,1000.0,capacity,N/A,True,N/A,N/A
+heat_pump,,,N/A,True,N/A,N/A
+chp,,,N/A,True,N/A,N/A
+system,,,N/A,N/A,N/A,N/A

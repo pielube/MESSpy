@@ -1,0 +1,6 @@
+Metric,Max,Min,Average,Total,Standard_Deviation
+electricity_demand_kW,,,,0.0,
+heat_demand_kW,,,,0.0,
+hydrogen_demand_kg_h,,,,0.0,
+solar_production_A_m2,198.279,0.0,38.53597180365297,337575.113,58.94422120438708
+wind_production_kW,3412.4326171875,-64.97869873046875,749.808522833962,6568322.660025507,997.0261759775709

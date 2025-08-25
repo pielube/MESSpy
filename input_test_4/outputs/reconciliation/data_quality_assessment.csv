@@ -1,0 +1,5 @@
+,total_files,missing_values,negative_values,zero_values,data_completeness,total_sources,solar_sources,wind_sources,total_components,missing_capacities,invalid_priorities,total_technologies,missing_costs,invalid_prices
+load_data,6.0,0.0,0.0,0.0,144.0,,,,,,,,,
+production_data,,,,,7556095.0,10.0,2.0,8.0,,,,,,
+configuration,,,,,,,,,18.0,11.0,0.0,,,
+economic_data,,,,,,,,,,,,7.0,0.0,0.0

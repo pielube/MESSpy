@@ -1,0 +1,73 @@
+{
+"REC": {
+    "collective self consumption incentives": 0.15,
+    "incentives redistribution": {
+        "producers": 20,
+        "consumers": 80,
+        "manager": 0
+    },
+    "costitution cost": 0,
+    "OeM": 0
+},
+
+"electricity": {
+    "purchase": 0.12, 
+    "sale": 0.08,
+    "emission intensity": 700
+},
+
+"wind electricity": {
+    "purchase": 0.04
+}, 
+
+"pv electricity": {
+    "purchase": 0.04
+},  
+
+"hydrogen": {
+    "purchase": 2.5, 
+    "sale": 2.0
+},
+
+"oxygen": {
+    "purchase": 0,
+    "sale": 0.12
+},
+
+"water": {
+    "purchase": 0.08,
+    "sale": 0
+},
+
+"gas": {
+    "purchase": 0.35,   
+    "sale": 0
+}, 	  
+
+"green_hydrogen_incentives": { 
+    "application": true,
+    "value": 1.5,
+    "n_years": 10
+},
+
+
+
+"ammonia_incentives": {
+    "application": true,
+    "value": 0.05,
+    "n_years": 15
+},
+
+"interest rate": 0.085,
+
+"inflation rate": { 
+    "electricity": 0.04,
+    "gas": 0.05,
+    "hydrogen": 0.03,
+    "ammonia": 0.02
+},
+
+"decommissioning": 0,
+                
+"investment years": 25
+}

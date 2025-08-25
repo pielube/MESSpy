@@ -1,0 +1,4 @@
+,electricity_MWh,heat_MWh,hydrogen_MWh,solar_MWh,wind_MWh,total_demand_MWh,total_production_MWh,net_energy_balance_MWh,energy_sufficiency_percent
+total_demand,533.5,331.0,764.9235,,,,,,
+total_production,,,,2452.4140251,289502.54861432547,,,,
+balance_metrics,,,,,,1629.4234999999999,291954.9626394255,290325.5391394255,17917.684545449694

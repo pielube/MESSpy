@@ -1,0 +1,53 @@
+TECHNOLOGY COSTS FOR INDIA
+==========================
+
+This file contains the technology costs for renewable energy and storage systems in the Indian market.
+
+All costs are in Indian Rupees (₹) per kW or per unit as applicable.
+
+RENEWABLE ENERGY TECHNOLOGIES:
+- PV (Solar): 45,000 ₹/kW
+  * O&M: 900 ₹/kW/year
+  * Replacement: 80% of cost after 25 years
+
+- Wind: 65,000 ₹/kW
+  * O&M: 1,950 ₹/kW/year
+  * Replacement: 80% of cost after 25 years
+
+ENERGY STORAGE SYSTEMS:
+- Battery Storage: 75,000 ₹/kW
+  * O&M: 1,500 ₹/kW/year
+  * Replacement: 60% of cost after 20 years
+
+
+
+HYDROGEN TECHNOLOGIES:
+- Electrolyzer: 135,000 ₹/kW
+  * O&M: 1,350 ₹/kW/year
+  * Replacement: 30% of cost after 15 years
+
+
+
+- Hydrogen Compressor: 35,000 ₹/kW
+  * O&M: 700 ₹/kW/year
+  * Replacement: 30% of cost after 20 years
+
+- Hydrogen Storage: 60,000 ₹/kW
+  * O&M: 1,200 ₹/kW/year
+  * Replacement: 80% of cost after 30 years
+
+INDUSTRIAL PRODUCTION:
+
+
+- Ammonia Production: 25,000 ₹/kW
+  * O&M: 1,250 ₹/kW/year
+  * Replacement: 100% of cost after 40 years
+
+COST ASSUMPTIONS:
+- Costs reflect current Indian market conditions (2024)
+- Includes equipment, installation, and commissioning
+- O&M costs are annual recurring expenses
+- Replacement costs are percentage of original capital cost
+- No refunds or subsidies included in base costs
+
+Note: These costs are representative of Indian market conditions and may vary by region and project scale.

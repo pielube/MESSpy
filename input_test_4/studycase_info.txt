@@ -1,0 +1,78 @@
+STUDYCASE CONFIGURATION FOR INDIA
+=================================
+
+This file defines the studycase configuration for a realistic Indian hybrid plant simulation.
+
+SYSTEM OVERVIEW:
+The hybrid plant integrates renewable energy generation with industrial hydrogen production
+and end-use applications, optimized for Indian market conditions and regulatory framework.
+
+RENEWABLE ENERGY CAPACITIES:
+- Wind Power: 50 MW (reduced from 150 MW for realism)
+  * Cut-in speed: 3.0 m/s
+  * Rated speed: 13.0 m/s
+  * Cut-off speed: 25.0 m/s
+  * Hub height: 100m
+  * Wind shear exponent: 0.4
+  * Rotor area: 20 m²
+  * Efficiency: 45%
+
+- Solar PV: 40 MW (reduced from 120 MW for realism)
+  * Tilt angle: 28° (optimized for New Delhi latitude)
+  * Azimuth: 0° (south-facing)
+  * System losses: 12%
+  * Tracking: Single-axis tracking
+
+ENERGY STORAGE SYSTEMS:
+- Battery Storage: 20 MWh / 10 MW
+  * State of charge range: 10-90%
+  * Efficiency: 90%
+  * Self-discharge: 0.1% per hour
+
+
+
+HYDROGEN INFRASTRUCTURE:
+- Electrolyzer: 25 MW (reduced from 80 MW)
+  * PEM technology
+  * 250 modules
+  * Hydrogen-first strategy
+  * Renewable-only operation
+
+
+
+- Hydrogen Compressor: 30-300 bar
+  * 3-stage compression
+  * Intercooling at 35°C
+  * Renewable-only operation
+
+- Hydrogen Storage: 5,000 kg capacity
+  * Pressure: 300 bar
+  * High-pressure storage
+
+INDUSTRIAL END-USES:
+
+
+- Ammonia Production: Green ammonia synthesis
+  * Electricity, heat, and hydrogen demand profiles
+  * Priority: 20-22
+
+GRID INTEGRATION:
+- Electricity Grid: Bidirectional (import/export)
+- Gas Grid: Import only (backup fuel)
+- Water Grid: Import only (process water)
+- Hydrogen Grid: Export only (excess production)
+- Oxygen Grid: Export only (byproduct)
+
+PRIORITY SYSTEM:
+1. Electricity demand
+2. Heat demand
+3. Hydrogen demand
+4. Wind generation
+5. Solar generation
+6. Battery storage
+7. Electrolyzer
+8. Hydrogen compressor
+9-16. Grid connections and industrial processes
+
+Note: Capacities have been adjusted to realistic Indian market scales while maintaining
+the hybrid plant concept and industrial integration capabilities.

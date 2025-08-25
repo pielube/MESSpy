@@ -1,0 +1,4 @@
+,total_capital_cost,total_om_cost,average_cost_per_kw,cost_distribution,electricity_purchase_price,electricity_sale_price,hydrogen_purchase_price,hydrogen_sale_price,price_spread_electricity,price_spread_hydrogen,green_hydrogen_incentive,ammonia_incentive,rec_incentive,total_incentives
+cost_analysis,440000,8850,3.0136986301369864,"{'PV': 45000, 'wind': 65000, 'battery': 75000, 'electrolyzer': 135000, 'hydrogen_compressor': 35000, 'hydrogen_storage': 60000, 'ammonia_production': 25000}",,,,,,,,,,
+price_analysis,,,,,0.12,0.08,2.5,2.0,0.039999999999999994,0.5,,,,
+incentive_analysis,,,,,,,,,,,1.5,0.05,0.15,1.7

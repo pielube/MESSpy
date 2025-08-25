@@ -1,0 +1,5 @@
+Check_Type,Load_Profiles,Production_Sources,System_Components,Technology_Costs,Energy_Market_Parameters,Total_System_Capacity_kW,Renewable_Capacity_kW,Storage_Capacity_kWh,Conversion_Capacity_kW,Max_Electricity_Demand_kW,Max_Heat_Demand_kW,Max_Hydrogen_Demand_kg_h,Total_Annual_Electricity_MWh,Total_Capital_Cost,Total_OM_Cost,Average_Electricity_Price,Average_Hydrogen_Price
+Data_Completeness,6.0,10.0,18.0,7.0,14.0,,,,,,,,,,,,
+Capacity_Consistency,,,,,,146000.0,146000.0,0.0,0.0,,,,,,,,
+Load_Profile_Consistency,,,,,,,,,,33000.0,22000.0,1700.0,289080.0,,,,
+Economic_Consistency,,,,,,,,,,,,,,440000.0,8850.0,0.12,2.5

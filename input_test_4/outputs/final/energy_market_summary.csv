@@ -1,0 +1,12 @@
+Energy_Type,Purchase_Price,Sale_Price,Incentive_Value
+REC,0.0,0.0,0.0
+electricity,0.12,0.08,0.0
+wind electricity,0.04,0.0,0.0
+pv electricity,0.04,0.0,0.0
+hydrogen,2.5,2.0,0.0
+oxygen,0.0,0.12,0.0
+water,0.08,0.0,0.0
+gas,0.35,0.0,0.0
+green_hydrogen_incentives,0.0,0.0,1.5
+ammonia_incentives,0.0,0.0,0.05
+inflation rate,0.0,0.0,0.0
